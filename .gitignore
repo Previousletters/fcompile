@@ -1,0 +1,7 @@
+__pycache__/
+
+build/
+
+.pkl_memoize_py3/
+
+test/
