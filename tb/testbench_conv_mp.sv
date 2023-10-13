@@ -1,5 +1,6 @@
 `include "CNN_defines.vh"
 ////////////////////////////////////////////////////////////////////////////////
+`timescale 1ns / 1ps
 `define DAT_DW_L0 8
 `define DAT_DW_L1 8
 
@@ -144,15 +145,22 @@ bit [`MAX_BN_DW-1:0] dat_out_soft[`Hout_L0][`Wout_L0][`CHout_L0];
 bit [(`DAT_DW_L1-1):0]before_relu;
 bit [(`DAT_DW_L1-1):0]expected_result;
 
+bit [`MAX_DAT_DW-1:0] input_dt [`Hin_L0*`Win_L0*`CHin_L0-1:0];
+bit [`MAX_DAT_DW-1:0] input_wt [`Ky_L0*`Kx_L0*`CHin_L0*`CHout_L0-1:0];
+bit [`MAX_DAT_DW-1:0] output_dt[`Hout_L0*`Wout_L0*`CHout_L0-1:0];
+
 initial
 begin
+    $readmemh("input_dt", input_dt);
+    $readmemh("input_wt", input_wt);
 	
 	for(int i=0;i<`Hin_L0;i++)
 		for(int j=0;j<`Win_L0;j++)
 			for(int k=0;k<`CHin_L0;k++)
 			begin
-			    dat_in[i][j][k]=$random()%46;//(k==0)? (k-0)*4+i*`Win_L0+j+1 : 0;//(k<=2)?j+1:0;//(k%2==0)? $random()%6 : 0;//(k<1)?$random()%6:0; //0*(`Hin_L0*`Win_L0)+i*`Win_L0+j+1+k;//
-                if(`DAT_DW_L0==2 | `DAT_DW_L0==4) dat_in[i][j][k]=($signed(dat_in[i][j][k])>=0)?dat_in[i][j][k]:0;
+                dat_in[i][j][k] = input_dt[i*`Win_L0*`CHin_L0+j*`CHin_L0+k][`DAT_DW_L0-1:0];
+//			    dat_in[i][j][k]=$random()%46;//(k==0)? (k-0)*4+i*`Win_L0+j+1 : 0;//(k<=2)?j+1:0;//(k%2==0)? $random()%6 : 0;//(k<1)?$random()%6:0; //0*(`Hin_L0*`Win_L0)+i*`Win_L0+j+1+k;//
+//                if(`DAT_DW_L0==2 | `DAT_DW_L0==4) dat_in[i][j][k]=($signed(dat_in[i][j][k])>=0)?dat_in[i][j][k]:0;
 //                dat_in[i][j][k] = ($random%2 < 0)? 0 : 1;
 //                $display("dat_in     [%0d][%0d][%0d]=%0d",i,j,k,$signed(dat_in[i][j][k]));
             end
@@ -162,7 +170,8 @@ begin
             for(int k=0;k<`CHin_L0;k++)
                 for(int l=0;l<`CHout_L0;l++)
                 begin
-                    wt[i][j][k][l]=$random()%54; //(k==0 & l==0)?1:0; //(k==0)?2*l+j*3+i*5+1:0;//2*l+j*3+i*5+1;//k==0?j+1:0;//1+$random()%2;//
+                    wt[i][j][k][l] = input_wt[i*`Kx_L0*`CHin_L0*`CHout_L0+j*`CHin_L0*`CHout_L0+k*`CHout_L0+l][`DAT_DW_L0-1:0];
+//                    wt[i][j][k][l]=$random()%54; //(k==0 & l==0)?1:0; //(k==0)?2*l+j*3+i*5+1:0;//2*l+j*3+i*5+1;//k==0?j+1:0;//1+$random()%2;//
 //                    if(k==0) wt[i][j][k][l]= 1+l+i*`Ky_L0+j;
 //                    else wt[i][j][k][l]= 0;//$random()%3;//1+$random()%2;//
 //                    $display("[Ky][Kx][CHin][CHout]   wt[%0d][%0d][%0d][%0d]=%0d",i,j,k,l,$unsigned(wt[i][j][k][l]));
@@ -240,6 +249,7 @@ begin
 					flag=0;
 					$display("error! dat_out_hardware[%0d][%0d][%0d]=%0d, dat_out_software=%0d",i,j,k,$signed(dat_out[i][j][k]), $signed(expected_result));
 				end
+                output_dt[i*`Wout_L0*`CHout_L0+j*`CHout_L0+k] = $signed(dat_out[i][j][k]);
 			end
 
 	if(flag==1)
@@ -254,6 +264,7 @@ begin
 	$display("Total MAC: %0d",`Kx_L0*`Ky_L0*`CHout_L0*`CHin_L0*`Wout_L0*`Hout_L0);
     $display("MAC Array Effiency=%f%%%%",(((`Kx_L0*`Ky_L0*`CHout_L0*`CHin_L0*`Wout_L0*`Hout_L0))*100.0)/(`Tin_L0*`Tout*rdata) );
     
+    $writememh("output_dt", output_dt);
     if(flag==1)
 	   #100 $finish;
     else

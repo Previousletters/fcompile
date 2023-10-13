@@ -1,0 +1,38 @@
+import numpy as np
+
+def int_hex(data, max_dt, neg_dt):
+    if data >= neg_dt:
+        data = neg_dt-1
+    if data < 0:
+        if data < -neg_dt:
+            data = -neg_dt
+        data = data + max_dt
+    return "{:02x}".format(data) # 8bit
+
+
+def hex_int(data, max_dt, neg_dt):
+    data = int(data, 16)
+    if data >= neg_dt:
+        data = data - max_dt
+    return data # 8bit
+
+
+def writememh(name, data, width):
+    max_dt, neg_dt = 2**8, 2**(width-1)
+    data = data.reshape((1, -1))
+    data_list = []
+    for d in data[0]:
+        data_list.append(int_hex(d, max_dt, neg_dt))
+    data_str = "\n".join(data_list)
+    with open(name, "w") as f:
+        f.write(data_str)
+
+
+def readmemh(name, width, shape):
+    max_dt, neg_dt = 2**8, 2**(width-1)
+    data = np.zeros(shape, dtype="int8").reshape((1, -1))
+    with open(name, "r") as f:
+        data_list = [d for d in f.readlines() if "//" not in d]
+    for n in range(data.size):
+        data[0, n] = hex_int(data_list[n], max_dt, neg_dt)
+    return data.reshape(shape)

@@ -14,3 +14,14 @@ def shape2byte(shape, dtype):
     for s in shape:
         byte = byte * s
     return byte
+
+def shape2stride(shape):
+    def _comp(datas):
+        ret = 1
+        for data in datas:
+            ret = data * ret
+        return ret
+    shape = list(shape)
+    stemp = shape + [1]
+    stride = [_comp(stemp[i+1:]) for i in range(len(shape))]
+    return stride

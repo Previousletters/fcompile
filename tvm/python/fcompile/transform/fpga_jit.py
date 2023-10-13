@@ -81,3 +81,12 @@ class FPGAJit(Functor):
             ret["node_type"] = "call"
         self.jit_memo.append(ret)
         return ret["return"]
+    
+
+    def visit_extern(self, call):
+        args = [self.visit(arg) for arg in call.args]
+        name = call.expr_name.replace("%", "")
+        ret = call.op.fpga_jit(name, args, call.attrs)
+        ret["node_type"] = "extern"
+        self.jit_memo.append(ret)
+        return ret["return"]

@@ -38,7 +38,7 @@ class CCodeGen(BaseCodeGen):
     def build(self, jit, prefix="TVMWrap"):
         self.analysis(jit)
         params = b"".join([np2bytes(data) for data in self.datas])
-        return self.get_source(prefix), params
+        return self.get_source(prefix), params, self.extern
 
     def analysis(self, jit):
         self.static = []
@@ -48,6 +48,8 @@ class CCodeGen(BaseCodeGen):
         self.outputs = []
         self.funcops = []
         self.datas = []
+
+        self.extern = []
 
         for node in jit:
             self.node_type = node["node_type"]
@@ -75,6 +77,10 @@ class CCodeGen(BaseCodeGen):
 
     def gen_data(self, value):
         self.datas.append(value[1])
+
+    def gen_extern(self, value):
+        self.static.append(value[0])
+        self.extern.append(value[1])
 
     def get_source(self, prefix):
         local_time = strftime('%Y-%m-%d %H:%M:%S',localtime())

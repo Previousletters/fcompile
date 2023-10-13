@@ -5,8 +5,9 @@ class PrintFir(Functor):
 
     def fir_body(self, fexpr):
         self.body = []
+        self.extern = []
         self.visit(fexpr)
-        return self.body
+        return self.body, self.extern
 
     def visit_var(self, var):
         self.body.append(str(var))
@@ -21,6 +22,7 @@ class PrintFir(Functor):
     def visit_extern(self, call):
         _ = [self.visit(arg) for arg in call.args]
         self.body.append(str(call))
+        self.extern.append(str(call.op))
 
 
 class GetFirVar(Functor):

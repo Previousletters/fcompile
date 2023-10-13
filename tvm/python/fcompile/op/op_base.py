@@ -28,6 +28,7 @@ class Input(Op):
         ret["return"] = {"name" : var_name, "type" : self.ret_type, "shape" : self.shape}
         return ret
 
+
 class Const(Op):
 
     name = "const"
@@ -59,6 +60,8 @@ class Output(Op):
             ret["callop"] = [demap_str]
             if data["free"]:
                 ret["callop"].append(FreeFeature(dat_name))
+        elif data["type"] == OpType.t_val:
+            ret_name = data["pointer"]
         ret["return"] = {"name" : ret_name, "type" : self.ret_type, "shape" : self.shape}
         return ret
 
@@ -76,7 +79,7 @@ class AccelFMap(Op):
         ret_name = self.name + "_" + name
         dat_name = data["name"]
         _, h, w, c = data["shape"]
-        width, scale = int(attrs["width"]), int(attrs["scale"])
+        width, scale = int(attrs["widths"][0]), int(attrs["scales"][0])
         mal_str = MallocFeature(ret_name, [h, w, c, scale, scale, width])
         map_str = self.map_func[data["type"]](dat_name, ret_name)
         ret["callop"] = [mal_str, map_str]
@@ -96,7 +99,7 @@ class AccelWMap(Op):
         ret_name = self.name + "_" + name
         dat_name = data["name"]
         h, w, i, o = data["shape"]
-        width, scale = int(attrs["width"]), int(attrs["scale"])
+        width, scale = int(attrs["widths"][0]), int(attrs["scales"][0])
         if data["type"] == OpType.const:
             ret["static"] = {"name" : ret_name, "type" : self.ret_type, "attrs" : [h, w, i, o, scale, width]}
         else:
@@ -112,3 +115,25 @@ class TVMMap(Op):
     name = "tvm_map"
     arg_types = [[OpType.c_ptr, OpType.f_ddr]]
     ret_type = OpType.t_val
+
+    def fpga_jit(self, name, args, attrs):
+        ret = {}
+        data = args[0]
+        ret_name = self.name + "_" + name
+        dat_name = data["name"]
+        if data["type"] == OpType.c_ptr:
+            dlt_str = CreateDLTensor(ret_name, dat_name, self.shape)
+            ret["callop"] = [dlt_str]
+        elif data["type"] == OpType.f_ddr:
+            ptr_name = "op_" + name
+            byte = shape2byte(self.shape, self.dtype)
+            dlt_str = CreateDLTensor(ret_name, ptr_name, self.shape)
+            map_str = Feature2DLTensor(dat_name, ret_name)
+            ret["static"] = {"name" : ptr_name, "type" : OpType.c_ptr, "attrs" : [byte]}
+            ret["callop"] = dlt_str + [map_str]
+            if data["free"]:
+                ret["callop"].append(FreeFeature(dat_name))
+        else:
+            raise RuntimeError("Haven't support runtime parameter process!")
+        ret["return"] = {"name" : ret_name, "type" : self.ret_type, "shape" : self.shape, "pointer" : dat_name}
+        return ret

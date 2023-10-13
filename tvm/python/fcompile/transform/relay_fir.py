@@ -3,7 +3,7 @@ from tvm import relay
 from tvm.relay import ExprFunctor, ExprMutator, ExprVisitor
 from tvm.topi.utils import get_const_tuple
 
-from ..op import Input, FPGA_OP_MAP
+from ..op import Input, FPGA_OP_MAP, TVMOp
 from ..fir import FVar, FCall, FExtern
 
 
@@ -34,10 +34,15 @@ class RelayFIR(ExprFunctor):
             id_ = self.get_id()
             return FCall(args, funct, attrs, id_)
         else:
-            funct = []
             attrs = dict(call.attrs)
             args = [self.visit(arg) for arg in call.args]
+            var_ = []
+            for n, arg in enumerate(args):
+                var = relay.var(f"var{n}", shape=arg.op.shape, dtype=arg.op.dtype)
+                var_.append(var)
+            new_call = relay.Call(call.op, var_, call.attrs, call.type_args)
             id_ = self.get_id()
+            funct = TVMOp(var_, new_call, dshape, dtype, id_)
             return FExtern(args, funct, attrs, id_)
 
     def visit_var(self, var):

@@ -1,10 +1,14 @@
+import os
+import subprocess
 import numpy as np
 
+from ..config import SIM_ROOT
 from .op_base import Op
 from ..codegen import OpType
 from ..codegen.function import *
 from ..process import *
 from ..utils import list2str
+from ..simulate import readmemh, writememh
 
 FPGA_OP_MAP = {}
 
@@ -65,3 +69,34 @@ class Conv2D(Op):
             ret["callop"].append(FreeFeature(dat_name))
         ret["return"] = {"name" : ret_name, "type" : self.ret_type, "shape" : self.shape}
         return ret
+
+    
+    def modelsim(self, args, attrs):
+        tb_name = "testbench_conv_mp"
+        data, weight = args
+        _, dh, dw, c = data.shape
+        kh, kw, i, o = weight.shape
+        _, oh, ow, _ = self.shape
+        ph, _, pw, _ = [int(i) for i in attrs["padding"]]
+        sh, sw = [int(i) for i in attrs["strides"]]
+        d_bw, w_bw, o_bw = [int(i) for i in attrs["widths"]]
+        d_sc, w_sc, o_sc = [int(i) for i in attrs["scales"]]
+        input_dt = os.path.join(SIM_ROOT, "run", "input_dt")
+        input_wt = os.path.join(SIM_ROOT, "run", "input_wt")
+        writememh(input_dt, data, d_bw)
+        writememh(input_wt, weight, w_bw)
+        define = {
+            "DAT_DW_L0" : d_bw, "DAT_DW_L1" : o_bw, "Hin_L0" : dh, "Win_L0" : dw, "CHin_L0" : c, "CHout" : o,
+            "Kx_L0" : kw, "Ky_L0" : kh, "Sx_L0" : sw, "Sy_L0" : sh, "Px_L0" : pw, "Py_L0" : ph, 
+            "DAT_IN_scale_L0" : d_sc, "WT_scale_L0" : w_sc, "Conv_out_scale_L0" : o_sc
+        }
+        define_list = []
+        for key, value in define.items():
+            tp_str = f"+define+{key}={value}"
+            define_list.append(tp_str)
+        define_str = "".join(define_list)        
+        cmd = f"make sim DEFINES=\"{define_str}\" TB_NAME={tb_name}"
+        subprocess.run(cmd, shell=True, cwd=SIM_ROOT)
+        output_dt = os.path.join(SIM_ROOT, "run", "output_dt")
+        output = readmemh(output_dt, d_bw, self.shape)
+        return output

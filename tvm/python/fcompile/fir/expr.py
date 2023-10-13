@@ -57,6 +57,12 @@ class FExtern(Base):
         name = "%" + str(id)
         super().__init__(name, args, op, attrs)
 
+    def __str__(self):
+        str_args = [arg.expr_name for arg in self.args]
+        str_args = ", ".join(str_args)
+        str_shape = shape2str(self.op.shape)
+        return f"{self.expr_name} = {self.op.func_name}({str_args}) /* {str_shape} */"
+
 
 class FModule:
 
@@ -67,15 +73,9 @@ class FModule:
 
     def __str__(self):
         vars = GetFirVar().get(self.fexpr)
-        body = PrintFir().fir_body(self.fexpr)
+        body, extern = PrintFir().fir_body(self.fexpr)
         str_var = ", ".join([var.expr_name for var in vars])
         str_body = "\n".join(["  " + b for b in body])
+        str_extern = "\n".join(extern)
         str_main = f"def main({str_var}, tin={self.tin}, tout={self.tout})" + " {\n" + str_body + "\n}\n"
-        return str_main
-
-    # def set_params(self, params):
-    #     self.fexpr = SetParams().set(self.fexpr, params)
-
-    # def process(self, tin, tout):
-    #     self.fexpr = ProcessParams().process(self.fexpr, tin, tout)
-
+        return str_main + str_extern

@@ -22,6 +22,8 @@ class BaseCodeGen:
             return self.gen_return(value)
         elif key == "params":
             return self.gen_params(value)
+        elif key == "extern":
+            return self.gen_extern(value)
 
 
     def gen_static(self, value):
@@ -37,6 +39,9 @@ class BaseCodeGen:
         pass
 
     def gen_params(self, value):
+        pass
+
+    def gen_extern(self, value):
         pass
 
     
