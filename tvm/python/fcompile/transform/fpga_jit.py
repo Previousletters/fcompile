@@ -1,7 +1,7 @@
 ''' fpga jit template for codegen
 [
     {
-        "node_type" : "call",
+        "node_type" : "call", # var, const, call, extern, output
         "static" : {
             "name" : name,
             "type" : OpType.xxx,

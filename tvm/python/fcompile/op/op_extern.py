@@ -42,11 +42,14 @@ class TVMOp(Op):
         func = relay.Function(self.var_, self.expr)
         mod = IRModule.from_expr(func)
         mod = transform.InferType()(mod)
-        lib = relay.build(mod, "llvm")
+        with tvm.transform.PassContext(
+            opt_level=9, config={"tir.disable_vectorize": True, "relay.backend.use_auto_scheduler": False}
+        ):
+            lib = relay.build(mod, "llvm")
         m = graph_executor.GraphModule(lib["default"](dev))
-        m.run(params=inputs)
+        m.run(**inputs)
         tvm_output = m.get_output(0)
-        return tvm_output.numpy()
+        return tvm_output.asnumpy()
 
 
     def fpga_jit(self, name, args, attrs):
@@ -66,7 +69,7 @@ class TVMOp(Op):
         ret["static"] = {"name" : ptr_name, "type" : OpType.c_ptr, "attrs" : [byte]}
         ret["callop"] = dlt_str + [tvl_str, arg_type_ids] + tvl_ptr_str + [func_str]
         ret["return"] = {"name" : ret_name, "type" : self.ret_type, "shape" : self.shape, "pointer" : ptr_name}
-        ret["extern"] = [f"{self.func_name}(void*, int32_t*);", self.get_source()]
+        ret["extern"] = [f"void {self.func_name}(void*, int32_t*);", self.get_source()]
         return ret
 
     

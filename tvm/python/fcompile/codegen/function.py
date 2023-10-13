@@ -46,7 +46,7 @@ def CreateDLTensor(name, ptr_name, shape):
     dldata   = f"{name}.data = (void*){ptr_name};"
     dlndim   = f"{name}.ndim = {len(shape)};"
     dloffset = f"{name}.byte_offset = 0;"
-    dldtype  = f"{name}.dtype = " + "(DLDataType){.code = 2, .bits = 32, .lans = 1};"
+    dldtype  = f"{name}.dtype = " + "(DLDataType){.code = 2, .bits = 32, .lanes = 1};"
     dldevice = f"{name}.device = " + "(DLDevice){.device_type = kDLCPU, .device_id = 0};"
     tpshape  = f"int64_t shape_{name}[] = " + "{" + list2str(shape) + "};"
     dlshape  = f"{name}.shape = shape_{name};"

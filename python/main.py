@@ -21,7 +21,7 @@ from fcompile.fir import FModule
 from fcompile.transform import RelayFIR, FPGAParameters, DataMap, FPGAJit
 from fcompile.codegen import CCodeGen
 
-def main_accel():
+def main_accel_ccodegen():
     x = relay.var("x", shape=(1, 28, 28, 3), dtype="int8")
     w1 = relay.var("w1", shape=(3, 3, 3, 32), dtype="int8")
     w2 = relay.var("w2", shape=(3, 3, 32, 64), dtype="int8")
@@ -53,7 +53,7 @@ def main_accel():
         f.write(params)
 
 
-def main_accel_extern():
+def main_accel_extern_ccodegen():
     x = relay.var("x", shape=(1, 28, 28, 3), dtype="int8")
     w1 = relay.var("w1", shape=(3, 3, 3, 32), dtype="int8")
     w2 = relay.var("w2", shape=(3, 3, 32, 64), dtype="int8")
@@ -112,4 +112,27 @@ def main_accel_modelsim():
     print(result)
 
 
+def main_accel_extern_modelsim():
+    x = relay.var("x", shape=(1, 28, 28, 3), dtype="int8")
+    w1 = relay.var("w1", shape=(3, 3, 3, 32), dtype="int8")
+    out = relay.accel.vit.conv2d(x, w1, strides=1, padding=0, widths=[8, 8, 8], scales=[5, 5, 4], activate=0)
+    out = relay.transpose(out, (0, 3, 1, 2))
+    func = relay.Function([x, w1], out)
+    mod = IRModule.from_expr(func)
+    print(mod)
+    mod = transform.InferType()(mod)
+    print(mod)
+    f_mod = FModule(RelayFIR().convert(mod), tin=64, tout=32)
+    print(f_mod)
+    inputs = {
+        "x" : np.random.randint(-10, 10, (1, 28, 28, 3), "int8"),
+        "w1" : np.random.randint(-10, 10, (3, 3, 3, 32), "int8"),
+    }
+    result = modelsim(f_mod, inputs)
+    print(result)
+
+
+main_accel_ccodegen()
+main_accel_extern_ccodegen()
 main_accel_modelsim()
+main_accel_extern_modelsim()
