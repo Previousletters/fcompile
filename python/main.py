@@ -46,6 +46,7 @@ def main_accel_ccodegen():
     print(jit_mod)
     c_mod, params, _ = CCodeGen().build(jit_mod)
 
+    os.makedirs("test", exist_ok=True)
     with open("./test/source.c", "w") as f:
         f.write(c_mod)
 
@@ -79,6 +80,7 @@ def main_accel_extern_ccodegen():
     print(jit_mod)
     c_mod, params, e_mod = CCodeGen().build(jit_mod)
 
+    os.makedirs("test", exist_ok=True)
     with open("./test/source_extern.c", "w") as f:
         f.write(c_mod)
 

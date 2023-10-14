@@ -48,5 +48,3 @@ class Mutator(Functor):
         new_args = [self.visit(arg) for arg in call.args]
         call.args = new_args
         return call
-
-        

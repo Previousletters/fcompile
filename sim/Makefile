@@ -6,6 +6,7 @@ TBS_DIR = ${PWD_DIR}/../tb
 INS_DIR = ${PWD_DIR}/install
 RUN_DIR = ${PWD_DIR}/run
 DEFINES = 
+SIM_TOOL = ModelSIM
 
 all: 
 
@@ -15,7 +16,7 @@ install:
 	cp -r $(SRC_DIR) $(INS_DIR)
 	cp -r $(INC_DIR) $(INS_DIR)
 	cp -r $(TBS_DIR) $(INS_DIR)
-	ln -s $(PWD_DIR)/bin/Makefile $(RUN_DIR)/Makefile
+	ln -s $(PWD_DIR)/bin/run.${SIM_TOOL} $(RUN_DIR)/Makefile
 
 clean:
 	rm -r $(RUN_DIR)

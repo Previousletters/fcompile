@@ -388,4 +388,3 @@ def get_pool_cfg(layer_name, Win, Hin, CHin, Kx, Ky, Sx, Sy, Px, Py, in_bit_widt
     pool_cfg['One_div_KxKy'] = int(One_div_KxKy)
 
     return pool_cfg
-

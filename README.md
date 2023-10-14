@@ -23,6 +23,8 @@
 
     tvm: fpga-accel版本的tvm源码
 
+本项目以FPGA Accel为编译Target，整体数据类型以MAX_DATA_WIDTH流通（8bit，其涉及到malloc时的空间大小），CPU算子（TVM算子）均被视为Extern算子，以函数调用的形式提供。
+
 ## TVM Relay Accel IR --> FIR --> RTL Sim
 
 本项目开发环境为WSL+Windows(ModelSIM)，如果为Linux系统则需要添加ModelSIM环境变量并修改sim/bin/Makefile的Tools，目前Windows系统由于路径问题暂不支持，其他仿真器暂无支持。
@@ -138,3 +140,17 @@ __2023.10.14__
 2. 数据的输入以memh进行，在testbench中使用readmemh读取数据，writememh写出结果
 
 3. extern算子中直接通过调用TVM Graph Execution计算完成
+
+## TODO List
+
+1. 数据类型的多样性，提供以uint16和fp32为基础的数据类型的编译处理。
+
+2. 添加scale量化计算相关算子，或以Map和DeMap函数为基础做扩展。
+
+3. Extern算子进行融合和优化，Extern JIT能够正确生成多算子的计算图。
+
+4. FTuple类型的支持，对多输出算子的支持
+
+5. 加速器相关的两种优化：第一层卷积的特定优化（channels较低）；使用片上数据连续计算
+
+6. 尝试从NHWST数据layout进行计算，更贴近加速器数据类型，尽可能减少运行时layout转换

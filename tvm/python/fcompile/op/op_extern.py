@@ -100,6 +100,3 @@ void %(func_name)s(void* args, int32_t* arg_type_ids) {
   %(func)s(args, arg_type_ids, 3, 0, 0, 0);
 }""" %{"func_name" : self.func_name, "func" : funcs[0]}
         return "\n".join(new_source) + api_source
-
-
-

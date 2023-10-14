@@ -22,5 +22,9 @@ int main(void) {
     fsetpos(fp,&fpos); //恢复之前的位置
     char* params = (char*)malloc(n);
     fread(params, 1, n, fp);
+    TVMWrapInit();
+    TVMWrapSetParams(params);
+    TVMWrapRun();
+    printf("Finish!\n");
     return 0;
 }

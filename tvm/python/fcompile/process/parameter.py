@@ -197,5 +197,3 @@ def HWIO2OIHW(weight_in_vgg):
                 for kx in range(Kx):
                     new_weight_in_test[chout][chin][ky][kx] =weight_in_vgg[ky][kx][chin][chout]
     return new_weight_in_test
-
-

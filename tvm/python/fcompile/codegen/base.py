@@ -25,7 +25,6 @@ class BaseCodeGen:
         elif key == "extern":
             return self.gen_extern(value)
 
-
     def gen_static(self, value):
         pass
 

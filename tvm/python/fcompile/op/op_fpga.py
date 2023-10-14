@@ -24,6 +24,13 @@ def register_fpga_op(op_name, level=10):
 
     return _register_fn
 
+def make_define(define:dict) -> str:
+    define_list = []
+    for key, value in define.items():
+        tp_str = f"+define+{key}={value}"
+        define_list.append(tp_str)
+    define_str = "".join(define_list)  
+    return "\"" + define_str + "\""
 
 @register_fpga_op("accel.vit.conv2d")
 class Conv2D(Op):
@@ -90,12 +97,8 @@ class Conv2D(Op):
             "Kx_L0" : kw, "Ky_L0" : kh, "Sx_L0" : sw, "Sy_L0" : sh, "Px_L0" : pw, "Py_L0" : ph, 
             "DAT_IN_scale_L0" : d_sc, "WT_scale_L0" : w_sc, "Conv_out_scale_L0" : o_sc
         }
-        define_list = []
-        for key, value in define.items():
-            tp_str = f"+define+{key}={value}"
-            define_list.append(tp_str)
-        define_str = "".join(define_list)        
-        cmd = f"make sim DEFINES=\"{define_str}\" TB_NAME={tb_name}"
+        define_str = make_define(define)
+        cmd = f"make sim DEFINES={define_str} TB_NAME={tb_name}"
         subprocess.run(cmd, shell=True, cwd=SIM_ROOT)
         output_dt = os.path.join(SIM_ROOT, "run", "output_dt")
         output = readmemh(output_dt, d_bw, self.shape)
