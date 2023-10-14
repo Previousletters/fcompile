@@ -1,3 +1,4 @@
+import os
 import numpy as np
 
 def int_hex(data, max_dt, neg_dt):
@@ -24,8 +25,13 @@ def writememh(name, data, width):
     for d in data[0]:
         data_list.append(int_hex(d, max_dt, neg_dt))
     data_str = "\n".join(data_list)
-    with open(name, "w") as f:
-        f.write(data_str)
+    try:
+        with open(name, "w") as f:
+            f.write(data_str)
+    except:
+        raise RuntimeError("The path in SIM_ROOT is not correct. " + \
+                "Please check your \"sim\" path and make sure " + \
+                "you have \"make install\" and \"make compile\".")
 
 
 def readmemh(name, width, shape):
