@@ -12,18 +12,51 @@
 文件说明:
 
     fcompile: 软链接，实际地址为tvm/python/fcompile，与TVM共用PYTHONPATH变量
-
+    
     include/rtl/tb: RTL源码和Testbench等
-
+    
     python: main函数脚本，主要测试与控制目录
-
+    
     sim: RTL仿真目录
-
+    
     template: FPGA部署例子，其中包括加速器驱动等等
-
+    
     tvm: fpga-accel版本的tvm源码
 
 本项目以FPGA Accel为编译Target，整体数据类型以MAX_DATA_WIDTH流通（8bit，其涉及到malloc时的空间大小），CPU算子（TVM算子）均被视为Extern算子，以函数调用的形式提供。
+
+| Op Name | TVM Op | ModelSIM | FPGA JIT |
+| :-----: | :----: | :------: | :------: |
+| conv_mp | conv2d | &#10004; | &#10004; |
+|   MVM   |   mm   | &#10004; | &#10006; |
+
+> TVM Op存在relay.accel.vit.前缀
+
+## 新算子注册添加
+
+fcompile为FPGA加速器深度学习编译器后端，前端依赖TVM及其数据类型和优化方法。在新算子注册的流程中，需要同时在TVM和fcompile中注册相应的算子。
+
+1. 根据需要在tvm/include/relay/attrs.h中添加attrs类型，目前已经在使用的类型为AccelOpAttrs，其以卷积为基础添加了精度信息。
+
+2. 在tvm/src/relay/op/accel/**.cc中编写算子注册，主要包括Make函数，Del函数（InferType）以及算子注册。
+
+3. 在tvm/python/relay/op/accel/**.py中编写make函数，为python调用算子的入口。
+
+4. 在fcompile/op/op_fpga.py中添加对tvm中新注册的算子的映射，并根据实际编写对应的fpga_jit和modelsim函数。
+
+5. 如果需要modelsim仿真，对应的testbench需要做一定修改，如下：
+
+    5.1. 添加`timescale设置，由于modelsim仿真器的设定，需要在top module中设置timescale而不是其他地方。
+
+    5.2. 根据输入输出定义相同数目个二维bit数组，bit宽度为MAX_DAT_WIDTH。
+
+    5.3. 利用上述bit数组，修改dat_in，wt_in函数的输入，并将dat_out保存。
+
+    5.4. 在initial begin中添加对应的readmemh函数和writememh函数，其名称应与python中modelsim函数中文件名称相同。
+
+6. 算子注册完成后，可以参考python/check.py编写对应的check函数，以进行检查。
+
+当前，由于没有Tuple的存在，没有多输出函数。并且TVM扩展算子中，理论上只支持没有权重导入、单输入单输出的算子。
 
 ## TVM Relay Accel IR --> FIR --> RTL Sim
 

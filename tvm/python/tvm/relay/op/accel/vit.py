@@ -41,7 +41,7 @@ def conv2d(
     data,
     weight,
     strides=(1, 1),
-    padding=(0, 0, 0, 0),
+    padding=(0, 0),
     kernel_size=None,
     widths=None,
     scales=None,
@@ -53,13 +53,28 @@ def conv2d(
         strides = (strides, strides)
     #TODO check the length of widths and scales
     if isinstance(padding, int):
-        padding = (padding, padding, padding, padding)
+        padding = (padding, padding)
     return _make.vit_conv2d(
         data,
         weight,
         strides,
         padding,
         kernel_size,
+        widths,
+        scales,
+        activate
+    )
+
+def mm(
+    data,
+    weight,
+    widths=None,
+    scales=None,
+    activate=0
+):
+    return _make.vit_mm(
+        data,
+        weight,
         widths,
         scales,
         activate
