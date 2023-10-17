@@ -79,3 +79,42 @@ def mm(
         scales,
         activate
     )
+
+def softmax(
+    data,
+    widths=None,
+    scales=None,
+    activate=0
+):
+    return _make.vit_softmax(
+        data,
+        widths,
+        scales,
+        activate
+    )
+
+def transpose(
+    data,
+    widths=None,
+    scales=None
+):
+    return _make.vit_transpose(
+        data,
+        widths,
+        scales
+    )
+
+def layer_norm(
+    data,
+    k_factor,
+    bias,
+    widths=None,
+    scales=None
+):
+    return _make.vit_layer_norm(
+        data,
+        k_factor,
+        bias,
+        widths,
+        scales
+    )

@@ -134,6 +134,168 @@ with the layer input to produce a tensor of outputs.
     .set_support_level(2)
     .add_type_rel("AccelVitMM", AccelVitMMRel);
 
+Expr MakeAccelVitSoftmax(Expr data, Array<IndexExpr> widths, Array<IndexExpr> scales, IndexExpr activate) {
+  auto attrs = make_object<AccelOpAttrs>();
+  attrs->strides = {1, 1};
+  attrs->padding = {0, 0};
+  attrs->kernel_size = {1, 1};
+  attrs->widths = widths;
+  attrs->scales = scales;
+  attrs->activate = activate;
+  attrs->kernel_layout = "HWIO";
+  attrs->data_layout = "NHWC";
+  attrs->out_layout = "NHWC";
+  const Op& op = Op::Get("accel.vit.softmax");
+  return Call(op, {data}, Attrs(attrs), {});
+}
+
+TVM_REGISTER_GLOBAL("relay.op.accel._make.vit_softmax")
+    .set_body_typed([](Expr data, Array<IndexExpr> widths, Array<IndexExpr> scales, IndexExpr activate) {
+      return MakeAccelVitSoftmax(data, widths, scales, activate);
+    });
+
+bool AccelVitSoftmaxRel(const Array<Type>& types, int num_inputs, const Attrs& attrs,
+                       const TypeReporter& reporter) {
+  ICHECK_EQ(types.size(), 2);
+  const auto* data = types[0].as<TensorTypeNode>();
+  if (data == nullptr) return false;
+  //TODO: trans_layout 
+  reporter->Assign(types[1], TensorType(data->shape, data->dtype));
+  return true;
+}
+
+RELAY_REGISTER_OP("accel.vit.softmax")
+    .describe(R"code(2D convolution layer (e.g. spatial convolution over sequences).
+
+This layer creates a convolution kernel that is convolved
+with the layer input to produce a tensor of outputs.
+
+- **data**: This depends on the `layout` parameter. Input is 3D array of shape
+            (batch_size, in_channels, width) if `layout` is `NCW`.
+- **weight**: (channels, in_channels, kernel_size)
+- **out**:  This depends on the `layout` parameter. Output is 3D array of shape
+            (batch_size, channels, out_width) if `layout` is `NCW`.
+
+)code" TVM_ADD_FILELINE)
+    .set_attrs_type<AccelOpAttrs>()
+    .set_num_inputs(1)
+    .add_argument("data", "Tensor", "The input tensor.")
+    .set_support_level(2)
+    .add_type_rel("AccelVitSoftmax", AccelVitSoftmaxRel);
+
+Expr MakeAccelVitTranspose(Expr data, Array<IndexExpr> widths, Array<IndexExpr> scales) {
+  auto attrs = make_object<AccelOpAttrs>();
+  attrs->strides = {1, 1};
+  attrs->padding = {0, 0};
+  attrs->kernel_size = {1, 1};
+  attrs->widths = widths;
+  attrs->scales = scales;
+  attrs->activate = 0;
+  attrs->kernel_layout = "HWIO";
+  attrs->data_layout = "NHWC";
+  attrs->out_layout = "NHWC";
+  const Op& op = Op::Get("accel.vit.transpose");
+  return Call(op, {data}, Attrs(attrs), {});
+}
+
+TVM_REGISTER_GLOBAL("relay.op.accel._make.vit_transpose")
+    .set_body_typed([](Expr data, Array<IndexExpr> widths, Array<IndexExpr> scales) {
+      return MakeAccelVitTranspose(data, widths, scales);
+    });
+
+bool AccelVitTransposeRel(const Array<Type>& types, int num_inputs, const Attrs& attrs,
+                       const TypeReporter& reporter) {
+  ICHECK_EQ(types.size(), 2);
+  const auto* data = types[0].as<TensorTypeNode>();
+  if (data == nullptr) return false;
+  Array<IndexExpr> dshape_nhwc = data->shape; // HWIO
+  //TODO: trans_layout 
+  Array<IndexExpr> oshape({dshape_nhwc[0], dshape_nhwc[1], dshape_nhwc[3], dshape_nhwc[2]});
+  reporter->Assign(types[1], TensorType(oshape, data->dtype));
+  return true;
+}
+
+RELAY_REGISTER_OP("accel.vit.transpose")
+    .describe(R"code(2D convolution layer (e.g. spatial convolution over sequences).
+
+This layer creates a convolution kernel that is convolved
+with the layer input to produce a tensor of outputs.
+
+- **data**: This depends on the `layout` parameter. Input is 3D array of shape
+            (batch_size, in_channels, width) if `layout` is `NCW`.
+- **weight**: (channels, in_channels, kernel_size)
+- **out**:  This depends on the `layout` parameter. Output is 3D array of shape
+            (batch_size, channels, out_width) if `layout` is `NCW`.
+
+)code" TVM_ADD_FILELINE)
+    .set_attrs_type<AccelOpAttrs>()
+    .set_num_inputs(1)
+    .add_argument("data", "Tensor", "The input tensor.")
+    .set_support_level(2)
+    .add_type_rel("AccelVitTranspose", AccelVitTransposeRel);
+
+Expr MakeAccelVitLayerNorm(Expr data, Expr k_factor, Expr bias, Array<IndexExpr> widths, 
+                           Array<IndexExpr> scales) {
+  auto attrs = make_object<AccelOpAttrs>();
+  attrs->strides = {1, 1};
+  attrs->padding = {0, 0};
+  attrs->kernel_size = {1, 1};
+  attrs->widths = widths;
+  attrs->scales = scales;
+  attrs->activate = 0;
+  attrs->kernel_layout = "HWIO";
+  attrs->data_layout = "NHWC";
+  attrs->out_layout = "NHWC";
+  const Op& op = Op::Get("accel.vit.layer_norm");
+  return Call(op, {data, k_factor, bias}, Attrs(attrs), {});
+}
+
+TVM_REGISTER_GLOBAL("relay.op.accel._make.vit_layer_norm")
+    .set_body_typed([](Expr data, Expr k_factor, Expr bias, Array<IndexExpr> widths, 
+                       Array<IndexExpr> scales) {
+      return MakeAccelVitLayerNorm(data, k_factor, bias, widths, scales);
+    });
+
+bool AccelVitLayerNormRel(const Array<Type>& types, int num_inputs, const Attrs& attrs,
+                       const TypeReporter& reporter) {
+  ICHECK_EQ(types.size(), 4);
+  const auto* data = types[0].as<TensorTypeNode>();
+  const auto* k_factor = types[1].as<TensorTypeNode>();
+  const auto* bias = types[2].as<TensorTypeNode>();
+  if (data == nullptr) return false;
+  if (k_factor == nullptr) return false;
+  if (bias == nullptr) return false;
+  Array<IndexExpr> dshape = data->shape;
+  Array<IndexExpr> fshape = k_factor->shape;
+  Array<IndexExpr> bshape = bias->shape;
+  //TODO: trans_layout 
+  if (!tvm::tir::ExprDeepEqual()(dshape[3], fshape[0])) return false;
+  if (!tvm::tir::ExprDeepEqual()(dshape[3], bshape[0])) return false;
+  reporter->Assign(types[3], TensorType(data->shape, data->dtype));
+  return true;
+}
+
+RELAY_REGISTER_OP("accel.vit.layer_norm")
+    .describe(R"code(2D convolution layer (e.g. spatial convolution over sequences).
+
+This layer creates a convolution kernel that is convolved
+with the layer input to produce a tensor of outputs.
+
+- **data**: This depends on the `layout` parameter. Input is 3D array of shape
+            (batch_size, in_channels, width) if `layout` is `NCW`.
+- **weight**: (channels, in_channels, kernel_size)
+- **out**:  This depends on the `layout` parameter. Output is 3D array of shape
+            (batch_size, channels, out_width) if `layout` is `NCW`.
+
+)code" TVM_ADD_FILELINE)
+    .set_attrs_type<AccelOpAttrs>()
+    .set_num_inputs(3)
+    .add_argument("data", "Tensor", "The input tensor.")
+    .add_argument("k_factor", "Tensor", "The input tensor.")
+    .add_argument("bias", "Tensor", "The input tensor.")
+    .set_support_level(2)
+    .add_type_rel("AccelVitLayerNorm", AccelVitLayerNormRel);
+
 }
 
 }

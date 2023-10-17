@@ -5,6 +5,8 @@ class ModelSIM(Functor):
 
     def run(self, fmod, inputs):
         self.inputs = inputs
+        self.tin = fmod.tin
+        self.tout = fmod.tout
         return self.visit(fmod.fexpr)
 
     def visit_var(self, var):
@@ -23,7 +25,7 @@ class ModelSIM(Functor):
 
     def visit_call(self, call):
         args = [self.visit(arg) for arg in call.args]
-        return call.op.modelsim(args, call.attrs)
+        return call.op.modelsim(args, call.attrs, self.tin, self.tout)
 
     def visit_extern(self, call):
         args = [self.visit(arg) for arg in call.args]

@@ -15,6 +15,7 @@ class Op:
     def fpga_jit(self, name):
         pass
 
+
 class Input(Op):
 
     name = "input"

@@ -1,6 +1,6 @@
 `include "CNN_defines.vh"
 ////////////////////////////////////////////////////////////////////////////////
-
+`timescale 1ns / 1ps
 `define Height    197//5//
 `define Width_in  192//4//
 
@@ -140,24 +140,28 @@ bit [`DAT_DW_L0-1:0] dat_out_soft[`Width_in][`Height];
 bit [(`DAT_DW_L1-1):0]before_relu;
 bit [(`DAT_DW_L1):0]difference;
 
+bit [`MAX_DAT_DW-1:0] input_dt [`Hin_L0*`Win_L0*`CHin_L0-1:0];
+bit [`MAX_DAT_DW-1:0] output_dt[`CHin_L0*`CHout_L0-1:0];
+
 initial
 begin
+    $readmemh("input_dt", input_dt);
 
     for(int i=0;i<`Hin_L0;i++)
         for(int j=0;j<`Win_L0;j++)
             for(int k=0;k<`CHin_L0;k++)
             begin
-                if(i*`Win_L0+j>=`Height)
-                    dat_in[i][j][k]=0;
-                else
-                begin
-                    dat_in[i][j][k]=$random();
+                dat_in[i][j][k] = input_dt[i*`Win_L0*`CHin_L0+j*`CHin_L0+k][`DAT_DW_L0-1:0];
+                trans_wt_soft[0][0][k][i*`Win_L0+j]=dat_in[i][j][k];
+//                if(i*`Win_L0+j>=`Height)
+//                    dat_in[i][j][k]=0;
+//                else
+//                begin
+//                    dat_in[i][j][k]=$random();
 //                    dat_in[i][j][k]=(k%`Tout==0)?(k/`Tout)*5+i*`Win_L0+j+1:0;//$random();//
 //                    $display("dat_in[H%d][W%d][CH%d]=%d",i,j,k,$signed(dat_in[i][j][k]));
-                    
-                    trans_wt_soft[0][0][k][i*`Win_L0+j]=dat_in[i][j][k];
 //                    $display("trans_wt_soft[in%d][out%d]=%d",k,i*`Win_L0+j,$signed(dat_in[i][j][k]));
-                end
+//                end
             end
 
     Map_Feature_Data(dat_in,dat_in_mem);
@@ -212,6 +216,13 @@ begin
     else
         $display("\n==================================\n\t result mismatch\n==================================");
 
+
+    for(int i=0;i<`CHin_L0;i++)
+        for(int j=0;j<`CHout_L0;j++)
+        begin
+            output_dt[i*`CHout_L0+j] = $signed(trans_wt_soft[0][0][i][j]);
+        end
+    $writememh("output_dt", output_dt);
     if(flag==1)
        #100 $finish;
     else

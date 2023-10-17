@@ -25,12 +25,15 @@
 
 本项目以FPGA Accel为编译Target，整体数据类型以MAX_DATA_WIDTH流通（8bit，其涉及到malloc时的空间大小），CPU算子（TVM算子）均被视为Extern算子，以函数调用的形式提供。
 
-| Op Name | TVM Op | ModelSIM | FPGA JIT |
-| :-----: | :----: | :------: | :------: |
-| conv_mp | conv2d | &#10004; | &#10004; |
-|   MVM   |   mm   | &#10004; | &#10006; |
+| Op Name | Relay Op | ModelSIM | FPGA JIT |
+| :-----: | :------: | :------: | :------: |
+| conv_mp |  conv2d  | &#10004; | &#10004; |
+|   MVM   |    mm    | &#10004; | &#10006; |
+| softmax |  softmax | &#10004; | &#10006; |
+|TRANSPOSE| transpose| &#10004; | &#10006; |
+|   LN    |layer_norm| &#10004; | &#10006; |
 
-> TVM Op存在relay.accel.vit.前缀
+> Op Name为testbench名称，存在testbench_前缀；Relay Op为tvm注册的加速器算子名，存在relay.accel.vit.前缀
 
 ## 新算子注册添加
 
@@ -38,7 +41,7 @@ fcompile为FPGA加速器深度学习编译器后端，前端依赖TVM及其数�
 
 1. 根据需要在tvm/include/relay/attrs.h中添加attrs类型，目前已经在使用的类型为AccelOpAttrs，其以卷积为基础添加了精度信息。
 
-2. 在tvm/src/relay/op/accel/**.cc中编写算子注册，主要包括Make函数，Del函数（InferType）以及算子注册。
+2. 在tvm/src/relay/op/accel/**.cc中编写算子注册，主要包括Make函数，Rel函数（InferType）以及算子注册。
 
 3. 在tvm/python/relay/op/accel/**.py中编写make函数，为python调用算子的入口。
 
@@ -57,6 +60,8 @@ fcompile为FPGA加速器深度学习编译器后端，前端依赖TVM及其数�
 6. 算子注册完成后，可以参考python/check.py编写对应的check函数，以进行检查。
 
 当前，由于没有Tuple的存在，没有多输出函数。并且TVM扩展算子中，理论上只支持没有权重导入、单输入单输出的算子。
+
+算子注册完成后会在python/check.py中进行pytorch与RTL行为仿真的联合验证。
 
 ## TVM Relay Accel IR --> FIR --> RTL Sim
 
@@ -176,9 +181,9 @@ __2023.10.14__
 
 ## TODO List
 
-1. 数据类型的多样性，提供以uint16和fp32为基础的数据类型的编译处理。
+1. 添加scale量化计算相关算子，或以Map和DeMap函数为基础做扩展。
 
-2. 添加scale量化计算相关算子，或以Map和DeMap函数为基础做扩展。
+2. 考虑FeatureDDR到WeightDDR数据类型的转变，在lib库中添加或作为扩展算子实现。
 
 3. Extern算子进行融合和优化，Extern JIT能够正确生成多算子的计算图。
 
@@ -187,3 +192,5 @@ __2023.10.14__
 5. 加速器相关的两种优化：第一层卷积的特定优化（channels较低）；使用片上数据连续计算
 
 6. 尝试从NHWST数据layout进行计算，更贴近加速器数据类型，尽可能减少运行时layout转换
+
+7. 数据类型的多样性，提供以uint16和fp32为基础的数据类型的编译处理。

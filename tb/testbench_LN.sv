@@ -1,5 +1,6 @@
 `include "CNN_defines.vh"
 ////////////////////////////////////////////////////////////////////////////////
+`timescale 1ns / 1ps
 `define Height 197//5//
 `define Width_in  384//4//
 
@@ -9,7 +10,7 @@
 
 `define Win_L0 `Height//`Tout//
 `define CHin_L0 `Width_in
-`define Hin_L0 ((`Height+`Win_L0-1)/`Win_L0)
+`define Hin_L0 1//((`Height+`Win_L0-1)/`Win_L0)
 `define in_scale 3
 
 `define Wout_L0 `Win_L0
@@ -142,12 +143,19 @@ bit [`MAX_BN_DW-1:0] dat_out_soft[`Hout_L0][`Wout_L0][`CHout_L0];
 bit [(`DAT_DW_L1-1):0]before_relu;
 bit [(`DAT_DW_L1):0]difference;
 
+bit [`MAX_DAT_DW-1:0] input_dt [`Hin_L0*`Win_L0*`CHin_L0-1:0];
+bit [`MAX_DAT_DW-1:0] input_wt [2*`CHin_L0-1:0];
+bit [`MAX_DAT_DW-1:0] output_dt[`Hout_L0*`Wout_L0*`CHout_L0-1:0];
+
 initial
 begin
+    $readmemh("input_dt", input_dt);
+    $readmemh("input_wt", input_wt);
+    
     for(int k=0;k<`CHin_L0;k++)
     begin
-        k_factor[k]=$random()%110;//k+1;//
-        bias[k]=$random()%100;//k+2;//
+        k_factor[k]=input_wt[k][`DAT_DW_L0-1:0];//
+        bias[k]=input_wt[k+`CHin_L0][`DAT_DW_L0-1:0];//k+2;//
     end
     
     for(int i=0;i<2;i++)
@@ -163,17 +171,18 @@ begin
         for(int j=0;j<`Win_L0;j++)
             for(int k=0;k<`CHin_L0;k++)
             begin
-                if(i*`Win_L0+j>=`Height)
-                    dat_in[i][j][k]=0;
-                else
-                begin
-                    dat_in[i][j][k]=$random();
+                dat_in[i][j][k] = input_dt[i*`Win_L0*`CHin_L0+j*`CHin_L0+k][`DAT_DW_L0-1:0];
+//                if(i*`Win_L0+j>=`Height)
+//                    dat_in[i][j][k]=0;
+//                else
+//                begin
+//                    dat_in[i][j][k]=$random();
 //                    if ( (k%16)!=0 )
 //                        dat_in[i][j][k]=0;
 //                    else
 //                        dat_in[i][j][k]=k*2+i*`Win_L0+j+1; //$random();//(k==0)? (k-0)*4+i*`Win_L0+j+1 : 0;//(k<=2)?j+1:0;//(k%2==0)? $random()%6 : 0;//(k<1)?$random()%6:0; //0*(`Hin_L0*`Win_L0)+i*`Win_L0+j+1+k;//
 //                $display("dat_in[H%d][W%d][CH%d]=%d",i,j,k,$signed(dat_in[i][j][k]));
-                end
+//                end
             end
 
     Map_Feature_Data(dat_in,dat_in_mem);
@@ -226,8 +235,10 @@ begin
                             $display("large error! dat_out_hardware[%0d][%0d][%0d]=%0d, dat_out_software=%0d",i,j,k,$signed(dat_out[i][j][k]), $signed(dat_out_soft[i][j][k]));
                         end
                 end
+                output_dt[i*`Wout_L0*`CHout_L0+j*`CHout_L0+k] = $signed(dat_out[i][j][k]);
 			end
 
+    $writememh("output_dt", output_dt);
     if(flag==1) 
         begin $display("\n=======================\n\t result match\n=========================="); #100 $finish; end
     else

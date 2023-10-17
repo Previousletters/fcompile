@@ -1,5 +1,6 @@
 `include "CNN_defines.vh"
 ////////////////////////////////////////////////////////////////////////////////
+`timescale 1ns / 1ps
 `define Height 197//5//
 `define Width_in  197//4//
 
@@ -141,21 +142,26 @@ bit [`MAX_BN_DW-1:0] dat_out_soft[`Hout_L0][`Wout_L0][`CHout_L0];
 bit [(`DAT_DW_L1-1):0]before_relu;
 bit [(`DAT_DW_L1):0]difference;
 
+bit [`MAX_DAT_DW-1:0] input_dt [`Hin_L0*`Win_L0*`CHin_L0-1:0];
+bit [`MAX_DAT_DW-1:0] output_dt[`Hout_L0*`Wout_L0*`CHout_L0-1:0];
+
 initial
 begin
+    $readmemh("input_dt", input_dt);
      
     for(int i=0;i<`Hin_L0;i++)
         for(int j=0;j<`Win_L0;j++)
             for(int k=0;k<`CHin_L0;k++)
             begin
-                if(i*`Win_L0+j>=`Height)
-                    dat_in[i][j][k]=0;
-                else
-                begin
-                    dat_in[i][j][k]=$random()%64;
+                dat_in[i][j][k] = input_dt[i*`Win_L0*`CHin_L0+j*`CHin_L0+k][`DAT_DW_L0-1:0];
+//                if(i*`Win_L0+j>=`Height)
+//                    dat_in[i][j][k]=0;
+//                else
+//                begin
+//                    dat_in[i][j][k]=$random()%64;
 //                    dat_in[i][j][k]=(k%`Tout)==0?((k/`Tout)*5+i*`Win_L0+j+1):0; //(k==0)? (k-0)*4+i*`Win_L0+j+1 : 0;
 //                $display("dat_in[H%d][W%d][CH%d]=%d",i,j,k,$signed(dat_in[i][j][k]));
-                end
+//                end
             end
 
     Map_Feature_Data(dat_in,dat_in_mem);
@@ -164,6 +170,7 @@ begin
         for(int j=0;j<`MAX_DAT_DW *`Tout/32;j++)
             AXI_HP_Slave_DDR00.memory[`DAT_IN_BASE_ADDR_L0/4+i*`MAX_DAT_DW *`Tout/32+j]=dat_in_mem[i][32*j+:32];
 
+    
     $display("data mapping done!");
     Run_Softmax_Software(dat_in, dat_out_soft);
 
@@ -204,8 +211,10 @@ begin
                             $display("large error! dat_out_hardware[%0d][%0d][%0d]=%0d, dat_out_software=%0d",i,j,k,$signed(dat_out[i][j][k]), $signed(dat_out_soft[i][j][k]));
                         end
                 end
+                output_dt[i*`Wout_L0*`CHout_L0+j*`CHout_L0+k] = $signed(dat_out[i][j][k]);
 			end
 
+    $writememh("output_dt", output_dt);
     if(flag==1) 
         begin $display("\n=======================\n\t result match\n=========================="); #100 $finish; end
     else
@@ -219,7 +228,7 @@ end
 initial
 begin
 
-#100000000 $finish;
+#1000000000 $finish;
 end
 
 

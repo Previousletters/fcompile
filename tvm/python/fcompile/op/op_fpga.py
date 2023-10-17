@@ -82,8 +82,8 @@ class Conv2D(AccelOp):
         ret["return"] = {"name" : ret_name, "type" : self.ret_type, "shape" : self.shape}
         return ret
 
-    
-    def modelsim(self, args, attrs):
+
+    def modelsim(self, args, attrs, tin, tout):
         from ..config import SIM_ROOT, SIM_HINT_STDOUT
         tb_name = "testbench_conv_mp"
         data, weight = args
@@ -110,10 +110,10 @@ class Conv2D(AccelOp):
         else:
             subprocess.run(cmd, shell=True, cwd=SIM_ROOT)
         output_dt = os.path.join(SIM_ROOT, "run", "output_dt")
-        output = readmemh(output_dt, d_bw, self.shape)
+        output = readmemh(output_dt, o_bw, self.shape)
         return output
 
-    
+
 @register_fpga_op("accel.vit.mm")
 class MM(AccelOp):
 
@@ -145,8 +145,8 @@ class MM(AccelOp):
         ret["return"] = {"name" : ret_name, "type" : self.ret_type, "shape" : self.shape}
         return ret
 
-    
-    def modelsim(self, args, attrs):
+
+    def modelsim(self, args, attrs, tin, tout):
         from ..config import SIM_ROOT, SIM_HINT_STDOUT
         tb_name = "testbench_MVM"
         data, weight = args
@@ -169,5 +169,213 @@ class MM(AccelOp):
         else:
             subprocess.run(cmd, shell=True, cwd=SIM_ROOT)
         output_dt = os.path.join(SIM_ROOT, "run", "output_dt")
-        output = readmemh(output_dt, d_bw, self.shape)
+        output = readmemh(output_dt, o_bw, self.shape)
+        return output
+
+
+@register_fpga_op("accel.vit.softmax")
+class Softmax(Op):
+
+    name = "accel_softmax"
+    arg_types = [[OpType.f_ddr]]
+
+    def param_process(self, *largs):
+        return [np.array([])]
+
+    def fpga_jit(self, name, args, attrs):
+        ret = {}
+        data, weight = args
+        ret_name, cfg_name = "conv_" + name, "cfg_" + name
+        dat_name, wet_name = data["name"], weight["name"]
+        tin, tout = attrs["tin"], attrs["tout"]
+        _, dh, dw, c = data["shape"]
+        kh, kw, i, o = weight["shape"]
+        _, oh, ow, _ = self.shape
+        ph, pw = [int(i) for i in attrs["padding"]]
+        sh, sw = [int(i) for i in attrs["strides"]]
+        d_bw, w_bw, o_bw = [int(i) for i in attrs["widths"]]
+        d_sc, w_sc, o_sc = [int(i) for i in attrs["scales"]]
+        tin, tout = attrs["tin"], attrs["tout"]
+        # TODO: finish relu, gelu, mode in attrs
+        relu, gelu, mode = 0, 0, 0
+        cfg_list = get_conv_cfg("conv", dh, dw, c, o, kh, kw, sh, sw, ph, pw, d_bw, tin, tout)
+        cfg_str = f"struct Conv_Cfg {cfg_name} = " + "{" + list2str(cfg_list) + "};"
+        mal_str = MallocFeature(ret_name, [oh, ow, o, o_sc, o_sc, o_bw])
+        fun_str = f"FPGA_Conv({cfg_name}, {relu}, {gelu}, {mode}, {dat_name}, {wet_name}, {ret_name});"
+        ret["callop"] = [cfg_str, mal_str, fun_str]
+        if data["free"]:
+            ret["callop"].append(FreeFeature(dat_name))
+        ret["return"] = {"name" : ret_name, "type" : self.ret_type, "shape" : self.shape}
+        return ret
+
+
+    def modelsim(self, args, attrs, tin, tout):
+        from ..config import SIM_ROOT, SIM_HINT_STDOUT
+        tb_name = "testbench_softmax"
+        data = args[0]
+        _, dh, dw, c = data.shape
+        new_shape = ((dh*dw+tout-1)//tout, tout, c)
+        new_data = data.reshape((dh*dw, c))
+        new_input = np.zeros(new_shape, dtype=data.dtype)
+        for dim0 in range(new_shape[0]):
+            for dim1 in range(new_shape[1]):
+                for dim2 in range(new_shape[2]):
+                    if dim0*tout+dim1 < dh*dw:
+                        new_input[dim0, dim1, dim2] = new_data[dim0*tout+dim1, dim2]
+        d_bw, o_bw = [int(i) for i in attrs["widths"]]
+        d_sc, o_sc = [int(i) for i in attrs["scales"]]
+        input_dt = os.path.join(SIM_ROOT, "run", "input_dt")
+        writememh(input_dt, new_input, d_bw)
+        define = {
+            "DAT_DW_L0" : d_bw, "DAT_DW_L1" : o_bw, "Height" : dh*dw, 
+            "Width_in" : c, "in_scale" : d_sc, "out_scale" : o_sc
+        }
+        define_str = make_define(define)
+        cmd = f"make sim DEFINES={define_str} TB_NAME={tb_name}"
+        if SIM_HINT_STDOUT:
+            subprocess.run(cmd, stdout=subprocess.DEVNULL, shell=True, cwd=SIM_ROOT)
+        else:
+            subprocess.run(cmd, shell=True, cwd=SIM_ROOT)
+        output_dt = os.path.join(SIM_ROOT, "run", "output_dt")
+        new_result = readmemh(output_dt, o_bw, new_shape)
+        new_output = np.zeros((dh*dw, c))
+        for dim0 in range(new_shape[0]):
+            for dim1 in range(new_shape[1]):
+                for dim2 in range(new_shape[2]):
+                    if dim0*tout+dim1 < dh*dw:
+                        new_output[dim0*tout+dim1, dim2] = new_result[dim0, dim1, dim2]
+        output = new_output.reshape(data.shape)
+        return output    
+
+
+@register_fpga_op("accel.vit.transpose")
+class Transpose(Op):
+
+    name = "accel_transpose"
+    arg_types = [[OpType.f_ddr]]
+    ret_type = OpType.w_ddr
+
+    def param_process(self, *largs):
+        return [np.array([])]
+
+    def fpga_jit(self, name, args, attrs):
+        ret = {}
+        data, weight = args
+        ret_name, cfg_name = "conv_" + name, "cfg_" + name
+        dat_name, wet_name = data["name"], weight["name"]
+        tin, tout = attrs["tin"], attrs["tout"]
+        _, dh, dw, c = data["shape"]
+        kh, kw, i, o = weight["shape"]
+        _, oh, ow, _ = self.shape
+        ph, pw = [int(i) for i in attrs["padding"]]
+        sh, sw = [int(i) for i in attrs["strides"]]
+        d_bw, w_bw, o_bw = [int(i) for i in attrs["widths"]]
+        d_sc, w_sc, o_sc = [int(i) for i in attrs["scales"]]
+        tin, tout = attrs["tin"], attrs["tout"]
+        # TODO: finish relu, gelu, mode in attrs
+        relu, gelu, mode = 0, 0, 0
+        cfg_list = get_conv_cfg("conv", dh, dw, c, o, kh, kw, sh, sw, ph, pw, d_bw, tin, tout)
+        cfg_str = f"struct Conv_Cfg {cfg_name} = " + "{" + list2str(cfg_list) + "};"
+        mal_str = MallocFeature(ret_name, [oh, ow, o, o_sc, o_sc, o_bw])
+        fun_str = f"FPGA_Conv({cfg_name}, {relu}, {gelu}, {mode}, {dat_name}, {wet_name}, {ret_name});"
+        ret["callop"] = [cfg_str, mal_str, fun_str]
+        if data["free"]:
+            ret["callop"].append(FreeFeature(dat_name))
+        ret["return"] = {"name" : ret_name, "type" : self.ret_type, "shape" : self.shape}
+        return ret
+
+
+    def modelsim(self, args, attrs, tin, tout):
+        from ..config import SIM_ROOT, SIM_HINT_STDOUT
+        tb_name = "testbench_TRANSPOSE"
+        data = args[0]
+        _, _, dh, dw = data.shape
+        nw = int(((dw + tin - 1)//tin) * tin)
+        new_shape = (dh, nw)
+        new_input = np.zeros(new_shape, dtype=data.dtype)
+        new_input[:, :dw] = data[0, 0, :, :]
+        d_bw, o_bw = [int(i) for i in attrs["widths"]]
+        d_sc, o_sc = [int(i) for i in attrs["scales"]]
+        input_dt = os.path.join(SIM_ROOT, "run", "input_dt")
+        writememh(input_dt, new_input, d_bw)
+        define = {
+            "DAT_DW_L0" : d_bw, "DAT_DW_L1" : o_bw, "Height" : dh, "Width_in" : nw
+        }
+        define_str = make_define(define)
+        cmd = f"make sim DEFINES={define_str} TB_NAME={tb_name}"
+        if SIM_HINT_STDOUT:
+            subprocess.run(cmd, stdout=subprocess.DEVNULL, shell=True, cwd=SIM_ROOT)
+        else:
+            subprocess.run(cmd, shell=True, cwd=SIM_ROOT)
+        output_dt = os.path.join(SIM_ROOT, "run", "output_dt")
+        out_shape = (nw, dh)
+        new_result = readmemh(output_dt, o_bw, out_shape)
+        new_output = new_result[:dw, :]
+        output = new_output.reshape(self.shape)
+        return output
+
+
+@register_fpga_op("accel.vit.layer_norm")
+class Transpose(Op):
+
+    name = "accel_layer_norm"
+    arg_types = [[OpType.f_ddr], [OpType.f_ddr], [OpType.f_ddr]]
+    ret_type = OpType.f_ddr
+
+    def param_process(self, *largs):
+        return [np.array([])]
+
+    def fpga_jit(self, name, args, attrs):
+        ret = {}
+        data, weight = args
+        ret_name, cfg_name = "conv_" + name, "cfg_" + name
+        dat_name, wet_name = data["name"], weight["name"]
+        tin, tout = attrs["tin"], attrs["tout"]
+        _, dh, dw, c = data["shape"]
+        kh, kw, i, o = weight["shape"]
+        _, oh, ow, _ = self.shape
+        ph, pw = [int(i) for i in attrs["padding"]]
+        sh, sw = [int(i) for i in attrs["strides"]]
+        d_bw, w_bw, o_bw = [int(i) for i in attrs["widths"]]
+        d_sc, w_sc, o_sc = [int(i) for i in attrs["scales"]]
+        tin, tout = attrs["tin"], attrs["tout"]
+        # TODO: finish relu, gelu, mode in attrs
+        relu, gelu, mode = 0, 0, 0
+        cfg_list = get_conv_cfg("conv", dh, dw, c, o, kh, kw, sh, sw, ph, pw, d_bw, tin, tout)
+        cfg_str = f"struct Conv_Cfg {cfg_name} = " + "{" + list2str(cfg_list) + "};"
+        mal_str = MallocFeature(ret_name, [oh, ow, o, o_sc, o_sc, o_bw])
+        fun_str = f"FPGA_Conv({cfg_name}, {relu}, {gelu}, {mode}, {dat_name}, {wet_name}, {ret_name});"
+        ret["callop"] = [cfg_str, mal_str, fun_str]
+        if data["free"]:
+            ret["callop"].append(FreeFeature(dat_name))
+        ret["return"] = {"name" : ret_name, "type" : self.ret_type, "shape" : self.shape}
+        return ret
+
+
+    def modelsim(self, args, attrs, tin, tout):
+        from ..config import SIM_ROOT, SIM_HINT_STDOUT
+        tb_name = "testbench_LN"
+        data, k_factor, bias = args
+        _, _, dh, dw = data.shape
+        weight = np.zeros((dw*2), dtype=self.dtype)
+        weight[:dw] = k_factor
+        weight[dw:] = bias
+        d_bw, w_bw, b_bw, o_bw = [int(i) for i in attrs["widths"]]
+        d_sc, w_sc, b_sc, o_sc = [int(i) for i in attrs["scales"]]
+        input_dt = os.path.join(SIM_ROOT, "run", "input_dt")
+        input_wt = os.path.join(SIM_ROOT, "run", "input_wt")
+        writememh(input_dt, data, d_bw)
+        writememh(input_wt, weight, w_bw)
+        define = {
+            "DAT_DW_L0" : d_bw, "DAT_DW_L1" : o_bw, "Height" : dh, "Width_in" : dw,
+            "in_scale" : d_sc, "wt_scale" : w_sc, "bias_scale" : b_sc, "out_scale" : o_sc
+        }
+        define_str = make_define(define)
+        cmd = f"make sim DEFINES={define_str} TB_NAME={tb_name}"
+        if SIM_HINT_STDOUT:
+            subprocess.run(cmd, stdout=subprocess.DEVNULL, shell=True, cwd=SIM_ROOT)
+        else:
+            subprocess.run(cmd, shell=True, cwd=SIM_ROOT)
+        output_dt = os.path.join(SIM_ROOT, "run", "output_dt")
+        output = readmemh(output_dt, o_bw, self.shape)
         return output
