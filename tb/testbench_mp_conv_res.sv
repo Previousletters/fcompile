@@ -1,5 +1,6 @@
 `include "CNN_defines.vh"
 ////////////////////////////////////////////////////////////////////////////////
+`timescale 1ns / 1ps
 `define DAT_DW_L0 8
 `define DAT_DW_L1 8
 
@@ -10,7 +11,7 @@
 
 `define Win_L0 7
 `define Hin_L0 7
-`define CHin_L0 30
+`define CHin_L0 64
 
 `define Kx_L0 3
 `define Ky_L0 3
@@ -31,23 +32,23 @@
 `define RELU_EN_L0 0
 `define Res_RELU_EN_L0 0
 
-`define DAT_IN_BASE_ADDR_L0 32'h0000_0000
+`define DAT_IN_BASE_ADDR_L0 32'h000_0000
 `define DAT_IN_SURFACE_STRIDE_L0 (`Pixel_Data_Bytes*`Win_L0*`Hin_L0)
 `define DAT_IN_LINE_STRIDE_L0 (`Pixel_Data_Bytes*`Win_L0)
 `define DAT_IN_scale_L0 2
 
-`define WT_BASE_ADDR_L0 32'h2000_0000
+`define WT_BASE_ADDR_L0 32'h200_0000
 `define WT_SIZE_IN_BYTES_L0 (((`Tin_L0*`WT_DW_L0)>>3)*`Kx_L0*`Ky_L0*`CHout_L0*((`CHin_L0+`Tin_L0-1)/`Tin_L0))
 `define WT_NUM_DIV_TIN_L0 (`Kx_L0*`Ky_L0*`CHout_L0*((`CHin_L0+`Tin_L0-1)/`Tin_L0))
 `define WT_scale_L0 3
 `define Conv_out_scale_L0 1 // make sure wt_scale + in_scale >= out_scale
 
-`define Res_Add_BASE_ADDR 32'h4000_0000
+`define Res_Add_BASE_ADDR 32'h400_0000
 `define Res_Add_SURFACE_STRIDE (`Pixel_Data_Bytes*`Wout_L0*`Hout_L0)
 `define Res_Add_LINE_STRIDE (`Pixel_Data_Bytes*`Wout_L0)
 `define Res_Add_scale `Conv_out_scale_L0
 
-`define DAT_OUT_BASE_ADDR_L0 32'h6000_0000
+`define DAT_OUT_BASE_ADDR_L0 32'h600_0000
 `define DAT_OUT_SURFACE_STRIDE_L0 (`Pixel_Data_Bytes*`Wout_L0*`Hout_L0)
 `define DAT_OUT_LINE_STRIDE_L0 (`Pixel_Data_Bytes*`Wout_L0)
 `define DAT_OUT_scale_L0 `Conv_out_scale_L0
@@ -156,15 +157,23 @@ bit [(`MAX_DAT_DW+`MAX_BN_DW-2) :0] tp_res_add;
 bit [(`MAX_DAT_DW+`MAX_BN_DW-1) :0] conv_res_out;
 bit [(`MAX_DAT_DW+`MAX_BN_DW-1) :0] conv_res_round_out;	
 
+bit [`MAX_DAT_DW-1:0] input_dt [`Hin_L0*`Win_L0*`CHin_L0-1:0];
+bit [`MAX_DAT_DW-1:0] input_wt [`Ky_L0*`Kx_L0*`CHin_L0*`CHout_L0-1:0];
+bit [`MAX_DAT_DW-1:0] input_ad [`Hout_L0*`Wout_L0*`CHout_L0-1:0];
+bit [`MAX_DAT_DW-1:0] output_dt[`Hout_L0*`Wout_L0*`CHout_L0-1:0];
 
 initial
 begin
+    $readmemh("input_dt", input_dt);
+    $readmemh("input_wt", input_wt);
+    $readmemh("input_ad", input_ad);
 	
 	for(int i=0;i<`Hin_L0;i++)
 		for(int j=0;j<`Win_L0;j++)
 			for(int k=0;k<`CHin_L0;k++)
 			begin
-			    dat_in[i][j][k]= 1;//$random()%(2<<(`DAT_DW_L0-1));//k+1;//0*(`Hin_L0*`Win_L0)+i*`Win_L0+j+1+k;//
+                dat_in[i][j][k] = input_dt[i*`Win_L0*`CHin_L0+j*`CHin_L0+k][`DAT_DW_L0-1:0];
+//			    dat_in[i][j][k]= $random();//$random()%(2<<(`DAT_DW_L0-1));//k+1;//0*(`Hin_L0*`Win_L0)+i*`Win_L0+j+1+k;//
 //                $display("dat_in     [%0d][%0d][%0d]=%0d",i,j,k,$signed(dat_in[i][j][k]));
             end
 
@@ -173,7 +182,8 @@ begin
             for(int k=0;k<`CHin_L0;k++)
                 for(int l=0;l<`CHout_L0;l++)
                 begin
-                    wt[i][j][k][l]= 1;//$random()%50;//1+$random()%2;//
+                    wt[i][j][k][l] = input_wt[i*`Kx_L0*`CHin_L0*`CHout_L0+j*`CHin_L0*`CHout_L0+k*`CHout_L0+l][`DAT_DW_L0-1:0];
+//                  wt[i][j][k][l]= $random();//$random()%50;//1+$random()%2;//
 //                    if(k==0) wt[i][j][k][l]= 1+l+i*`Ky_L0+j;
 //                    else wt[i][j][k][l]= 0;//$random()%3;//1+$random()%2;//
 //                    $display("wt     [%0d][%0d][%0d][%0d]=%0d",i,j,k,l,$signed(wt[i][j][k][l]));
@@ -183,7 +193,8 @@ begin
         for(int j=0;j<`Wout_L0;j++)
             for(int k=0;k<`CHout_L0;k++)
             begin
-                res_add_dat[i][j][k]=0;//$random()%(2<<(`DAT_DW_L0-1));//$random()%20;
+                res_add_dat[i][j][k] = input_ad[i*`Wout_L0*`CHout_L0+j*`CHout_L0+k][`DAT_DW_L0-1:0];
+//                [i][j][k]=$random();//$random()%(2<<(`DAT_DW_L0-1));//$random()%20;
             end
                         
     RunConv_soft_BNdw_out(`CHin_L0,`Hin_L0,`Win_L0,`CHout_L0,
@@ -237,8 +248,10 @@ begin
 	
 	for(int i=0;i<`Wout_L0*`Hout_L0*((`CHout_L0+`Tout-1)/`Tout);i++)
 		for(int j=0;j<`MAX_DAT_DW *`Tout/32;j++)
+		begin
 			dat_out_mem[i][32*j+:32]=AXI_HP_Slave_DDR00.memory[`DAT_OUT_BASE_ADDR_L0/4+i*`MAX_DAT_DW *`Tout/32+j];
-
+			$display("dat_out_mem[%0d][%0d]=%h",i,j,AXI_HP_Slave_DDR00.memory[`DAT_OUT_BASE_ADDR_L0/4+i*`MAX_DAT_DW *`Tout/32+j]);
+        end
 	DeMap_Feature_Data(dat_out_mem,dat_out);
 	
 	for(int i=0;i<`Hout_L0;i++)
@@ -277,6 +290,7 @@ begin
                     $display("error! dat_out_hardware[%0d][%0d][%0d]=%0d, dat_out_software[%0d][%0d][%0d]=%0d",
                                     i,j,k,$signed(dat_out[i][j][k]),i,j,k,$signed(expected_result));
                 end
+                output_dt[i*`Wout_L0*`CHout_L0+j*`CHout_L0+k] = $signed(dat_out[i][j][k]);
             end
 
 	if(flag==1)
@@ -291,6 +305,7 @@ begin
 	$display("Total MAC: %0d",`Kx_L0*`Ky_L0*`CHout_L0*`CHin_L0*`Wout_L0*`Hout_L0);
     $display("MAC Array Effiency=%f%%%%",(((`Kx_L0*`Ky_L0*`CHout_L0*`CHin_L0*`Wout_L0*`Hout_L0))*100.0)/(`Tin_L0*`Tout*rdata) );
 
+    $writememh("output_dt", output_dt);
 	if(flag==1)
 		#10 $finish;
 	else

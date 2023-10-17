@@ -118,3 +118,33 @@ def layer_norm(
         widths,
         scales
     )
+
+def conv2d_add(
+    data,
+    weight,
+    res_add,
+    strides=(1, 1),
+    padding=(0, 0),
+    kernel_size=None,
+    widths=None,
+    scales=None,
+    activate=0
+):
+    if isinstance(kernel_size, int):
+        kernel_size = (kernel_size, kernel_size)
+    if isinstance(strides, int):
+        strides = (strides, strides)
+    #TODO check the length of widths and scales
+    if isinstance(padding, int):
+        padding = (padding, padding)
+    return _make.vit_conv2d_add(
+        data,
+        weight,
+        res_add,
+        strides,
+        padding,
+        kernel_size,
+        widths,
+        scales,
+        activate
+    )

@@ -359,6 +359,7 @@ begin
     CSB_Write(44,ResAdd_scale);
     CSB_Write(45,conv_out_scale);
     CSB_Write(46,ResAdd_scale+conv_out_scale-feature_out_scale);
+    CSB_Write(48,out_width*out_height);//effect_pixel
 
 	CSB_Write(25,{dma_wt_reuse,dma_dat_reuse});
     CSB_Write(26,{shift_sign,shift_value});

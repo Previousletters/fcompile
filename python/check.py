@@ -173,7 +173,7 @@ def check_softmax():
         "data" : process(dquanted, dscale).reshape(1, 1, 64, 64),
     }
     f_out = modelsim(f_mod, inputs)
-    return t_out, f_out, oscale, 6 # torch_result, fcompile_verilog_result, out_scale, same_threshold
+    return t_out, f_out, oscale, 5 # torch_result, fcompile_verilog_result, out_scale, same_threshold
 
 
 @result_diff_check(diff)
@@ -252,8 +252,53 @@ def check_layernorm():
     return t_out, f_out, oscale, 1 # torch_result, fcompile_verilog_result
 
 
+@result_diff_check(diff_scale)
+def check_conv2d_add():
+    dat_bw_l0, dat_bw_l1 = 8, 8
+    data = torch.randn(size=(1, 64, 7, 7)) / 2
+    weight = torch.randn(size=(32, 64, 3, 3)) / 2
+    res_add = torch.randn(size=(1, 32, 7, 7)) / 2
+
+    quantize = Quantize(bit_width=dat_bw_l0)
+    dequantize = Dequantize(bit_width=dat_bw_l1)
+
+    dquanted = quantize(data)
+    dscale = int(quantize.scale[0])
+    wquanted = quantize(weight)
+    wscale = int(quantize.scale[0])
+    rquanted = quantize(res_add)
+    rscale = int(quantize.scale[0])
+
+    tp_out = F.conv2d(dquanted, wquanted, None, stride=1, padding=1)
+    tp_out = torch.add(tp_out, rquanted)
+    
+    oquanted = dequantize(tp_out)
+    oscale = int(dequantize.scale[0])
+    t_out = process(oquanted, oscale).transpose((0, 2, 3, 1))
+
+    widths, scales = [dat_bw_l0, dat_bw_l0, dat_bw_l1, dat_bw_l1], [dscale, wscale, rscale, oscale]
+    dvar = relay.var("data", shape=(1, 7, 7, 64), dtype="int8")
+    wvar = relay.var("weight", shape=(3, 3, 64, 32), dtype="int8")
+    rvar = relay.var("res", shape=(1, 7, 7, 32), dtype="int8")
+    fout = relay.accel.vit.conv2d_add(dvar, wvar, rvar, strides=1, padding=1, widths=widths, scales=scales, activate=0)
+    func = relay.Function([dvar, wvar, rvar], fout)
+    mod = IRModule.from_expr(func)
+    mod = transform.InferType()(mod)
+    print(mod)
+    f_mod = FModule(RelayFIR().convert(mod), tin=64, tout=32)
+    print(f_mod)
+    inputs = {
+        "data" : process(dquanted, dscale).transpose((0, 2, 3, 1)),
+        "weight" : process(wquanted, wscale).transpose((2, 3, 1, 0)),
+        "res" : process(rquanted, rscale).transpose((0, 2, 3, 1)),
+    }
+    f_out = modelsim(f_mod, inputs)
+    return t_out, f_out, oscale, 1 # torch_result, fcompile_verilog_result
+
+
 check_conv2d()
 check_mm()
 check_softmax()
 check_transpose()
 check_layernorm()
+check_conv2d_add()

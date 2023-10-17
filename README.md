@@ -25,13 +25,14 @@
 
 本项目以FPGA Accel为编译Target，整体数据类型以MAX_DATA_WIDTH流通（8bit，其涉及到malloc时的空间大小），CPU算子（TVM算子）均被视为Extern算子，以函数调用的形式提供。
 
-| Op Name | Relay Op | ModelSIM | FPGA JIT |
-| :-----: | :------: | :------: | :------: |
-| conv_mp |  conv2d  | &#10004; | &#10004; |
-|   MVM   |    mm    | &#10004; | &#10006; |
-| softmax |  softmax | &#10004; | &#10006; |
-|TRANSPOSE| transpose| &#10004; | &#10006; |
-|   LN    |layer_norm| &#10004; | &#10006; |
+|  Op Name  | Relay Op | ModelSIM | FPGA JIT |
+| :-------: | :------: | :------: | :------: |
+|  conv_mp  |  conv2d  | &#10004; | &#10004; |
+|    MVM    |    mm    | &#10004; | &#10006; |
+|  softmax  |  softmax | &#10004; | &#10006; |
+| TRANSPOSE | transpose| &#10004; | &#10006; |
+|    LN     |layer_norm| &#10004; | &#10006; |
+|mp_conv_res|conv2d_add| &#10004; | &#10006; |
 
 > Op Name为testbench名称，存在testbench_前缀；Relay Op为tvm注册的加速器算子名，存在relay.accel.vit.前缀
 
