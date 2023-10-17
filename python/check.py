@@ -9,63 +9,12 @@ from tvm import IRModule
 from tvm.relay import transform
 
 from fcompile.fir import FModule
-from fcompile.simulate import modelsim
 from fcompile.transform import RelayFIR
 from fcompile.quant import Quantize, Dequantize
+from fcompile.simulate import modelsim, result_diff_check, diff, diff_scale, process
 from fcompile import config
 
 config.SIM_HINT_STDOUT = True
-
-def result_diff_check(func):
-    def _register_fn(fn):
-        def _call():
-            n = fn()
-            func(fn.__name__, *n)
-        return _call
-    return _register_fn
-
-def process(data, scale):
-    data = data.numpy() * (2**scale)
-    return data.astype("int8")
-
-def diff(name, tresult, fresult):
-    max_diff = np.max(tresult-fresult)
-    min_diff = np.max(fresult-tresult)
-    num_same = np.sum(tresult == fresult)
-    num_diff = tresult.size - num_same
-    rat_same = num_same / tresult.size
-    print("**************** DIFFERENCE ****************")
-    print(f"* JOB NAME : {name}")
-    print(f"* T-F DIFF : {max_diff}")
-    print(f"* F-T DIFF : {min_diff}")
-    print(f"* NUM DIFF : {num_diff}")
-    print(f"* NUM SAME : {num_same}")
-    print("* SAME%    : {:.02f}%".format(rat_same*100))
-    print("**************** DIFFERENCE ****************\n")
-
-def diff_scale(name, tresult, fresult, scale, threshold):
-    max_diff = np.max(tresult-fresult)
-    min_diff = np.max(fresult-tresult)
-    abs_diff = np.abs(tresult - fresult)
-    num_same = np.sum(abs_diff<=threshold)
-    num_diff = tresult.size - num_same
-    rat_same = num_same / tresult.size
-    ft_diff = fresult-tresult
-    means_diff = np.mean(ft_diff)
-    std_diff = np.std(ft_diff)
-    print("**************** DIFFERENCE ****************")
-    print(f"* JOB NAME  : {name}")
-    print(f"* OUT SCALE : {scale}")
-    print(f"* T-F DIFFS : {max_diff}, {max_diff/(2**scale)}")
-    print(f"* F-T DIFFS : {min_diff}, {min_diff/(2**scale)}")
-    print(f"* F-T MEANS : {means_diff}, {means_diff/(2**scale)}")
-    print(f"* F-T STD   : {std_diff}, {std_diff/(2**scale)}")
-    print(f"* NUM DIFF  : {num_diff}")
-    print(f"* NUM SAME  : {num_same}")
-    print(f"* THRESHOLD : {threshold}")
-    print("* SAME%     : {:.02f}%".format(rat_same*100))
-    print("**************** DIFFERENCE ****************\n")
-
 
 @result_diff_check(diff)
 def check_conv2d():
@@ -296,9 +245,51 @@ def check_conv2d_add():
     return t_out, f_out, oscale, 1 # torch_result, fcompile_verilog_result
 
 
+@result_diff_check(diff)
+def check_matmul():
+    dat_bw_l0, dat_bw_l1 = 8, 8
+    data = torch.randn(size=(1, 28, 28, 32)) / 2
+    weight = torch.zeros((32, 32, 1, 1))
+    n_factor = 0.6
+    for i in range(32):
+        weight[i, i, 0, 0] = n_factor
+
+    quantize = Quantize(bit_width=dat_bw_l0)
+    dequantize = Dequantize(bit_width=dat_bw_l1)
+
+    dquanted = quantize(data)
+    dscale = int(quantize.scale[0])
+    wquanted = quantize(weight)
+    wscale = int(quantize.scale[0])
+
+    tp_out = dquanted * wquanted[0, 0, 0, 0]
+    
+    oquanted = dequantize(tp_out)
+    oscale = int(dequantize.scale[0])
+    t_out = process(oquanted, oscale)
+
+    widths, scales = [dat_bw_l0, dat_bw_l0, dat_bw_l1], [dscale, wscale, oscale]
+    dvar = relay.var("data", shape=(1, 28, 28, 32), dtype="int8")
+    wvar = relay.var("weight", shape=(1, 1, 32, 32), dtype="int8")
+    fout = relay.accel.vit.conv2d(dvar, wvar, strides=1, padding=0, widths=widths, scales=scales, activate=0)
+    func = relay.Function([dvar, wvar], fout)
+    mod = IRModule.from_expr(func)
+    mod = transform.InferType()(mod)
+    print(mod)
+    f_mod = FModule(RelayFIR().convert(mod), tin=64, tout=32)
+    print(f_mod)
+    inputs = {
+        "data" : process(dquanted, dscale),
+        "weight" : process(wquanted, wscale).transpose((2, 3, 1, 0)),
+    }
+    f_out = modelsim(f_mod, inputs)
+    return t_out, f_out # torch_result, fcompile_verilog_result
+
+
 check_conv2d()
 check_mm()
 check_softmax()
 check_transpose()
 check_layernorm()
 check_conv2d_add()
+check_matmul()

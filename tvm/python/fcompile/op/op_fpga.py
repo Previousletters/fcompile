@@ -238,7 +238,7 @@ class Softmax(Op):
             subprocess.run(cmd, shell=True, cwd=SIM_ROOT)
         output_dt = os.path.join(SIM_ROOT, "run", "output_dt")
         new_result = readmemh(output_dt, o_bw, new_shape)
-        new_output = np.zeros((dh*dw, c))
+        new_output = np.zeros((dh*dw, c), dtype="int8")
         for dim0 in range(new_shape[0]):
             for dim1 in range(new_shape[1]):
                 for dim2 in range(new_shape[2]):

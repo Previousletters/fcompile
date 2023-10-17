@@ -21,7 +21,7 @@ class Quant(Function):
             return tensor
         ori_data = tensor.data.clone()
         scale = ori_data.view((-1,)).abs_()
-        scale = scale.sort()[0][int(0.99*scale.shape[-1])]
+        scale = scale.sort()[0][int(0.99999*scale.shape[-1])]
         scale = (bit_width-1) - torch.ceil_(torch.log2_(scale))
         scale_p[0] = scale.type(torch.int32)
         data_range = torch.pow(torch.tensor(2.0), (bit_width-1)-scale)
@@ -85,8 +85,6 @@ class Dequantize(nn.Module):
     
     def forward(self, input):
         return Dequant.apply(input, self.bit_width, self.scale)
-
-
 
 
 class QuantifiedConv2d(nn.Conv2d):

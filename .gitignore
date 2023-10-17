@@ -5,3 +5,5 @@ build/
 .pkl_memoize_py3/
 
 test/
+
+nohup.out

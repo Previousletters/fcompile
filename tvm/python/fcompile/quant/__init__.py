@@ -1,1 +1,1 @@
-from .quant_op import Quantize, Dequantize
+from .quant_op import Quantize, Dequantize, QuantifiedConv2d, QuantifiedLinear
