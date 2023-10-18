@@ -1,0 +1,40 @@
+def @main(%data: Tensor[(1, 1, 64, 64), int8], %qweight: Tensor[(1, 1, 64, 64), int8], %kweight: Tensor[(1, 1, 64, 64), int8], %vweight: Tensor[(1, 1, 64, 64), int8], %nweight: Tensor[(1, 1, 64, 64), int8]) -> Tensor[(1, 1, 64, 64), int8] {
+  %0 = accel.vit.conv2d(%data, %qweight, widths=[8, 8, 8], scales=[6, 10, 7], activate=0) /* ty=Tensor[(1, 1, 64, 64), int8] */;
+  %1 = accel.vit.conv2d(%data, %kweight, widths=[8, 8, 8], scales=[6, 10, 7], activate=0) /* ty=Tensor[(1, 1, 64, 64), int8] */;
+  %2 = accel.vit.transpose(%1, kernel_size=[1, 1], widths=[8, 8], scales=[7, 7], activate=0) /* ty=Tensor[(1, 1, 64, 64), int8] */;
+  %3 = accel.vit.mm(%0, %2, kernel_size=[1, 1], widths=[8, 8, 8], scales=[7, 7, 5], activate=0) /* ty=Tensor[(1, 1, 64, 64), int8] */;
+  %4 = accel.vit.conv2d(%3, %nweight, widths=[8, 8, 8], scales=[5, 10, 8], activate=0) /* ty=Tensor[(1, 1, 64, 64), int8] */;
+  %5 = accel.vit.softmax(%4, kernel_size=[1, 1], widths=[8, 8], scales=[8, 12], activate=0) /* ty=Tensor[(1, 1, 64, 64), int8] */;
+  %6 = accel.vit.conv2d(%data, %vweight, widths=[8, 8, 8], scales=[6, 10, 7], activate=0) /* ty=Tensor[(1, 1, 64, 64), int8] */;
+  accel.vit.mm(%5, %6, kernel_size=[1, 1], widths=[8, 8, 8], scales=[12, 7, 10], activate=0) /* ty=Tensor[(1, 1, 64, 64), int8] */
+}
+
+def main(data, qweight, kweight, nweight, vweight, tin=64, tout=32) {
+  data = input() /* (1, 1, 64, 64) */
+  qweight = input() /* (1, 1, 64, 64) */
+  %0 = accel_conv2d(data, qweight) /* (1, 1, 64, 64) */
+  kweight = input() /* (1, 1, 64, 64) */
+  %1 = accel_conv2d(data, kweight) /* (1, 1, 64, 64) */
+  %2 = accel_transpose(%1) /* (1, 1, 64, 64) */
+  %3 = accel_mm(%0, %2) /* (1, 1, 64, 64) */
+  nweight = input() /* (1, 1, 64, 64) */
+  %4 = accel_conv2d(%3, nweight) /* (1, 1, 64, 64) */
+  %5 = accel_softmax(%4) /* (1, 1, 64, 64) */
+  vweight = input() /* (1, 1, 64, 64) */
+  %6 = accel_conv2d(data, vweight) /* (1, 1, 64, 64) */
+  %7 = accel_mm(%5, %6) /* (1, 1, 64, 64) */
+}
+
+**************** DIFFERENCE ****************
+* JOB NAME  : check_attention
+* OUT SCALE : 10
+* T-F DIFFS : 9, 0.0087890625
+* F-T DIFFS : 44, 0.04296875
+* F-T MEANS : 1.166015625, 0.0011386871337890625
+* F-T STD   : 6.43543484348617, 0.006284604339341963
+* NUM DIFF  : 340
+* NUM SAME  : 3756
+* THRESHOLD : 5
+* SAME%     : 91.70%
+**************** DIFFERENCE ****************
+

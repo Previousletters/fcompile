@@ -1,2 +1,2 @@
 SIM_ROOT = "../sim"
-SIM_HINT_STDOUT = True
+SIM_HIDE_STDOUT = True

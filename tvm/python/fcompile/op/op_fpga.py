@@ -84,7 +84,7 @@ class Conv2D(AccelOp):
 
 
     def modelsim(self, args, attrs, tin, tout):
-        from ..config import SIM_ROOT, SIM_HINT_STDOUT
+        from ..config import SIM_ROOT, SIM_HIDE_STDOUT
         tb_name = "testbench_conv_mp"
         data, weight = args
         _, dh, dw, c = data.shape
@@ -105,7 +105,7 @@ class Conv2D(AccelOp):
         }
         define_str = make_define(define)
         cmd = f"make sim DEFINES={define_str} TB_NAME={tb_name}"
-        if SIM_HINT_STDOUT:
+        if SIM_HIDE_STDOUT:
             subprocess.run(cmd, stdout=subprocess.DEVNULL, shell=True, cwd=SIM_ROOT)
         else:
             subprocess.run(cmd, shell=True, cwd=SIM_ROOT)
@@ -147,7 +147,7 @@ class MM(AccelOp):
 
 
     def modelsim(self, args, attrs, tin, tout):
-        from ..config import SIM_ROOT, SIM_HINT_STDOUT
+        from ..config import SIM_ROOT, SIM_HIDE_STDOUT
         tb_name = "testbench_MVM"
         data, weight = args
         _, dh, dw, c = data.shape
@@ -164,7 +164,7 @@ class MM(AccelOp):
         }
         define_str = make_define(define)
         cmd = f"make sim DEFINES={define_str} TB_NAME={tb_name}"
-        if SIM_HINT_STDOUT:
+        if SIM_HIDE_STDOUT:
             subprocess.run(cmd, stdout=subprocess.DEVNULL, shell=True, cwd=SIM_ROOT)
         else:
             subprocess.run(cmd, shell=True, cwd=SIM_ROOT)
@@ -210,7 +210,7 @@ class Softmax(Op):
 
 
     def modelsim(self, args, attrs, tin, tout):
-        from ..config import SIM_ROOT, SIM_HINT_STDOUT
+        from ..config import SIM_ROOT, SIM_HIDE_STDOUT
         tb_name = "testbench_softmax"
         data = args[0]
         _, dh, dw, c = data.shape
@@ -232,7 +232,7 @@ class Softmax(Op):
         }
         define_str = make_define(define)
         cmd = f"make sim DEFINES={define_str} TB_NAME={tb_name}"
-        if SIM_HINT_STDOUT:
+        if SIM_HIDE_STDOUT:
             subprocess.run(cmd, stdout=subprocess.DEVNULL, shell=True, cwd=SIM_ROOT)
         else:
             subprocess.run(cmd, shell=True, cwd=SIM_ROOT)
@@ -286,7 +286,7 @@ class Transpose(Op):
 
 
     def modelsim(self, args, attrs, tin, tout):
-        from ..config import SIM_ROOT, SIM_HINT_STDOUT
+        from ..config import SIM_ROOT, SIM_HIDE_STDOUT
         tb_name = "testbench_TRANSPOSE"
         data = args[0]
         _, _, dh, dw = data.shape
@@ -303,7 +303,7 @@ class Transpose(Op):
         }
         define_str = make_define(define)
         cmd = f"make sim DEFINES={define_str} TB_NAME={tb_name}"
-        if SIM_HINT_STDOUT:
+        if SIM_HIDE_STDOUT:
             subprocess.run(cmd, stdout=subprocess.DEVNULL, shell=True, cwd=SIM_ROOT)
         else:
             subprocess.run(cmd, shell=True, cwd=SIM_ROOT)
@@ -353,7 +353,7 @@ class Transpose(Op):
 
 
     def modelsim(self, args, attrs, tin, tout):
-        from ..config import SIM_ROOT, SIM_HINT_STDOUT
+        from ..config import SIM_ROOT, SIM_HIDE_STDOUT
         tb_name = "testbench_LN"
         data, k_factor, bias = args
         _, _, dh, dw = data.shape
@@ -372,7 +372,7 @@ class Transpose(Op):
         }
         define_str = make_define(define)
         cmd = f"make sim DEFINES={define_str} TB_NAME={tb_name}"
-        if SIM_HINT_STDOUT:
+        if SIM_HIDE_STDOUT:
             subprocess.run(cmd, stdout=subprocess.DEVNULL, shell=True, cwd=SIM_ROOT)
         else:
             subprocess.run(cmd, shell=True, cwd=SIM_ROOT)
@@ -429,7 +429,7 @@ class Conv2D(Op):
 
 
     def modelsim(self, args, attrs, tin, tout):
-        from ..config import SIM_ROOT, SIM_HINT_STDOUT
+        from ..config import SIM_ROOT, SIM_HIDE_STDOUT
         tb_name = "testbench_mp_conv_res"
         data, weight, res_add = args
         _, dh, dw, c = data.shape
@@ -452,7 +452,7 @@ class Conv2D(Op):
         }
         define_str = make_define(define)
         cmd = f"make sim DEFINES={define_str} TB_NAME={tb_name}"
-        if SIM_HINT_STDOUT:
+        if SIM_HIDE_STDOUT:
             subprocess.run(cmd, stdout=subprocess.DEVNULL, shell=True, cwd=SIM_ROOT)
         else:
             subprocess.run(cmd, shell=True, cwd=SIM_ROOT)

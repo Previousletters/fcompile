@@ -15,7 +15,7 @@ from fcompile.quant import Quantize, Dequantize, QuantifiedLinear
 from fcompile.simulate import modelsim, result_diff_check, diff, diff_scale, process
 from fcompile import config
 
-config.SIM_HINT_STDOUT = False
+config.SIM_HIDE_STDOUT = False
 
 class SelfAttention(nn.Module):
     # input : batch_size * seq_len * input_dim
