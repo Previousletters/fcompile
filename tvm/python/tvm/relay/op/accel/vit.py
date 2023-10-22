@@ -106,15 +106,13 @@ def transpose(
 
 def layer_norm(
     data,
-    k_factor,
-    bias,
+    k_bias,
     widths=None,
     scales=None
 ):
     return _make.vit_layer_norm(
         data,
-        k_factor,
-        bias,
+        k_bias,
         widths,
         scales
     )
@@ -144,6 +142,19 @@ def conv2d_add(
         strides,
         padding,
         kernel_size,
+        widths,
+        scales,
+        activate
+    )
+
+def activate(
+    data,
+    widths=None,
+    scales=None,
+    activate=1
+):
+    return _make.vit_activate(
+        data,
         widths,
         scales,
         activate

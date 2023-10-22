@@ -1,39 +1,39 @@
 def @main(%data: Tensor[(1, 28, 28, 3), int8], %weight: Tensor[(3, 3, 3, 32), int8]) -> Tensor[(1, 26, 26, 32), int8] {
-  accel.vit.conv2d(%data, %weight, widths=[8, 8, 8], scales=[6, 6, 5], activate=0) /* ty=Tensor[(1, 26, 26, 32), int8] */
+  accel.vit.conv2d(%data, %weight, widths=[8, 8, 8], scales=[6, 6, 4], activate=0) /* ty=Tensor[(1, 26, 26, 32), int8] */
 }
 
 def main(data, weight, tin=64, tout=32) {
   data = input() /* (1, 28, 28, 3) */
   weight = input() /* (3, 3, 3, 32) */
-  %0 = accel_conv2d(data, weight) /* (1, 26, 26, 32) */
+  %0 = vit_conv2d(data, weight) /* (1, 26, 26, 32) */
 }
 
 **************** DIFFERENCE ****************
 * JOB NAME : check_conv2d
 * T-F DIFF : 0
 * F-T DIFF : 1
-* NUM DIFF : 90
-* NUM SAME : 21542
-* SAME%    : 99.58%
+* NUM DIFF : 43
+* NUM SAME : 21589
+* SAME%    : 99.80%
 **************** DIFFERENCE ****************
 
 def @main(%data: Tensor[(1, 1, 64, 64), int8], %weight: Tensor[(1, 1, 64, 32), int8]) -> Tensor[(1, 1, 64, 32), int8] {
-  accel.vit.mm(%data, %weight, kernel_size=[1, 1], widths=[8, 8, 8], scales=[5, 6, 4], activate=0) /* ty=Tensor[(1, 1, 64, 32), int8] */
+  accel.vit.mm(%data, %weight, kernel_size=[1, 1], widths=[8, 8, 8], scales=[6, 6, 4], activate=0) /* ty=Tensor[(1, 1, 64, 32), int8] */
 }
 
 def main(data, weight, tin=64, tout=32) {
   data = input() /* (1, 1, 64, 64) */
   weight = input() /* (1, 1, 64, 32) */
-  %0 = accel_mm(data, weight) /* (1, 1, 64, 32) */
+  %0 = vit_mm(data, weight) /* (1, 1, 64, 32) */
 }
 
 **************** DIFFERENCE ****************
 * JOB NAME : check_mm
 * T-F DIFF : 0
 * F-T DIFF : 1
-* NUM DIFF : 18
-* NUM SAME : 2030
-* SAME%    : 99.12%
+* NUM DIFF : 3
+* NUM SAME : 2045
+* SAME%    : 99.85%
 **************** DIFFERENCE ****************
 
 def @main(%data: Tensor[(1, 1, 64, 64), int8]) -> Tensor[(1, 1, 64, 64), int8] {
@@ -42,7 +42,7 @@ def @main(%data: Tensor[(1, 1, 64, 64), int8]) -> Tensor[(1, 1, 64, 64), int8] {
 
 def main(data, tin=64, tout=32) {
   data = input() /* (1, 1, 64, 64) */
-  %0 = accel_softmax(data) /* (1, 1, 64, 64) */
+  %0 = vit_softmax(data) /* (1, 1, 64, 64) */
 }
 
 **************** DIFFERENCE ****************
@@ -50,78 +50,78 @@ def main(data, tin=64, tout=32) {
 * OUT SCALE : 11
 * T-F DIFFS : 1, 0.00048828125
 * F-T DIFFS : 11, 0.00537109375
-* F-T MEANS : 2.206298828125, 0.0010772943496704102
-* F-T STD   : 1.7089691510203604, 0.0008344575932716604
-* NUM DIFF  : 122
-* NUM SAME  : 3974
+* F-T MEANS : 2.265625, 0.00110626220703125
+* F-T STD   : 1.7291588227733738, 0.0008443158314323114
+* NUM DIFF  : 127
+* NUM SAME  : 3969
 * THRESHOLD : 5
-* SAME%     : 97.02%
+* SAME%     : 96.90%
 **************** DIFFERENCE ****************
 
 def @main(%data: Tensor[(1, 1, 128, 64), int8]) -> Tensor[(1, 1, 64, 128), int8] {
-  accel.vit.transpose(%data, kernel_size=[1, 1], widths=[8, 8], scales=[5, 6], activate=0) /* ty=Tensor[(1, 1, 64, 128), int8] */
+  accel.vit.transpose(%data, kernel_size=[1, 1], widths=[8, 8], scales=[6, 6], activate=0) /* ty=Tensor[(1, 1, 64, 128), int8] */
 }
 
 def main(data, tin=64, tout=32) {
   data = input() /* (1, 1, 128, 64) */
-  %0 = accel_transpose(data) /* (1, 1, 64, 128) */
+  %0 = vit_transpose(data) /* (1, 1, 64, 128) */
 }
 
 **************** DIFFERENCE ****************
 * JOB NAME : check_transpose
-* T-F DIFF : 59
-* F-T DIFF : 64
-* NUM DIFF : 7971
-* NUM SAME : 221
-* SAME%    : 2.70%
+* T-F DIFF : 0
+* F-T DIFF : 0
+* NUM DIFF : 0
+* NUM SAME : 8192
+* SAME%    : 100.00%
 **************** DIFFERENCE ****************
 
 def @main(%data: Tensor[(1, 1, 128, 64), int8], %k_factor: Tensor[(64), int8], %bias: Tensor[(64), int8]) -> Tensor[(1, 1, 128, 64), int8] {
-  accel.vit.layer_norm(%data, %k_factor, %bias, kernel_size=[1, 1], widths=[8, 8, 8, 8], scales=[5, 6, 6, 5], activate=0) /* ty=Tensor[(1, 1, 128, 64), int8] */
+  accel.vit.layer_norm(%data, %k_factor, %bias, kernel_size=[1, 1], widths=[8, 8, 8, 8], scales=[6, 6, 6, 5], activate=0) /* ty=Tensor[(1, 1, 128, 64), int8] */
 }
 
 def main(data, k_factor, bias, tin=64, tout=32) {
   data = input() /* (1, 1, 128, 64) */
   k_factor = input() /* (64) */
   bias = input() /* (64) */
-  %0 = accel_layer_norm(data, k_factor, bias) /* (1, 1, 128, 64) */
+  %0 = vit_layer_norm(data, k_factor, bias) /* (1, 1, 128, 64) */
 }
 
 **************** DIFFERENCE ****************
 * JOB NAME  : check_layernorm
 * OUT SCALE : 5
-* T-F DIFFS : 3, 0.09375
-* F-T DIFFS : 3, 0.09375
-* F-T MEANS : 0.250732421875, 0.00783538818359375
-* F-T STD   : 0.569294425798898, 0.017790450806215562
-* NUM DIFF  : 108
-* NUM SAME  : 8084
+* T-F DIFFS : 1, 0.03125
+* F-T DIFFS : 2, 0.0625
+* F-T MEANS : 0.25244140625, 0.0078887939453125
+* F-T STD   : 0.46245132396342264, 0.014451603873856958
+* NUM DIFF  : 8
+* NUM SAME  : 8184
 * THRESHOLD : 1
-* SAME%     : 98.68%
+* SAME%     : 99.90%
 **************** DIFFERENCE ****************
 
 def @main(%data: Tensor[(1, 7, 7, 64), int8], %weight: Tensor[(3, 3, 64, 32), int8], %res: Tensor[(1, 7, 7, 32), int8]) -> Tensor[(1, 7, 7, 32), int8] {
-  accel.vit.conv2d_add(%data, %weight, %res, padding=[1, 1], widths=[8, 8, 8, 8], scales=[6, 6, 6, 3], activate=0) /* ty=Tensor[(1, 7, 7, 32), int8] */
+  accel.vit.conv2d_add(%data, %weight, %res, padding=[1, 1], widths=[8, 8, 8, 8], scales=[6, 6, 6, 2], activate=0) /* ty=Tensor[(1, 7, 7, 32), int8] */
 }
 
 def main(data, weight, res, tin=64, tout=32) {
   data = input() /* (1, 7, 7, 64) */
   weight = input() /* (3, 3, 64, 32) */
   res = input() /* (1, 7, 7, 32) */
-  %0 = accel_conv2d_add(data, weight, res) /* (1, 7, 7, 32) */
+  %0 = vit_conv2d_add(data, weight, res) /* (1, 7, 7, 32) */
 }
 
 **************** DIFFERENCE ****************
 * JOB NAME  : check_conv2d_add
-* OUT SCALE : 3
-* T-F DIFFS : 2, 0.25
-* F-T DIFFS : 6, 0.75
-* F-T MEANS : 0.058673469387755105, 0.007334183673469388
-* F-T STD   : 0.5336878583146268, 0.06671098228932835
-* NUM DIFF  : 3
-* NUM SAME  : 1565
+* OUT SCALE : 2
+* T-F DIFFS : 1, 0.25
+* F-T DIFFS : 1, 0.25
+* F-T MEANS : 0.021045918367346938, 0.0052614795918367345
+* F-T STD   : 0.5127864335792555, 0.12819660839481387
+* NUM DIFF  : 0
+* NUM SAME  : 1568
 * THRESHOLD : 1
-* SAME%     : 99.81%
+* SAME%     : 100.00%
 **************** DIFFERENCE ****************
 
 def @main(%data: Tensor[(1, 28, 28, 32), int8], %weight: Tensor[(1, 1, 32, 32), int8]) -> Tensor[(1, 28, 28, 32), int8] {
@@ -131,15 +131,15 @@ def @main(%data: Tensor[(1, 28, 28, 32), int8], %weight: Tensor[(1, 1, 32, 32), 
 def main(data, weight, tin=64, tout=32) {
   data = input() /* (1, 28, 28, 32) */
   weight = input() /* (1, 1, 32, 32) */
-  %0 = accel_conv2d(data, weight) /* (1, 28, 28, 32) */
+  %0 = vit_conv2d(data, weight) /* (1, 28, 28, 32) */
 }
 
 **************** DIFFERENCE ****************
 * JOB NAME : check_matmul
 * T-F DIFF : 0
 * F-T DIFF : 1
-* NUM DIFF : 191
-* NUM SAME : 24897
-* SAME%    : 99.24%
+* NUM DIFF : 177
+* NUM SAME : 24911
+* SAME%    : 99.29%
 **************** DIFFERENCE ****************
 

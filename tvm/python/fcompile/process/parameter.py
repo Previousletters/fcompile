@@ -5,10 +5,10 @@ def parallel_weight_Tin(weight_input, CHout, CHin, Ky, Kx, Tout, Tin):
     max_slice_of_CHout = (CHout + Tout - 1) // Tout
     slice_of_Tin_div_Tout = (Tin + Tout - 1) // Tout
 
-    # print("slice_of_CHin=", slice_of_CHin)
-    # print("slice_of_CHout=", slice_of_CHout)
-    # print("slice_of_Tin_div_Tout=", slice_of_Tin_div_Tout)
-    print("Chout=", CHout)
+    #print("slice_of_CHin=", slice_of_CHin)
+    #print("slice_of_CHout=", slice_of_CHout)
+    #print("slice_of_Tin_div_Tout=", slice_of_Tin_div_Tout)
+    #print("Chout=", CHout)
     if CHout%Tout == 0:
         slice_of_CHout = (CHout + Tout - 1) // Tout
     else:
@@ -17,9 +17,9 @@ def parallel_weight_Tin(weight_input, CHout, CHin, Ky, Kx, Tout, Tin):
         else:
             slice_of_CHout = CHout / Tout
 
-    print("slice_of_CHout=",slice_of_CHout)
+    #print("slice_of_CHout=",slice_of_CHout)
 
-    weight_reorg = np.zeros((int(slice_of_CHout*slice_of_CHin*Ky*Kx*Tout*slice_of_Tin_div_Tout*Tout)))
+    weight_reorg = np.zeros((int(slice_of_CHout*slice_of_CHin*Ky*Kx*Tout*slice_of_Tin_div_Tout*Tout)), dtype="int8")
 
     addr = 0
     for chout in range(max_slice_of_CHout):
@@ -39,7 +39,7 @@ def parallel_weight_Tin(weight_input, CHout, CHin, Ky, Kx, Tout, Tin):
                                     addr = addr + 1
                                 else:
                                     addr = addr + 0
-    # print(weight_reorg.flatten())
+    #print(weight_reorg.flatten())
     return weight_reorg
 
 

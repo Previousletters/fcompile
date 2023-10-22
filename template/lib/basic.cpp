@@ -344,4 +344,10 @@ void Free_Feature(struct Mapped_Feature *feature)
 	free(feature);
 }
 
+void Free_Weight(struct Mapped_Weight *weight)
+{
+	if(weight->payload!=FPGA_NULL) FPGA_DDR_free(weight->payload);
+	free(weight);
+}
+
 #endif

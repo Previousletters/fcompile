@@ -1,5 +1,5 @@
 from ..utils import shape2byte
-from ..codegen import OpType
+from ..codegen import OpType, Layout
 from ..codegen.function import *
 
 class Op:
@@ -14,6 +14,10 @@ class Op:
 
     def fpga_jit(self, name):
         pass
+
+    def infer_rt(self, args, attrs, tin, tout):
+        self.rt_shape = self.shape
+        return True
 
 
 class Input(Op):
@@ -80,35 +84,54 @@ class AccelFMap(Op):
         ret_name = self.name + "_" + name
         dat_name = data["name"]
         _, h, w, c = data["shape"]
-        width, scale = int(attrs["widths"][0]), int(attrs["scales"][0])
-        mal_str = MallocFeature(ret_name, [h, w, c, scale, scale, width])
+        if len(attrs["scales"]) == 1:
+            width, scale = int(attrs["widths"][0]), int(attrs["scales"][0])
+            mal_str = MallocFeature(ret_name, [h, w, c, scale, scale, width])
+        elif len(attrs["scales"]) == 2:
+            width, scale0, scale1 = int(attrs["widths"][0]), int(attrs["scales"][0]), int(attrs["scales"][1])
+            mal_str = MallocFeature(ret_name, [h, w, c, scale0, scale1, width])
         map_str = self.map_func[data["type"]](dat_name, ret_name)
         ret["callop"] = [mal_str, map_str]
         ret["return"] = {"name" : ret_name, "type" : self.ret_type, "shape" : self.shape}
         return ret
 
+    def infer_rt(self, attrs, tin, tout):
+        _, h, w, c = self.shape
+        n = (c + tout - 1) // tout
+        new_shape = (n, h, w, tout)
+        self.rt_shape = new_shape
+
 
 class AccelWMap(Op):
 
     name = "accel_wmap"
-    arg_types = [[OpType.c_ptr, OpType.t_val, OpType.const]]
+    arg_types = [[OpType.c_ptr, OpType.t_val, OpType.const, OpType.f_ddr]]
     ret_type = OpType.w_ddr
 
     def fpga_jit(self, name, args, attrs):
         ret = {}
+        static = 0
         data = args[0]
         ret_name = self.name + "_" + name
         dat_name = data["name"]
         h, w, i, o = data["shape"]
         width, scale = int(attrs["widths"][0]), int(attrs["scales"][0])
         if data["type"] == OpType.const:
+            static = 1
             ret["static"] = {"name" : ret_name, "type" : self.ret_type, "attrs" : [h, w, i, o, scale, width]}
+        if data["type"] == OpType.f_ddr:
+            mal_str = MallocWeight(ret_name, [h, w, i, o, scale, width])
+            map_str = Feature2Weight(dat_name, ret_name)
+            ret["callop"] = [mal_str, map_str]
         else:
-            raise RuntimeError("Haven't support runtime parameter process!")
-        map_str = CPtr2Weight(dat_name, ret_name)
-        ret["params"] = [map_str]
-        ret["return"] = {"name" : ret_name, "type" : self.ret_type, "shape" : self.shape}
+            map_str = CPtr2Weight(dat_name, ret_name)
+            ret["params"] = [map_str]
+        ret["return"] = {"name" : ret_name, "type" : self.ret_type, "shape" : self.shape, "static" : static}
         return ret
+
+    def infer_rt(self, args, attrs, tin, tout):
+        self.rt_shape = self.shape
+        return True
 
 
 class TVMMap(Op):
@@ -135,6 +158,6 @@ class TVMMap(Op):
             if data["free"]:
                 ret["callop"].append(FreeFeature(dat_name))
         else:
-            raise RuntimeError("Haven't support runtime parameter process!")
+            raise RuntimeError("Haven't support infer_rt parameter process!")
         ret["return"] = {"name" : ret_name, "type" : self.ret_type, "shape" : self.shape, "pointer" : dat_name}
         return ret

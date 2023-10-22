@@ -39,12 +39,17 @@ class DataMap(Mutator):
         arg_types = call.op.arg_types
         index_list = range(len(call.args))
         zipped_data = zip(ret_types, arg_types, call.args, index_list)
+        offset = 0
         for ret, intype, arg, index in zipped_data:
             new_op = get_map_op(ret, intype)
             if new_op != None:
-                width = call.attrs["widths"][index]
-                scale = call.attrs["scales"][index]
+                width = call.attrs["widths"][index+offset]
+                scale = call.attrs["scales"][index+offset]
                 new_attrs = {"widths" : [width], "scales" : [scale]}
+                if len(call.attrs["scales"]) != len(call.args):
+                    offset += 1
+                    new_attrs["widths"].append(call.attrs["widths"][index+offset])
+                    new_attrs["scales"].append(call.attrs["scales"][index+offset])
                 new_op = new_op(arg.op.shape, arg.op.dtype)
                 new_id = self.get_id()
                 new_arg = FCall([arg], new_op, new_attrs, new_id)

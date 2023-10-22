@@ -35,6 +35,8 @@ class Malloc:
 
 class CCodeGen(BaseCodeGen):
 
+    tab = "  "
+
     def build(self, jit, prefix="TVMWrap"):
         self.analysis(jit)
         params = b"".join([np2bytes(data) for data in self.datas])
@@ -73,7 +75,7 @@ class CCodeGen(BaseCodeGen):
         self.params += value
 
     def gen_callop(self, value):
-        self.funcops += value
+        self.funcops.append("\n".join([self.tab + s for s in value]))
 
     def gen_data(self, value):
         self.datas.append(value[1])
@@ -85,8 +87,8 @@ class CCodeGen(BaseCodeGen):
     def get_source(self, prefix):
         local_time = strftime('%Y-%m-%d %H:%M:%S',localtime())
         static = "\n".join(self.static)
-        init = "\n".join(["  " + s for s in self.inits])
-        params = "\n".join(["  " + s for s in self.params])
+        init = "\n".join([self.tab + s for s in self.inits])
+        params = "\n".join([self.tab + s for s in self.params])
         input_cmt = "\n".join([f"// input {n}: " + shape2str(i["shape"])
                                for n, i in enumerate(self.inputs)])
         input_len = len(self.inputs)
@@ -95,7 +97,7 @@ class CCodeGen(BaseCodeGen):
                                for n, i in enumerate(self.outputs)])
         output_len = len(self.outputs)
         output_ptr = ", ".join(["(uintptr_t)" + i["name"] for i in self.outputs])
-        funcops = "\n".join(["  " + s for s in self.funcops])
+        funcops = "\n\n".join(self.funcops)
 
         source_map = {
             "local_time" : local_time, "prefix" : prefix, "static" : static, 

@@ -7,3 +7,7 @@ build/
 test/
 
 nohup.out
+
+tags
+
+.*.swp

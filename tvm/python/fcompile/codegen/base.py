@@ -9,6 +9,17 @@ class OpType:
     const = "const uint8_t*"
 
 
+class Layout:
+
+    BHWC = "BHWC"
+    NHWT = "NHWTout"
+    NHTT = "NShToutTout"
+    OIHW = "OIHW"
+    HWIO = "HWIO"
+    OCHWTST = "SoScHWToutStTout"
+    ALL = [BHWC, NHWT, NHTT, OIHW, OCHWTST]
+
+
 class BaseCodeGen:
 
     def gen(self, key, value):

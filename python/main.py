@@ -1,3 +1,4 @@
+import os
 import tvm
 from tvm import relay
 from tvm import IRModule
@@ -134,7 +135,43 @@ def main_accel_extern_modelsim():
     print(result)
 
 
-main_accel_ccodegen()
-main_accel_extern_ccodegen()
-main_accel_modelsim()
-main_accel_extern_modelsim()
+from fcompile.example import relay_attention
+
+def main_attention_ccodegen():
+    qscales = [6, 10, 7]
+    kscales = [6, 10, 7]
+    vscales = [6, 10, 7]
+    oscales = [9, 8, 7, 6, 7]
+    mod = relay_attention(8, qscales, kscales, vscales, oscales)
+    print(mod)
+    mod = transform.InferType()(mod)
+    print(mod)
+    f_mod = FModule(RelayFIR().convert(mod), tin=64, tout=32)
+    print(f_mod)
+    params = {
+        "qweight" : np.random.randint(-10, 10, (1, 1, 64, 64), "int8"),
+        "kweight" : np.random.randint(-10, 10, (1, 1, 64, 64), "int8"),
+        "vweight" : np.random.randint(-10, 10, (1, 1, 64, 64), "int8"),
+        "nweight" : np.random.randint(-10, 10, (1, 1, 64, 64), "int8"),
+    }
+    f_mod = FPGAParameters(f_mod, params)
+    print(f_mod)
+    f_mod = DataMap().transform(f_mod)
+    print(f_mod)
+    jit_mod = FPGAJit().Jit(f_mod)
+    print(jit_mod)
+    c_mod, params, _ = CCodeGen().build(jit_mod)
+
+    os.makedirs("test", exist_ok=True)
+    with open("./test/attention.c", "w") as f:
+        f.write(c_mod)
+
+    with open("./test/params.bin", "wb") as f:
+        f.write(params)
+
+
+#main_accel_ccodegen()
+#main_accel_extern_ccodegen()
+#main_accel_modelsim()
+#main_accel_extern_modelsim()
+main_attention_ccodegen()

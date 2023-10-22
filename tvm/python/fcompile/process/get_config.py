@@ -8,8 +8,8 @@ mp_mode = 0  # mode0 = Booth; mode1 = HPS; mode2 = BSC; mode3 = LPC
 
 
 def get_conv_cfg(str, Hin, Win, CHin, CHout, Kx, Ky, Sx, Sy, Px, Py, data_width, Tin, Tout):
-    print("*********************************************")
-    print("start %s" % str)
+    #print("*********************************************")
+    #print("start %s" % str)
     if mp_mode == 0 or mp_mode == 1:
         BRAM_WIDTH = Tin * MAX_WT_DW
         BRAM_DEPTH = int((Total_BUF) / BRAM_WIDTH / BRAM_NUM)
@@ -55,14 +55,14 @@ def get_conv_cfg(str, Hin, Win, CHin, CHout, Kx, Ky, Sx, Sy, Px, Py, data_width,
     overlap = Ky - Sy
     dat_num_per_row = Win * ((CHin + Tin_L - 1) // Tin_L)
 
-    print("dat_num_per_row = ", dat_num_per_row)
+    #print("dat_num_per_row = ", dat_num_per_row)
 
     dat_banks_min = (dat_num_per_row * Ky + BRAM_DEPTH - 1) // BRAM_DEPTH
     wt_banks_min = (Kx * Ky * Tout * ((CHin + Tin_L - 1) // Tin_L) + BRAM_DEPTH - 1) // BRAM_DEPTH
-    print("dat = ", dat_num_per_row * Ky)
-    print("dat_banks_min = ", dat_banks_min)
-    print("wt = ", Kx * Ky * Tout * ((CHin + Tin_L - 1) // Tin_L))
-    print("wt_banks_min = ", wt_banks_min)
+    #print("dat = ", dat_num_per_row * Ky)
+    #print("dat_banks_min = ", dat_banks_min)
+    #print("wt = ", Kx * Ky * Tout * ((CHin + Tin_L - 1) // Tin_L))
+    #print("wt_banks_min = ", wt_banks_min)
 
     if (dat_banks_min + wt_banks_min) > BRAM_NUM:
         print("--------------------------")
@@ -75,9 +75,9 @@ def get_conv_cfg(str, Hin, Win, CHin, CHout, Kx, Ky, Sx, Sy, Px, Py, data_width,
         wt_banks = BRAM_NUM - dat_buf_num
         out_ch_slice = ((BRAM_DEPTH * wt_banks) // (Kx * Ky * Tout * ((CHin + Tin_L - 1) // Tin_L))) * Tout
 
-        print("dat_buf_num = ", dat_buf_num)
-        print("wt_banks = ", wt_banks)
-        print("out_ch_slice = ", out_ch_slice)
+        #print("dat_buf_num = ", dat_buf_num)
+        #print("wt_banks = ", wt_banks)
+        #print("out_ch_slice = ", out_ch_slice)
 
         if (out_ch_slice >= CHout):
             out_ch_slice = CHout
@@ -110,17 +110,17 @@ def get_conv_cfg(str, Hin, Win, CHin, CHout, Kx, Ky, Sx, Sy, Px, Py, data_width,
 
         in_height_last = Hin - in_height_first + overlap - (Hout_Split_Times - 2) * (in_height_middle - overlap)
 
-        print("CHout_Split_Times = ", CHout_Split_Times)
-        print("out_ch_slice = ", out_ch_slice)
-        print("out_ch_slice_last = ", out_ch_slice_last)
+        #print("CHout_Split_Times = ", CHout_Split_Times)
+        #print("out_ch_slice = ", out_ch_slice)
+        #print("out_ch_slice_last = ", out_ch_slice_last)
 
-        print("Hout_Split_Times = ", Hout_Split_Times)
-        print("in_height_first = ", in_height_first)
-        print("in_height_middle = ", in_height_middle)
-        print("in_height_last = ", in_height_last)
-        print("out_height_first = ", out_height_first)
-        print("out_height_middle = ", out_height_middle)
-        print("out_height_last = ", out_height_last)
+        #print("Hout_Split_Times = ", Hout_Split_Times)
+        #print("in_height_first = ", in_height_first)
+        #print("in_height_middle = ", in_height_middle)
+        #print("in_height_last = ", in_height_last)
+        #print("out_height_first = ", out_height_first)
+        #print("out_height_middle = ", out_height_middle)
+        #print("out_height_last = ", out_height_last)
 
         total_bw_if_reuse_wt = (dat_num_per_row * Hin + dat_num_per_row * overlap * (
                 Hout_Split_Times - 1)) * CHout_Split_Times + Kx * Ky * CHout * (
@@ -128,8 +128,8 @@ def get_conv_cfg(str, Hin, Win, CHin, CHout, Kx, Ky, Sx, Sy, Px, Py, data_width,
         total_bw_if_reuse_dat = Hout_Split_Times * Kx * Ky * CHout * (
                 (CHin + Tin_L - 1) // Tin_L) / wt_factor + dat_num_per_row * Hin + dat_num_per_row * overlap * (
                                         Hout_Split_Times - 1)
-        print("               total_bw_if_reuse_wt = ", total_bw_if_reuse_wt)
-        print("               total_bw_if_reuse_dat = ", total_bw_if_reuse_dat)
+        #print("               total_bw_if_reuse_wt = ", total_bw_if_reuse_wt)
+        #print("               total_bw_if_reuse_dat = ", total_bw_if_reuse_dat)
 
 
         if ((mininum_bw == 0) or (total_bw_if_reuse_wt < mininum_bw) or (total_bw_if_reuse_dat < mininum_bw)):
@@ -169,29 +169,29 @@ def get_conv_cfg(str, Hin, Win, CHin, CHout, Kx, Ky, Sx, Sy, Px, Py, data_width,
                 best_wt_banks = BRAM_NUM - dat_buf_num
                 mininum_bw = total_bw_if_reuse_dat
                 best_method = 1
-        print(" -------------------")
+        #print(" -------------------")
 
 
-    print("**** final result *****")
-    print("conclusion of %s" % str)
-    print("   ")
-    print("wt_banks = ", best_wt_banks)
-    print("dat_buf_num = ", best_dat_banks)
-    print("CHout_Split_Times = ", best_CHout_Split_Times)
-    print("out_ch_slice = ", best_out_ch_slice)
-    print("out_ch_slice_last = ", best_out_ch_slice_last)
+    #print("**** final result *****")
+    #print("conclusion of %s" % str)
+    #print("   ")
+    #print("wt_banks = ", best_wt_banks)
+    #print("dat_buf_num = ", best_dat_banks)
+    #print("CHout_Split_Times = ", best_CHout_Split_Times)
+    #print("out_ch_slice = ", best_out_ch_slice)
+    #print("out_ch_slice_last = ", best_out_ch_slice_last)
 
-    print("Hout_Split_Times = ", best_Hout_Split_Times)
-    print("in_height_first = ", best_in_height_first)
-    print("in_height_middle = ", best_in_height_middle)
-    print("in_height_last = ", best_in_height_last)
-    print("out_height_first = ", best_out_height_first)
-    print("out_height_middle = ", best_out_height_middle)
-    print("out_height_last = ", best_out_height_last)
-    print("total_bw_if_reuse_wt = ", best_total_bw_if_reuse_wt)
-    print("total_bw_if_reuse_dat = ", best_total_bw_if_reuse_dat)
+    #print("Hout_Split_Times = ", best_Hout_Split_Times)
+    #print("in_height_first = ", best_in_height_first)
+    #print("in_height_middle = ", best_in_height_middle)
+    #print("in_height_last = ", best_in_height_last)
+    #print("out_height_first = ", best_out_height_first)
+    #print("out_height_middle = ", best_out_height_middle)
+    #print("out_height_last = ", best_out_height_last)
+    #print("total_bw_if_reuse_wt = ", best_total_bw_if_reuse_wt)
+    #print("total_bw_if_reuse_dat = ", best_total_bw_if_reuse_dat)
 
-    print("best_method = ", best_method)
+    #print("best_method = ", best_method)
     if best_method == 0:
         total_bw = best_total_bw_if_reuse_wt
     else:

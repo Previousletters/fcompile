@@ -29,8 +29,7 @@ class SelfAttention(nn.Module):
         self.k = QuantifiedLinear(input_dim, dim_k, bias=False, bit_width=bit_width)
         self.v = QuantifiedLinear(input_dim, dim_v, bias=False, bit_width=bit_width)
         self._norm_fact = 1 / sqrt(dim_k)
-        
-    
+
     def forward(self, x):
         Q = self.q(x) # Q: batch_size * seq_len * dim_k
         K = self.k(x) # K: batch_size * seq_len * dim_k
@@ -48,6 +47,7 @@ class SelfAttention(nn.Module):
         self.a0scale = int(self.quantize.scale[0])
 
         atten =  aquanted * self.nquanted[0, 0, 0, 0]
+        print(atten.shape)
 
         aquanted = self.quantize(atten)
         self.a1scale = int(self.quantize.scale[0])
@@ -63,6 +63,32 @@ class SelfAttention(nn.Module):
         self.oscale = int(self.quantize.scale[0])
         
         return oquanted
+
+
+# $$Y = \text{softmax}\left(\text{mask}\left(\frac{QK^t}{\sqrt{dim}}\cdot \text{scale}\right)\right)V$$
+def relay_mask_attention(width, qscales, kscales, vscales, oscales):
+    qdscale, qwscale, qoscale = qscales
+    kdscale, kwscale, koscale = kscales
+    vdscale, vwscale, voscale = vscales
+    nscale, a0scale, a1scale, a2scale, oscale = oscales
+    data = relay.var("data", shape=(1, 1, 64, 64), dtype="int8")
+    qweight = relay.var("qweight", shape=(1, 1, 64, 64), dtype="int8")
+    kweight = relay.var("kweight", shape=(1, 1, 64, 64), dtype="int8")
+    vweight = relay.var("vweight", shape=(1, 1, 64, 64), dtype="int8")
+    nweight = relay.var("nweight", shape=(1, 1, 64, 64), dtype="int8")
+    mask = relay.var("mask", shape=(1, 1, 64, 64), dtype="int8")
+    q = relay.accel.vit.conv2d(data, qweight, strides=1, padding=0, widths=[width, width, width], scales=[qdscale, qwscale, qoscale])
+    k = relay.accel.vit.conv2d(data, kweight, strides=1, padding=0, widths=[width, width, width], scales=[kdscale, kwscale, koscale])
+    v = relay.accel.vit.conv2d(data, vweight, strides=1, padding=0, widths=[width, width, width], scales=[vdscale, vwscale, voscale])
+    kt = relay.accel.vit.transpose(k, widths=[width, width], scales=[koscale, koscale])
+    atten = relay.accel.vit.mm(q, kt, widths=[width, width, width], scales=[qoscale, koscale, a0scale])
+    atten = relay.accel.vit.conv2d_add(atten, nweight, mask, strides=1, padding=0, widths=[width, width, width, width], scales=[a0scale, nscale, a1scale, a1scale])
+    atten = relay.accel.vit.softmax(atten, widths=[width, width], scales=[a1scale, a2scale])
+    out = relay.accel.vit.mm(atten, v, widths=[width, width, width], scales=[a2scale, voscale, oscale])
+    func = relay.Function([data, qweight, kweight, vweight, nweight, mask], out)
+    mod = IRModule.from_expr(func)
+    mod = transform.InferType()(mod)
+    return mod
 
 
 @result_diff_check(diff_scale)
@@ -84,40 +110,29 @@ def check_attention():
     vwidth, vdscale = atten.v.bit_width, int(atten.v.scale[0])
     vwscale, voscale = int(atten.v.scale_weight[0]), int(atten.v.scale_out[0])
 
-    qweight_ = quantize(atten.q.weight)
-    kweight_ = quantize(atten.k.weight)
-    vweight_ = quantize(atten.v.weight)
+    qweight = quantize(atten.q.weight)
+    kweight = quantize(atten.k.weight)
+    vweight = quantize(atten.v.weight)
 
-    nweight_, nscale = atten.nquanted, atten.nscale
+    nweight, nscale = atten.nquanted, atten.nscale
     a0scale, a1scale, a2scale, oscale = atten.a0scale, atten.a1scale, atten.a2scale, atten.oscale
 
     t_out = process(oquanted.detach(), oscale).reshape(1, 1, 64, 64)
-
-    data = relay.var("data", shape=(1, 1, 64, 64), dtype="int8")
-    qweight = relay.var("qweight", shape=(1, 1, 64, 64), dtype="int8")
-    kweight = relay.var("kweight", shape=(1, 1, 64, 64), dtype="int8")
-    vweight = relay.var("vweight", shape=(1, 1, 64, 64), dtype="int8")
-    nweight = relay.var("nweight", shape=(1, 1, 64, 64), dtype="int8")
-    q = relay.accel.vit.conv2d(data, qweight, strides=1, padding=0, widths=[width, width, width], scales=[qdscale, qwscale, qoscale])
-    k = relay.accel.vit.conv2d(data, kweight, strides=1, padding=0, widths=[width, width, width], scales=[kdscale, kwscale, koscale])
-    v = relay.accel.vit.conv2d(data, vweight, strides=1, padding=0, widths=[width, width, width], scales=[vdscale, vwscale, voscale])
-    kt = relay.accel.vit.transpose(k, widths=[width, width], scales=[koscale, koscale])
-    atten = relay.accel.vit.mm(q, kt, widths=[width, width, width], scales=[qoscale, koscale, a0scale])
-    atten = relay.accel.vit.conv2d(atten, nweight, strides=1, padding=0, widths=[width, width, width], scales=[a0scale, nscale, a1scale])
-    atten = relay.accel.vit.softmax(atten, widths=[width, width], scales=[a1scale, a2scale])
-    out = relay.accel.vit.mm(atten, v, widths=[width, width, width], scales=[a2scale, voscale, oscale])
-    func = relay.Function([data, qweight, kweight, vweight, nweight], out)
-    mod = IRModule.from_expr(func)
-    mod = transform.InferType()(mod)
+    qscales = [qdscale, qwscale, qoscale]
+    kscales = [kdscale, kwscale, koscale]
+    vscales = [vdscale, vwscale, voscale]
+    oscales = [nscale, a0scale, a1scale, a2scale, oscale]
+    mod = relay_mask_attention(width, qscales, kscales, vscales, oscales)
     print(mod)
     f_mod = FModule(RelayFIR().convert(mod), tin=64, tout=32)
     print(f_mod)
     inputs = {
         "data" : process(dquanted, dscale).reshape(1, 1, 64, 64),
-        "qweight" : process(qweight_.detach(), qwscale).transpose((1, 0)).reshape(1, 1, 64, 64),
-        "kweight" : process(kweight_.detach(), kwscale).transpose((1, 0)).reshape(1, 1, 64, 64),
-        "vweight" : process(vweight_.detach(), vwscale).transpose((1, 0)).reshape(1, 1, 64, 64),
-        "nweight" : process(nweight_.detach(), nscale),
+        "qweight" : process(qweight.detach(), qwscale).transpose((1, 0)).reshape(1, 1, 64, 64),
+        "kweight" : process(kweight.detach(), kwscale).transpose((1, 0)).reshape(1, 1, 64, 64),
+        "vweight" : process(vweight.detach(), vwscale).transpose((1, 0)).reshape(1, 1, 64, 64),
+        "nweight" : process(nweight.detach(), nscale),
+        "mask" : np.zeros((1, 1, 64, 64), dtype="int8"),
     }
     f_out = modelsim(f_mod, inputs)
     return t_out, f_out, oscale, 5 # torch_result, fcompile_verilog_result, out_scale, same_threshold

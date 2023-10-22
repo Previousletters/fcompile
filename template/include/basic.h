@@ -90,6 +90,7 @@ void Map_Feature(char* in, struct Mapped_Feature* feature);
 void Map_Weight(char* kernel, struct Mapped_Weight* weight);
 void DeMap_Feature(struct Mapped_Feature* feature, char* out);
 void Free_Feature(struct Mapped_Feature *feature);
+void Free_Weight(struct Mapped_Weight *weight);
 struct Mapped_Feature* Malloc_Feature(int height, int width, int ch, int scale, int conv_out_scale, int dat_bit);
 struct Mapped_Weight* Malloc_Weight(int Ky, int Kx, int in_ch, int out_ch, int scale, int wt_bit);
 

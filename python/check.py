@@ -183,10 +183,9 @@ def check_layernorm():
 
     widths, scales = [dat_bw_l0, dat_bw_l0, dat_bw_l0, dat_bw_l1], [dscale, wscale, bscale, oscale]
     dvar = relay.var("data", shape=(1, 1, 128, 64), dtype="int8")
-    wvar = relay.var("k_factor", shape=(64,), dtype="int8")
-    bvar = relay.var("bias", shape=(64,), dtype="int8")
-    fout = relay.accel.vit.layer_norm(dvar, wvar, bvar, widths=widths, scales=scales)
-    func = relay.Function([dvar, wvar, bvar], fout)
+    wvar = relay.var("k_bias", shape=(1, 1, 1, 128), dtype="int8")
+    fout = relay.accel.vit.layer_norm(dvar, wvar, widths=widths, scales=scales)
+    func = relay.Function([dvar, wvar], fout)
     mod = IRModule.from_expr(func)
     mod = transform.InferType()(mod)
     print(mod)
@@ -194,8 +193,7 @@ def check_layernorm():
     print(f_mod)
     inputs = {
         "data" : process(dquanted, dscale).reshape(1, 1, 128, 64),
-        "k_factor" : process(wquanted, wscale),
-        "bias" : process(bquanted, bscale),
+        "k_bias" : np.concatenate((process(wquanted, wscale), process(bquanted, bscale)), axis=0).reshape(1, 1, 1, 128),
     }
     f_out = modelsim(f_mod, inputs)
     return t_out, f_out, oscale, 1 # torch_result, fcompile_verilog_result

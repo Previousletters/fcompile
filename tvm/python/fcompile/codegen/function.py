@@ -28,8 +28,16 @@ def DLTensor2Feature(in_name, out_name):
     return f"Map_Feature((char*){in_name}.data, {out_name});"
 
 
+def Feature2Weight(in_name, out_name):
+    return f"Convert_F2W({in_name}, {out_name});"
+
+
 def FreeFeature(name):
     return f"Free_Feature({name});"
+
+
+def FreeWeight(name):
+    return f"Free_Weight({name});"
 
 
 def Feature2CPtr(in_name, out_name):
