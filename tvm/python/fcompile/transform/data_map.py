@@ -46,7 +46,7 @@ class DataMap(Mutator):
                 width = call.attrs["widths"][index+offset]
                 scale = call.attrs["scales"][index+offset]
                 new_attrs = {"widths" : [width], "scales" : [scale]}
-                if len(call.attrs["scales"]) != len(call.args):
+                if len(call.attrs["scales"]) != len(call.args) + 1:
                     offset += 1
                     new_attrs["widths"].append(call.attrs["widths"][index+offset])
                     new_attrs["scales"].append(call.attrs["scales"][index+offset])

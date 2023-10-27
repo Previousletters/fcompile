@@ -3892,5 +3892,6 @@ RELAY_REGISTER_OP("unique")
     .add_type_rel("unique", UniqueRel)
     .set_support_level(3)
     .set_attr<TOpPattern>("TOpPattern", kOpaque);
+
 }  // namespace relay
 }  // namespace tvm

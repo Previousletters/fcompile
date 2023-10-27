@@ -94,6 +94,8 @@ void Free_Weight(struct Mapped_Weight *weight);
 struct Mapped_Feature* Malloc_Feature(int height, int width, int ch, int scale, int conv_out_scale, int dat_bit);
 struct Mapped_Weight* Malloc_Weight(int Ky, int Kx, int in_ch, int out_ch, int scale, int wt_bit);
 
+void Convert_F2W(struct Mapped_Feature* feature, struct Mapped_Weight* weight);
+
 void CSB_Write(int addr, int data);
 int CSB_Read(int addr);
 signed char* Get_Element(struct Mapped_Feature* feature, int row, int col, int ch);

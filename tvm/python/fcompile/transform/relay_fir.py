@@ -3,8 +3,8 @@ from tvm import relay
 from tvm.relay import ExprFunctor, ExprMutator, ExprVisitor
 from tvm.topi.utils import get_const_tuple
 
-from ..op import Input, FPGA_OP_MAP, TVMOp
-from ..fir import FVar, FCall, FExtern
+from ..op import Input, Const, FPGA_OP_MAP, TVMOp
+from ..fir import FVar, FCVar, FCall, FExtern
 
 
 class RelayFIR(ExprFunctor):
@@ -50,3 +50,10 @@ class RelayFIR(ExprFunctor):
         dtype = var.checked_type.dtype
         funct = Input(dshape, dtype)
         return FVar(var.name_hint, funct)
+
+    def visit_constant(self, const):
+        dshape = get_const_tuple(const.checked_type.shape)
+        dtype = const.checked_type.dtype
+        funct = Const(dshape, dtype)
+        id_ = "const" + str(self.get_id())
+        return FCVar(id_, funct, const.data.asnumpy())

@@ -11,7 +11,8 @@ from tvm.relay import transform
 
 from fcompile.fir import FModule
 from fcompile.transform import RelayFIR
-from fcompile.quant import Quantize, Dequantize, QuantifiedLinear
+from fcompile.quant import Quantize, Dequantize
+from fcompile.quant import nn as fqnn
 from fcompile.simulate import modelsim, result_diff_check, diff, diff_scale, process
 from fcompile import config
 
@@ -25,9 +26,9 @@ class SelfAttention(nn.Module):
     def __init__(self, input_dim, dim_k, dim_v, bit_width):
         super(SelfAttention, self).__init__()
         self.quantize = Quantize(bit_width=bit_width)
-        self.q = QuantifiedLinear(input_dim, dim_k, bias=False, bit_width=bit_width)
-        self.k = QuantifiedLinear(input_dim, dim_k, bias=False, bit_width=bit_width)
-        self.v = QuantifiedLinear(input_dim, dim_v, bias=False, bit_width=bit_width)
+        self.q = fqnn.Linear(input_dim, dim_k, bias=False, bit_width=bit_width)
+        self.k = fqnn.Linear(input_dim, dim_k, bias=False, bit_width=bit_width)
+        self.v = fqnn.Linear(input_dim, dim_v, bias=False, bit_width=bit_width)
         self._norm_fact = 1 / sqrt(dim_k)
 
     def forward(self, x):
@@ -138,4 +139,12 @@ def check_attention():
     return t_out, f_out, oscale, 5 # torch_result, fcompile_verilog_result, out_scale, same_threshold
 
 
-check_attention()
+#check_attention()
+
+if __name__ == "__main__":
+    name = "./test/atten_jit.onnx"
+    width = 8
+    data = torch.randn(size=(1, 64, 64)) / 2
+    model = SelfAttention(64, 64, 64, width)
+    torch.onnx.export(model, data, name, input_names=["input"], output_names=["output"])
+

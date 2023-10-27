@@ -133,9 +133,6 @@ class Softmax(Op):
     arg_types = [[OpType.f_ddr]]
     ret_type = OpType.f_ddr
 
-    def param_process(self, *largs):
-        return [np.array([])]
-
     def fpga_jit(self, name, args, attrs):
         ret = {}
         data = args[0]
@@ -201,9 +198,6 @@ class Transpose(Op):
     arg_types = [[OpType.f_ddr]]
     ret_type = OpType.w_ddr
 
-    def param_process(self, *largs):
-        return [np.array([])]
-
     def fpga_jit(self, name, args, attrs):
         ret = {}
         data = args[0]
@@ -263,9 +257,6 @@ class LayerNorm(Op):
     name = "vit_layer_norm"
     arg_types = [[OpType.f_ddr], [OpType.f_ddr]]
     ret_type = OpType.f_ddr
-
-    def param_process(self, *largs):
-        return [np.array([])]
 
     def fpga_jit(self, name, args, attrs):
         ret = {}
@@ -395,38 +386,26 @@ class Conv2DResAdd(Op):
         return output
 
 
-@register_fpga_op("accel.vit.activate")
+@register_fpga_op("accel.vit.activation")
 class Activate(Op):
 
-    name = "vit_activate"
+    name = "vit_activation"
     arg_types = [[OpType.f_ddr]]
     ret_type = OpType.f_ddr
 
-    #TODO args should be flexible for multi-input
-    def param_process(self, args, attrs, tin, tout):
-        return [np.array([])]
-
     def fpga_jit(self, name, args, attrs):
         ret = {}
-        data, weight = args
-        ret_name, cfg_name = "conv_" + name, "cfg_" + name
-        dat_name, wet_name = data["name"], weight["name"]
-        tin, tout = attrs["tin"], attrs["tout"]
+        data = args[0]
+        ret_name = "activate_" + name
+        dat_name = data["name"]
         _, dh, dw, c = data["shape"]
-        kh, kw, i, o = weight["shape"]
-        _, oh, ow, _ = self.shape
-        ph, pw = [int(i) for i in attrs["padding"]]
-        sh, sw = [int(i) for i in attrs["strides"]]
-        d_bw, w_bw, o_bw = [int(i) for i in attrs["widths"]]
-        d_sc, w_sc, o_sc = [int(i) for i in attrs["scales"]]
+        d_bw, o_bw = [int(i) for i in attrs["widths"]]
+        d_sc, o_sc = [int(i) for i in attrs["scales"]]
         tin, tout = attrs["tin"], attrs["tout"]
-        # TODO: finish relu, gelu, mode in attrs
-        relu, gelu, mode = 0, 0, 0
-        cfg_list = get_conv_cfg("conv", dh, dw, c, o, kh, kw, sh, sw, ph, pw, d_bw, tin, tout)
-        cfg_str = f"struct Conv_Cfg {cfg_name} = " + "{" + list2str(cfg_list) + "};"
-        mal_str = MallocFeature(ret_name, [oh, ow, o, o_sc, o_sc, o_bw])
-        fun_str = f"FPGA_Conv({cfg_name}, {relu}, {gelu}, {mode}, {dat_name}, {wet_name}, {ret_name});"
-        ret["callop"] = [cfg_str, mal_str, fun_str]
+        pixel_in, pixel_out, mode = dh*dw, c, 0
+        mal_str = MallocFeature(ret_name, [dh, dw, c, o_sc, o_sc, o_bw])
+        fun_str = f"FPGA_Run_Activation({dat_name}, {ret_name});"
+        ret["callop"] = [mal_str, fun_str]
         if data["free"]:
             ret["callop"].append(FreeFeature(dat_name))
         ret["return"] = {"name" : ret_name, "type" : self.ret_type, "shape" : self.shape}
@@ -435,25 +414,16 @@ class Activate(Op):
 
     def modelsim(self, args, attrs, tin, tout):
         from ..config import SIM_ROOT, SIM_HIDE_STDOUT
-        tb_name = "testbench_mp_conv_res"
-        data, weight, res_add = args
-        _, dh, dw, c = data.shape
-        kh, kw, i, o = weight.shape
-        _, oh, ow, _ = self.shape
-        ph, pw = [int(i) for i in attrs["padding"]]
-        sh, sw = [int(i) for i in attrs["strides"]]
-        d_bw, w_bw, r_bw, o_bw = [int(i) for i in attrs["widths"]]
-        d_sc, w_sc, r_sc, o_sc = [int(i) for i in attrs["scales"]]
+        tb_name = "testbench_activation"
+        data = args[0]
+        _, _, dh, dw = data.shape
+        d_bw, o_bw = [int(i) for i in attrs["widths"]]
+        d_sc, o_sc = [int(i) for i in attrs["scales"]]
         input_dt = os.path.join(SIM_ROOT, "run", "input_dt")
-        input_wt = os.path.join(SIM_ROOT, "run", "input_wt")
-        input_ad = os.path.join(SIM_ROOT, "run", "input_ad")
         writememh(input_dt, data, d_bw)
-        writememh(input_wt, weight, w_bw)
-        writememh(input_ad, res_add, r_bw)
         define = {
-            "DAT_DW_L0" : d_bw, "DAT_DW_L1" : o_bw, "Hin_L0" : dh, "Win_L0" : dw, "CHin_L0" : c, "CHout_L0" : o,
-            "Kx_L0" : kw, "Ky_L0" : kh, "Sx_L0" : sw, "Sy_L0" : sh, "Px_L0" : pw, "Py_L0" : ph, 
-            "DAT_IN_scale_L0" : d_sc, "WT_scale_L0" : w_sc, "Conv_out_scale_L0" : o_sc, "Res_Add_scale" : r_sc
+            "DAT_DW_L0" : d_bw, "DAT_DW_L1" : o_bw, "Height" : dh, "Width_in" : dw,
+            "in_scale" : d_sc, "out_scale" : o_sc
         }
         define_str = make_define(define)
         cmd = f"make sim DEFINES={define_str} TB_NAME={tb_name}"

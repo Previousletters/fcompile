@@ -14,7 +14,7 @@ from fcompile.quant import Quantize, Dequantize
 from fcompile.simulate import modelsim, result_diff_check, diff, diff_scale, process
 from fcompile import config
 
-config.SIM_HIDE_STDOUT = True
+config.SIM_HIDE_STDOUT = False
 
 @result_diff_check(diff)
 def check_conv2d():
@@ -284,10 +284,44 @@ def check_matmul():
     return t_out, f_out # torch_result, fcompile_verilog_result
 
 
-check_conv2d()
-check_mm()
-check_softmax()
-check_transpose()
-check_layernorm()
-check_conv2d_add()
-check_matmul()
+@result_diff_check(diff)
+def check_gelu():
+    dat_bw_l0, dat_bw_l1 = 8, 8
+    data = torch.randn(size=(1, 1, 64, 64)) / 2
+
+    quantize = Quantize(bit_width=dat_bw_l0)
+    dequantize = Dequantize(bit_width=dat_bw_l1)
+
+    dquanted = quantize(data)
+    dscale = int(quantize.scale[0])
+
+    tp_out = torch.nn.GELU()(dquanted)
+    
+    oquanted = dequantize(tp_out)
+    oscale = int(dequantize.scale[0])
+    t_out = process(oquanted, oscale)
+
+    widths, scales = [dat_bw_l0, dat_bw_l1], [dscale, oscale]
+    dvar = relay.var("data", shape=(1, 1, 64, 64), dtype="int8")
+    fout = relay.accel.vit.activation(dvar, widths=widths, scales=scales, activate=0)
+    func = relay.Function([dvar], fout)
+    mod = IRModule.from_expr(func)
+    mod = transform.InferType()(mod)
+    print(mod)
+    f_mod = FModule(RelayFIR().convert(mod), tin=64, tout=32)
+    print(f_mod)
+    inputs = {
+        "data" : process(dquanted, dscale),
+    }
+    f_out = modelsim(f_mod, inputs)
+    return t_out, f_out # torch_result, fcompile_verilog_result
+
+
+#check_conv2d()
+#check_mm()
+#check_softmax()
+#check_transpose()
+#check_layernorm()
+#check_conv2d_add()
+#check_matmul()
+check_gelu()

@@ -15,6 +15,10 @@ class Op:
     def fpga_jit(self, name):
         pass
 
+    def param_process(self, args, attrs, tin, tout):
+        import numpy as np
+        return [np.array([]) for arg in args]
+
     def infer_rt(self, args, attrs, tin, tout):
         self.rt_shape = self.shape
         return True

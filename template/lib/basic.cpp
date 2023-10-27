@@ -350,4 +350,8 @@ void Free_Weight(struct Mapped_Weight *weight)
 	free(weight);
 }
 
+void Convert_F2W(struct Mapped_Feature* feature, struct Mapped_Weight* weight) {
+    weight->payload = feature->payload;
+}
+
 #endif

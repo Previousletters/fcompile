@@ -10,6 +10,17 @@
 namespace tvm {
 namespace relay {
 
+/*! \brief data type cast */
+struct QuantAttrs : public tvm::AttrsNode<QuantAttrs> {
+  int bwidth;
+  int dscale;
+
+  TVM_DECLARE_ATTRS(QuantAttrs, "relay.attrs.accel.QuantAttrs") {
+    TVM_ATTR_FIELD(bwidth).describe("bit width");
+    TVM_ATTR_FIELD(dscale).describe("data scale");
+  }
+};  // struct CastAttrs.
+
 /*! \brief Attributes used in convolution operators */
 struct AccelOpAttrs : public tvm::AttrsNode<AccelOpAttrs> {
   Array<IndexExpr> strides;

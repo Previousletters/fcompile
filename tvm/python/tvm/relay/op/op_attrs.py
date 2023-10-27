@@ -563,3 +563,7 @@ class ThreefryGenerateAttrs(Attrs):
 class AccelOpAttrs(Attrs):
     """Attributes used in ThreefryGenerateAttrs operators"""
 
+@tvm._ffi.register_object("relay.attrs.accel.QuantAttrs")
+class QuantAttrs(Attrs):
+    """Attributes used in ThreefryGenerateAttrs operators"""
+

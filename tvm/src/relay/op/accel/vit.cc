@@ -375,11 +375,11 @@ Expr MakeAccelVitActivate(Expr data, Array<IndexExpr> widths, Array<IndexExpr> s
   attrs->kernel_layout = "HWIO";
   attrs->data_layout = "NHWC";
   attrs->out_layout = "NHWC";
-  const Op& op = Op::Get("accel.vit.activate");
+  const Op& op = Op::Get("accel.vit.activation");
   return Call(op, {data}, Attrs(attrs), {});
 }
 
-TVM_REGISTER_GLOBAL("relay.op.accel._make.vit_activate")
+TVM_REGISTER_GLOBAL("relay.op.accel._make.vit_activation")
     .set_body_typed([](Expr data, Array<IndexExpr> widths, Array<IndexExpr> scales, IndexExpr activate) {
       return MakeAccelVitActivate(data, widths, scales, activate);
     });
@@ -393,7 +393,7 @@ bool AccelVitActivateRel(const Array<Type>& types, int num_inputs, const Attrs& 
   return true;
 }
 
-RELAY_REGISTER_OP("accel.vit.activate")
+RELAY_REGISTER_OP("accel.vit.activation")
     .describe(R"code(2D convolution layer (e.g. spatial convolution over sequences).
 
 This layer creates a convolution kernel that is convolved

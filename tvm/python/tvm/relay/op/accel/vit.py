@@ -147,13 +147,13 @@ def conv2d_add(
         activate
     )
 
-def activate(
+def activation(
     data,
     widths=None,
     scales=None,
     activate=1
 ):
-    return _make.vit_activate(
+    return _make.vit_activation(
         data,
         widths,
         scales,
