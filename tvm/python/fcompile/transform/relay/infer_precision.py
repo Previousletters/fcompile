@@ -71,6 +71,6 @@ class InferPrecision(ExprMutator):
         return super().visit_call(new_call)
 
 @register_transform("infer_precision")
-def transform(mod):
+def transform(mod, params):
     mod = InferPrecision().convert(mod)
-    return mod
+    return mod, params

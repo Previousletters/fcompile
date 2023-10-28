@@ -1,3 +1,5 @@
+import tvm
+
 TRANSFORM_FUNC_MAP = {}
 
 def register_transform(op_name):
@@ -15,9 +17,10 @@ def transform(name):
         return TRANSFORM_FUNC_MAP[name]
     elif isinstance(name, list):
         trans_list = [TRANSFORM_FUNC_MAP[n] for n in name]
-        def Sequantial(*args):
+        def Sequantial(mod, params):
             for trans in trans_list:
-                args = trans(*args)
-            return args
+                mod, params = trans(mod, params)
+                mod = tvm.relay.transform.InferType()(mod)
+            return mod, params
         return Sequantial
 

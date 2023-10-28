@@ -211,7 +211,7 @@ class Transpose(Op):
         tin, tout = attrs["tin"], attrs["tout"]
         # TODO: finish relu, gelu, mode in attrs
         mode = 0
-        mal_str = MallocFeature(ret_name, [oh, ow, o, o_sc, o_sc, o_bw])
+        mal_str = MallocWeight(ret_name, [oh, ow, o, o_sc, o_sc, o_bw])
         fun_str = f"FPGA_Run_Transpose({dat_name}, {ret_name}, {mode});"
         ret["callop"] = [mal_str, fun_str]
         if data["free"]:

@@ -107,43 +107,6 @@ class MMVIT(ExprVisitor):
         return output
 
 
-class ConvertVIT(ExprMutator):
-
-    def convert(self, mod):
-        self.memo = {}
-        self.new_vars = []
-        expr = mod["main"].body
-        new_expr = self.visit(expr)
-        func = relay.Function(self.new_vars, new_expr)
-        new_mod = tvm.IRModule.from_expr(func)
-        return new_mod
-
-    def visit_var(self, var):
-        var = super().visit_var(var)
-        self.new_vars.append(var)
-        return var
-
-    def visit_call(self, call):
-        if hasattr(self, "bwidth") and hasattr(self, "dscale"):
-            op_name = call.op
-            call_op = call
-            oshape = call.checked_type.shape
-            if str(call.op) == "reshape":
-                call_op = call.args[0]
-                op_name = call_op.op
-            new_call = convert_op(str(op_name), "vit")(call_op, self.bwidth, self.dscale, oshape)
-            del self.bwidth, self.dscale
-            return super().visit_call(new_call)
-        elif str(call.op) == "accel.dequantize":
-            self.bwidth = int(call.attrs["bwidth"])
-            self.dscale = int(call.attrs["dscale"])
-            new_call = call.args[0]
-            return super().visit(new_call)
-        else:
-            new_call = call
-            return super().visit_call(new_call)
-
-
 @register_op_map("nn.softmax", "vit")
 class SoftmaxVIT(ExprVisitor):
 
@@ -257,7 +220,44 @@ class TransposeVIT(ExprVisitor):
         return output
 
 
+class ConvertVIT(ExprMutator):
+
+    def convert(self, mod):
+        self.memo = {}
+        self.new_vars = []
+        expr = mod["main"].body
+        new_expr = self.visit(expr)
+        func = relay.Function(self.new_vars, new_expr)
+        new_mod = tvm.IRModule.from_expr(func)
+        return new_mod
+
+    def visit_var(self, var):
+        var = super().visit_var(var)
+        self.new_vars.append(var)
+        return var
+
+    def visit_call(self, call):
+        if hasattr(self, "bwidth") and hasattr(self, "dscale"):
+            op_name = call.op
+            call_op = call
+            oshape = call.checked_type.shape
+            if str(call.op) == "reshape":
+                call_op = call.args[0]
+                op_name = call_op.op
+            new_call = convert_op(str(op_name), "vit")(call_op, self.bwidth, self.dscale, oshape)
+            del self.bwidth, self.dscale
+            return super().visit_call(new_call)
+        elif str(call.op) == "accel.dequantize":
+            self.bwidth = int(call.attrs["bwidth"])
+            self.dscale = int(call.attrs["dscale"])
+            new_call = call.args[0]
+            return super().visit(new_call)
+        else:
+            new_call = call
+            return super().visit_call(new_call)
+
+
 @register_transform("convert_vit")
-def transform(mod):
+def transform(mod, params):
     mod = ConvertVIT().convert(mod)
-    return mod
+    return mod, params

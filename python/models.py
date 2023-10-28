@@ -107,17 +107,9 @@ def compile():
     shape_dict = {"data" : (1, 64, 64)}
     # return = mod, params
     mod, params = frontend.contrib.onnx.from_onnx(onnx_model, shape_dict)
-    mod, params = ftransform("convert_type")(mod, params)
-    mod = transform.InferType()(mod)
     print(mod)
-    mod = ftransform("infer_precision")(mod)
-    mod = transform.InferType()(mod)
-    print(mod)
-    mod = ftransform("convert_vit")(mod)
-    mod = transform.InferType()(mod)
-    print(mod)
-    mod, params = ftransform("eliminate")(mod, params)
-    mod = transform.InferType()(mod)
+    pass_list = ["convert_type", "infer_precision", "convert_vit", "eliminate"]
+    mod, params = ftransform(pass_list)(mod, params)
     print(mod)
     np_params = {}
     for name, data in params.items():
