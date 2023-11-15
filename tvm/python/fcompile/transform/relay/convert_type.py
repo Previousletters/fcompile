@@ -34,8 +34,12 @@ class ConvertType(ExprMutator):
     def visit_call(self, call):
         if str(call.op) == "reshape":
             newshape = list(call.attrs["newshape"])
-            newshape = tuple([1 if i == -1 else i for i in newshape])
-            new_call = relay.reshape(call.args[0], newshape)
+            realshape = list(call.checked_type.shape)
+            if (newshape == realshape):
+                newshape = tuple([1 if i == -1 else i for i in newshape])
+                new_call = relay.reshape(call.args[0], newshape)
+            else:
+                new_call = call
         elif str(call.op) == "accel.quantize":
             self.bwidth = int(call.attrs["bwidth"])
             self.dscale = int(call.attrs["dscale"])

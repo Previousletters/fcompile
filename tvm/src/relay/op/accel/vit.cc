@@ -412,6 +412,67 @@ with the layer input to produce a tensor of outputs.
     .set_support_level(2)
     .add_type_rel("AccelVitActivate", AccelVitActivateRel);
 
+Expr MakeAccelVitAdd(Expr data, Expr weight, Array<IndexExpr> widths, Array<IndexExpr> scales, 
+                    IndexExpr activate) {
+  auto attrs = make_object<AccelOpAttrs>();
+  attrs->strides = {1, 1};
+  attrs->padding = {0, 0};
+  attrs->kernel_size = {1, 1};
+  attrs->widths = widths;
+  attrs->scales = scales;
+  attrs->activate = activate;
+  attrs->kernel_layout = "HWIO";
+  attrs->data_layout = "NHWC";
+  attrs->out_layout = "NHWC";
+  const Op& op = Op::Get("accel.vit.add");
+  return Call(op, {data, weight}, Attrs(attrs), {});
+}
+
+TVM_REGISTER_GLOBAL("relay.op.accel._make.vit_add")
+    .set_body_typed([](Expr data, Expr weight, Array<IndexExpr> widths, Array<IndexExpr> scales, 
+                    IndexExpr activate) {
+      return MakeAccelVitAdd(data, weight, widths, scales, activate);
+    });
+
+bool AccelVitAddRel(const Array<Type>& types, int num_inputs, const Attrs& attrs,
+                       const TypeReporter& reporter) {
+  ICHECK_EQ(types.size(), 3);
+  const auto* data = types[0].as<TensorTypeNode>();
+  const auto* weight = types[1].as<TensorTypeNode>();
+  if (data == nullptr) return false;
+  if (weight == nullptr) return false;
+  //TODO: trans_layout 
+  Array<IndexExpr> dshape_nhwc = data->shape; // HWIO
+  Array<IndexExpr> wshape_hwio = weight->shape; // HWIO
+  if (!tvm::tir::ExprDeepEqual()(dshape_nhwc[0], wshape_hwio[0])) return false;
+  if (!tvm::tir::ExprDeepEqual()(dshape_nhwc[1], wshape_hwio[1])) return false;
+  if (!tvm::tir::ExprDeepEqual()(dshape_nhwc[2], wshape_hwio[2])) return false;
+  if (!tvm::tir::ExprDeepEqual()(dshape_nhwc[3], wshape_hwio[3])) return false;
+  reporter->Assign(types[2], TensorType(dshape_nhwc, data->dtype));
+  return true;
+}
+
+RELAY_REGISTER_OP("accel.vit.add")
+    .describe(R"code(2D convolution layer (e.g. spatial convolution over sequences).
+
+This layer creates a convolution kernel that is convolved
+with the layer input to produce a tensor of outputs.
+
+- **data**: This depends on the `layout` parameter. Input is 3D array of shape
+            (batch_size, in_channels, width) if `layout` is `NCW`.
+- **weight**: (channels, in_channels, kernel_size)
+- **out**:  This depends on the `layout` parameter. Output is 3D array of shape
+            (batch_size, channels, out_width) if `layout` is `NCW`.
+
+)code" TVM_ADD_FILELINE)
+    .set_attrs_type<AccelOpAttrs>()
+    .set_num_inputs(2)
+    .add_argument("data", "Tensor", "The input tensor.")
+    .add_argument("weight", "Tensor", "The weight tensor.")
+    .set_support_level(2)
+    .add_type_rel("AccelVitAdd", AccelVitAddRel);
+
+
 }
 
 

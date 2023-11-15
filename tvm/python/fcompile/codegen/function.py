@@ -32,6 +32,10 @@ def Feature2Weight(in_name, out_name):
     return f"Convert_F2W({in_name}, {out_name});"
 
 
+def Weight2Feature(in_name, out_name):
+    return f"Convert_W2F({in_name}, {out_name});"
+
+
 def FreeFeature(name):
     return f"Free_Feature({name});"
 

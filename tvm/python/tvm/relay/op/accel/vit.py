@@ -159,3 +159,18 @@ def activation(
         scales,
         activate
     )
+
+def add(
+    data,
+    weight,
+    widths=None,
+    scales=None,
+    activate=0
+):
+    return _make.vit_add(
+        data,
+        weight,
+        widths,
+        scales,
+        activate
+    )

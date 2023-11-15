@@ -62,16 +62,24 @@ class Eliminate(ExprMutator):
         return new_mod, self.params
 
     def visit_var(self, var):
-        new_var = var
         if hasattr(self, "last_shape"):
             del self.last_shape
-        self.new_vars.append(new_var)
-        return new_var
+        for new_var in self.new_vars:
+            if new_var.name_hint == var.name_hint:
+                return new_var
+        self.new_vars.append(var)
+        return var
 
 
     def visit_call(self, call):
         if str(call.op) == "reshape":
             self.last_shape = call.attrs["newshape"]
+            is_next, new_call, self.params = MatchReshape().find(call, self.last_shape, self.params, self.start)
+            if is_next:
+                return self.visit(new_call)
+            return super().visit_call(new_call)
+        elif str(call.op) == "transpose":
+            self.last_shape = call.checked_type.shape
             is_next, new_call, self.params = MatchReshape().find(call, self.last_shape, self.params, self.start)
             if is_next:
                 return self.visit(new_call)

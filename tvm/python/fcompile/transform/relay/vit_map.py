@@ -23,7 +23,7 @@ def register_op_map(op_name, target):
 def convert_op(name, target):
     if name not in CONVERT_OP_MAP:
         def _fn(*args):
-            return relay.accel.base.dequantize(args[0], args[1], args[2])
+            return relay.accel.base.dequantize(args[0], args[1], args[2]), args[4]
         return _fn
     return CONVERT_OP_MAP[name][target]
 
@@ -37,7 +37,7 @@ def get_tuple_4d(shape):
 @register_op_map("nn.conv2d", "vit")
 class Conv2dVIT(ExprVisitor):
 
-    def convert(self, expr, owidth, oscale, oshape):
+    def convert(self, expr, owidth, oscale, oshape, params):
         self.widths = []
         self.scales = []
         self.args = []
@@ -46,10 +46,10 @@ class Conv2dVIT(ExprVisitor):
         for arg in expr.args:
             self.visit(arg)
         if hasattr(self, "failure"):
-            return relay.accel.base.dequantize(expr, owidth, oscale)
+            return relay.accel.base.dequantize(expr, owidth, oscale), params
         else:
             data, weight = self.args
-            return relay.accel.vit.conv2d(data, weight, strides, padding, widths=self.widths, scales=self.scales)
+            return relay.accel.vit.conv2d(data, weight, strides, padding, widths=self.widths, scales=self.scales), params
 
     def visit_call(self, call):
         if str(call.op) == "accel.quantize":
@@ -65,7 +65,7 @@ class MMVIT(ExprVisitor):
 
     enable_ops = ["transpose", "reshape"]
 
-    def convert(self, expr, owidth, oscale, oshape):
+    def convert(self, expr, owidth, oscale, oshape, params):
         self.widths = []
         self.scales = []
         self.args = []
@@ -73,9 +73,9 @@ class MMVIT(ExprVisitor):
         for arg in expr.args:
             self.visit(arg)
         if hasattr(self, "failure"):
-            return relay.accel.base.dequantize(expr, owidth, oscale)
+            return relay.accel.base.dequantize(expr, owidth, oscale), params
         else:
-            return self.gen_expr(owidth, oscale)
+            return self.gen_expr(owidth, oscale), params
 
     def visit_call(self, call):
         if str(call.op) == "accel.quantize":
@@ -110,7 +110,7 @@ class MMVIT(ExprVisitor):
 @register_op_map("nn.softmax", "vit")
 class SoftmaxVIT(ExprVisitor):
 
-    def convert(self, expr, owidth, oscale, oshape):
+    def convert(self, expr, owidth, oscale, oshape, params):
         self.widths = []
         self.scales = []
         self.args = []
@@ -118,9 +118,9 @@ class SoftmaxVIT(ExprVisitor):
         for arg in expr.args:
             self.visit(arg)
         if hasattr(self, "failure"):
-            return relay.accel.base.dequantize(expr, owidth, oscale)
+            return relay.accel.base.dequantize(expr, owidth, oscale), params
         else:
-            return self.gen_expr(owidth, oscale)
+            return self.gen_expr(owidth, oscale), params
 
     def visit_call(self, call):
         if str(call.op) == "accel.quantize":
@@ -145,7 +145,7 @@ class SoftmaxVIT(ExprVisitor):
 @register_op_map("multiply", "vit")
 class MultiplyVIT(ExprVisitor):
 
-    def convert(self, expr, owidth, oscale, oshape):
+    def convert(self, expr, owidth, oscale, oshape, params):
         self.widths = []
         self.scales = []
         self.args = []
@@ -153,9 +153,9 @@ class MultiplyVIT(ExprVisitor):
         for arg in expr.args:
             self.visit(arg)
         if hasattr(self, "failure"):
-            return relay.accel.base.dequantize(expr, owidth, oscale)
+            return relay.accel.base.dequantize(expr, owidth, oscale), params
         else:
-            return self.gen_expr(owidth, oscale)
+            return self.gen_expr(owidth, oscale), params
 
     def visit_call(self, call):
         if str(call.op) == "accel.quantize":
@@ -188,7 +188,7 @@ class MultiplyVIT(ExprVisitor):
 @register_op_map("transpose", "vit")
 class TransposeVIT(ExprVisitor):
 
-    def convert(self, expr, owidth, oscale, oshape):
+    def convert(self, expr, owidth, oscale, oshape, params):
         self.widths = []
         self.scales = []
         self.args = []
@@ -196,9 +196,9 @@ class TransposeVIT(ExprVisitor):
         for arg in expr.args:
             self.visit(arg)
         if hasattr(self, "failure"):
-            return relay.accel.base.dequantize(expr, owidth, oscale)
+            return relay.accel.base.dequantize(expr, owidth, oscale), params
         else:
-            return self.gen_expr(owidth, oscale)
+            return self.gen_expr(owidth, oscale), params
 
     def visit_call(self, call):
         if str(call.op) == "accel.quantize":
@@ -220,16 +220,185 @@ class TransposeVIT(ExprVisitor):
         return output
 
 
+@register_op_map("nn.layer_norm", "vit")
+class LayerNormVIT(ExprVisitor):
+
+    def convert(self, expr, owidth, oscale, oshape, params):
+        self.widths = []
+        self.scales = []
+        self.args = []
+        self.oshape = oshape
+        self.params = params
+        for arg in expr.args:
+            self.visit(arg)
+        if hasattr(self, "failure"):
+            return relay.accel.base.dequantize(expr, owidth, oscale), params
+        else:
+            return self.gen_expr(owidth, oscale), self.params
+
+    def visit_call(self, call):
+        if str(call.op) == "accel.quantize":
+            self.widths.append(call.attrs["bwidth"])
+            self.scales.append(call.attrs["dscale"])
+            self.args.append(call.args[0])
+        else:
+            self.failure = 1
+
+    def gen_expr(self, owidth, oscale):
+        self.widths.append(owidth)
+        self.scales.append(oscale)
+        data, weight, bias = self.args
+        dshape = data.checked_type.shape
+        wshape = weight.checked_type.shape
+        new_dshape = get_tuple_4d(dshape)
+        new_data = relay.reshape(data, new_dshape)
+        new_wshape = get_tuple_4d([int(wshape[0])*2])
+        new_weight = relay.var(weight.name_hint, shape=new_wshape, dtype=weight.type_annotation.dtype)
+        output = relay.accel.vit.layer_norm(new_data, new_weight, self.widths, self.scales)
+        output = relay.reshape(output, self.oshape)
+        pweight = self.params[weight.name_hint].asnumpy()
+        pbias = self.params[bias.name_hint].asnumpy()
+        new_pweight = np.concatenate((pweight, pbias), axis=0)
+        new_pweight = new_pweight.reshape(new_wshape)
+        self.params.pop(bias.name_hint)
+        self.params[weight.name_hint] = tvm.nd.array(new_pweight)
+        return output
+
+
+@register_op_map("add", "vit")
+class AddVIT(ExprVisitor):
+
+    def convert(self, expr, owidth, oscale, oshape, params):
+        self.widths = []
+        self.scales = []
+        self.args = []
+        self.oshape = oshape
+        self.params = params
+        for arg in expr.args:
+            self.visit(arg)
+        if hasattr(self, "failure"):
+            return relay.accel.base.dequantize(expr, owidth, oscale), params
+        else:
+            return self.gen_expr(owidth, oscale), params
+
+    def visit_call(self, call):
+        if str(call.op) == "accel.quantize":
+            self.widths.append(call.attrs["bwidth"])
+            self.scales.append(call.attrs["dscale"])
+            self.args.append(call.args[0])
+        else:
+            self.failure = 1
+
+    def gen_expr(self, owidth, oscale):
+        self.widths.append(owidth)
+        self.scales.append(oscale)
+        data, weight = self.args
+        dshape = data.checked_type.shape
+        wshape = weight.checked_type.shape
+        new_dshape = get_tuple_4d(dshape)
+        new_data = relay.reshape(data, new_dshape)
+        new_wshape = get_tuple_4d(wshape)
+        new_weight = relay.reshape(weight, new_wshape)
+        output = relay.accel.vit.add(new_data, new_weight, self.widths, self.scales, 0)
+        output = relay.reshape(output, self.oshape)
+        return output
+
+
+@register_op_map("accel.gelu", "vit")
+class GELUVIT(ExprVisitor):
+
+    def convert(self, expr, owidth, oscale, oshape, params):
+        self.widths = []
+        self.scales = []
+        self.args = []
+        self.oshape = oshape
+        for arg in expr.args:
+            self.visit(arg)
+        if hasattr(self, "failure"):
+            return relay.accel.base.dequantize(expr, owidth, oscale), params
+        else:
+            return self.gen_expr(owidth, oscale), params
+
+    def visit_call(self, call):
+        if str(call.op) == "accel.quantize":
+            self.widths.append(call.attrs["bwidth"])
+            self.scales.append(call.attrs["dscale"])
+            self.args.append(call.args[0])
+        else:
+            self.failure = 1
+
+    def gen_expr(self, owidth, oscale):
+        self.widths.append(owidth)
+        self.scales.append(oscale)
+        data = self.args[0]
+        dshape = data.checked_type.shape
+        new_dshape = get_tuple_4d(dshape)
+        new_data = relay.reshape(data, new_dshape)
+        output = relay.accel.vit.activation(new_data, self.widths, self.scales, 0)
+        output = relay.reshape(output, self.oshape)
+        return output
+
+
+@register_op_map("layout_transform", "vit")
+class LayoutTransformVIT(ExprVisitor):
+
+    def convert(self, expr, owidth, oscale, oshape, params):
+        self.widths = []
+        self.scales = []
+        self.args = []
+        self.oshape = oshape
+        self.params = params
+        new_expr = expr.args[0]
+        if str(new_expr.op) == "nn.conv2d":
+            self.strides = new_expr.attrs["strides"]
+            self.padding = new_expr.attrs["padding"]
+            for arg in new_expr.args:
+                self.visit(arg)
+            if hasattr(self, "failure"):
+                return relay.accel.base.dequantize(expr, owidth, oscale), params
+            else:
+                return self.gen_expr(owidth, oscale), params
+        else:
+            return relay.accel.base.dequantize(expr, owidth, oscale), self.params
+
+    def visit_call(self, call):
+        if str(call.op) == "accel.quantize":
+            self.widths.append(call.attrs["bwidth"])
+            self.scales.append(call.attrs["dscale"])
+            self.args.append(call.args[0])
+        elif str(call.op) == "layout_transform":
+            self.visit(call.args[0])
+        else:
+            self.failure = 1
+
+    def gen_expr(self, owidth, oscale):
+        self.widths.append(owidth)
+        self.scales.append(oscale)
+        data, weight = self.args
+        new_data = relay.transpose(data, [0, 2, 3, 1])
+        if hasattr(weight, "name_hint"):
+            data = self.params[weight.name_hint].asnumpy()
+            data = data.transpose([2, 3, 1, 0])
+            new_weight = relay.var(weight.name_hint, shape=data.shape, dtype=weight.type_annotation.dtype)
+            self.params[weight.name_hint] = tvm.nd.array(data)
+        else:
+            new_weight = relay.transpose(weight, [2, 3, 1, 0])
+        output = relay.accel.vit.conv2d(new_data, new_weight, self.strides, self.padding, widths=self.widths, scales=self.scales, activate=0)
+        output = relay.transpose(output, [0, 3, 1, 2])
+        return output
+
+
 class ConvertVIT(ExprMutator):
 
-    def convert(self, mod):
+    def convert(self, mod, params):
         self.memo = {}
         self.new_vars = []
+        self.params = params
         expr = mod["main"].body
         new_expr = self.visit(expr)
         func = relay.Function(self.new_vars, new_expr)
         new_mod = tvm.IRModule.from_expr(func)
-        return new_mod
+        return new_mod, self.params
 
     def visit_var(self, var):
         var = super().visit_var(var)
@@ -244,7 +413,7 @@ class ConvertVIT(ExprMutator):
             if str(call.op) == "reshape":
                 call_op = call.args[0]
                 op_name = call_op.op
-            new_call = convert_op(str(op_name), "vit")(call_op, self.bwidth, self.dscale, oshape)
+            new_call, self.params = convert_op(str(op_name), "vit")(call_op, self.bwidth, self.dscale, oshape, self.params)
             del self.bwidth, self.dscale
             return super().visit_call(new_call)
         elif str(call.op) == "accel.dequantize":
@@ -259,5 +428,5 @@ class ConvertVIT(ExprMutator):
 
 @register_transform("convert_vit")
 def transform(mod, params):
-    mod = ConvertVIT().convert(mod)
+    mod, params = ConvertVIT().convert(mod, params)
     return mod, params

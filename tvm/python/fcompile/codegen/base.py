@@ -54,11 +54,14 @@ class BaseCodeGen:
     def gen_extern(self, value):
         pass
 
-    
 def np2bytes(data):
+    bdata = data.tobytes()
+    return bdata
+    '''
     data = data.reshape((1, -1))
     size = data.size
     params = b""
     for n in range(size):
         params += struct.pack("h", int(data[0, n]))
     return params
+    '''

@@ -27,14 +27,16 @@ class RelayFIR(ExprFunctor):
         call_op = str(call.op)
         dshape = get_const_tuple(call.checked_type.shape)
         dtype = call.checked_type.dtype
+        if call.attrs == None:
+            attrs = None
+        else:
+            attrs = dict(call.attrs)
         if call_op in FPGA_OP_MAP.keys():
             funct = FPGA_OP_MAP[call_op](dshape, dtype)
-            attrs = dict(call.attrs)
             args = [self.visit(arg) for arg in call.args]
             id_ = self.get_id()
             return FCall(args, funct, attrs, id_)
         else:
-            attrs = dict(call.attrs)
             args = [self.visit(arg) for arg in call.args]
             var_ = []
             for n, arg in enumerate(args):

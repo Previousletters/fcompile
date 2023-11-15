@@ -62,6 +62,14 @@ class InferPrecision(ExprMutator):
             output = relay.transpose(dquant, call.attrs["axes"])
             new_call = relay.accel.base.dequantize(output, self.bwidth, self.dscale)
             del self.bwidth, self.dscale
+        elif str(call.op) == "accel.gelu" and hasattr(self, "bwidth"):
+            qprecision = GetDequantize().get(call)
+            if qprecision == None:
+                return super().visit_call(call)
+            dquant = relay.accel.base.quantize(call.args[0], qprecision[0], qprecision[1])
+            output = relay.accel.base.gelu(dquant)
+            new_call = relay.accel.base.dequantize(output, self.bwidth, self.dscale)
+            del self.bwidth, self.dscale
         elif str(call.op) == "accel.quantize":
             self.bwidth = int(call.attrs["bwidth"])
             self.dscale = int(call.attrs["dscale"])

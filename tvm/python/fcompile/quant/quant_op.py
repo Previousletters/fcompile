@@ -46,7 +46,7 @@ class Dequant(Function):
     @staticmethod
     def forward(ctx, tensor, bit_width, scale_p):
         ori_data = tensor.data.clone()
-        scale = ori_data.view((-1,)).abs_()
+        scale = ori_data.contiguous().view((-1,)).abs_()
         scale = scale.sort()[0][int(0.999*scale.shape[-1])]
         scale = (bit_width-1) - torch.ceil_(torch.log2_(scale))
         scale_p[0] = scale.type(torch.int32)

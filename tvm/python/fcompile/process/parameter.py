@@ -51,9 +51,9 @@ def np_to_bin(dat_in, dw):
         # print(dat_in)
         mod = count % 8
         if (mod):
-            dat_out_0 = np.zeros((count + 8 - mod) // 8)
+            dat_out_0 = np.zeros((count + 8 - mod) // 8, dtype="uint16")
         else:
-            dat_out_0 = np.zeros(count // 8)
+            dat_out_0 = np.zeros(count // 8, dtype="uint16")
 
         print("size of 16 bit:", dat_out_0.size)
         if (mod):
@@ -114,9 +114,9 @@ def np_to_bin(dat_in, dw):
     elif(dw==4):
         mod = count%4
         if (mod):
-            dat_out_0 = np.zeros((count + 4 - mod) // 4)
+            dat_out_0 = np.zeros((count + 4 - mod) // 4, dtype="uint16")
         else:
-            dat_out_0 = np.zeros(count // 4)
+            dat_out_0 = np.zeros(count // 4, dtype="uint16")
         print("size of 16bit:", dat_out_0.size)
         if(mod):
             print("txt行数不是4的倍数，补充", (4-mod),"行0")
@@ -155,9 +155,9 @@ def np_to_bin(dat_in, dw):
     elif(dw==8):
         mod = count%2
         if (mod):
-            dat_out_0 = np.zeros((count + 2 - mod) // 2)
+            dat_out_0 = np.zeros((count + 2 - mod) // 2, dtype="uint16")
         else:
-            dat_out_0 = np.zeros(count // 2)
+            dat_out_0 = np.zeros(count // 2, dtype="uint16")
         print("size of 16bit:", dat_out_0.size)
         if(mod):
             print("txt行数不是2的倍数，补充", (2-mod),"行0")
@@ -190,7 +190,7 @@ def np_to_bin(dat_in, dw):
 
 def HWIO2OIHW(weight_in_vgg):
     Ky, Kx, CHin, CHout = weight_in_vgg.shape
-    new_weight_in_test = np.zeros((CHout, CHin, Ky, Kx))
+    new_weight_in_test = np.zeros((CHout, CHin, Ky, Kx), weight_in_vgg.dtype)
     for chout in range(CHout):
         for chin in range(CHin):
             for ky in range(Ky):

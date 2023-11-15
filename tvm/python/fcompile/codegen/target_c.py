@@ -75,7 +75,7 @@ class CCodeGen(BaseCodeGen):
         name, dtype, attrs = value["name"], value["type"], value["attrs"]
         var, init = Malloc().static(name, dtype, attrs)
         self.static.append(var)
-        if self.node_type == "const":
+        if dtype == OpType.const:
             self.params.append(init)
         else:
             self.inits.append(init)
