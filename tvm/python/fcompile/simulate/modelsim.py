@@ -12,7 +12,7 @@ class ModelSIM(Functor):
     def visit_var(self, var):
         if var.expr_name not in self.inputs.keys():
             raise RuntimeError("Not found the input named " + var.expr_name)
-        if self.inputs[var.expr_name].dtype != "int8":
+        if self.inputs[var.expr_name].dtype not in ["int8", "float16"]:
             raise RuntimeWarning("The input dtype of " + var.expr_name + "should be int8")
         return self.inputs[var.expr_name]
 

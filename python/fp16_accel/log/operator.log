@@ -1,0 +1,65 @@
+def @main(%data: Tensor[(1, 1, 128, 32), float16], %weight: Tensor[(1, 1, 1, 64), float16]) -> Tensor[(1, 1, 128, 32), float16] {
+  accel.hbm.rms_norm(%data, %weight, kernel_size=[1, 1], widths=[16, 16, 16], scales=[0, 0, 0], activate=0) /* ty=Tensor[(1, 1, 128, 32), float16] */
+}
+
+def main(data, weight, tin=128, tout=32) {
+  data = input() /* (1, 1, 128, 32) */
+  weight = input() /* (1, 1, 1, 64) */
+  %0 = hbm_rms_norm(data, weight) /* (1, 1, 128, 32) */
+}
+
+**************** DIFFERENCE ****************
+* JOB NAME  : check_rms_norm
+* T-F DIFFS : 3.03515625, 3.03515625
+* F-T DIFFS : 5.14453125, 5.14453125
+* F-T MEANS : -0.0036563873291015625, -0.0036563873291015625
+* F-T STD   : 0.241943359375, 0.241943359375
+* NUM DIFF  : 255
+* NUM SAME  : 3841
+* THRESHOLD : 0.4
+* SAME%     : 93.77%
+**************** DIFFERENCE ****************
+
+def @main(%data: Tensor[(1, 1, 128, 32), float16]) -> Tensor[(1, 1, 128, 32), float16] {
+  accel.hbm.softmax(%data, kernel_size=[1, 1], widths=[16, 16], scales=[0, 0], activate=0) /* ty=Tensor[(1, 1, 128, 32), float16] */
+}
+
+def main(data, tin=128, tout=32) {
+  data = input() /* (1, 1, 128, 32) */
+  %0 = hbm_softmax(data) /* (1, 1, 128, 32) */
+}
+
+**************** DIFFERENCE ****************
+* JOB NAME  : check_softmax
+* T-F DIFFS : 0.0037841796875, 0.0037841796875
+* F-T DIFFS : 0.0032958984375, 0.0032958984375
+* F-T MEANS : 1.817941665649414e-05, 1.817941665649414e-05
+* F-T STD   : 0.0006461143493652344, 0.0006461143493652344
+* NUM DIFF  : 0
+* NUM SAME  : 4096
+* THRESHOLD : 0.1
+* SAME%     : 100.00%
+**************** DIFFERENCE ****************
+
+def @main(%data: Tensor[(1, 1, 128, 32), float16], %weight: Tensor[(48), float16]) -> Tensor[(1, 1, 128, 32), float16] {
+  accel.hbm.activation(%data, %weight, kernel_size=[1, 1], widths=[16, 16], scales=[0, 0], activate=1) /* ty=Tensor[(1, 1, 128, 32), float16] */
+}
+
+def main(data, weight, tin=128, tout=32) {
+  data = input() /* (1, 1, 128, 32) */
+  weight = input() /* (48) */
+  %0 = hbm_activation(data, weight) /* (1, 1, 128, 32) */
+}
+
+**************** DIFFERENCE ****************
+* JOB NAME  : check_exp
+* T-F DIFFS : 0.15625, 0.15625
+* F-T DIFFS : 0.0625, 0.0625
+* F-T MEANS : -0.0009427070617675781, -0.0009427070617675781
+* F-T STD   : 0.0219879150390625, 0.0219879150390625
+* NUM DIFF  : 6
+* NUM SAME  : 4090
+* THRESHOLD : 0.1
+* SAME%     : 99.85%
+**************** DIFFERENCE ****************
+

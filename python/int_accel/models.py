@@ -224,7 +224,7 @@ def compile_vit():
     with open("./test/vit_block.bin", "wb") as f:
         f.write(params)
 
-#onnx_export()
+onnx_export()
 #vit_export()
 #compile()
 compile_vit()

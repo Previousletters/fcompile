@@ -8,7 +8,8 @@ from ..codegen import OpType
 from ..codegen.function import *
 from ..process import *
 from ..utils import list2str
-from ..simulate import readmemh, writememh
+from ..simulate import readmemh_int as readmemh
+from ..simulate import writememh_int as writememh
 
 
 class AccelOp(Op):
@@ -196,7 +197,7 @@ class Softmax(Op):
                     if dim0*tout+dim1 < dh*dw:
                         new_output[dim0*tout+dim1, dim2] = new_result[dim0, dim1, dim2]
         output = new_output.reshape(data.shape)
-        return output    
+        return output
 
 
 @register_fpga_op("accel.vit.transpose")
