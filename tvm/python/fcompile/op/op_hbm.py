@@ -53,7 +53,7 @@ class LayerNorm(Op):
         ret["return"] = {"name" : ret_name, "type" : self.ret_type, "shape" : self.shape}
         return ret
 
-    def modelsim(self, args, attrs, tin, tout):
+    def tb_simulate(self, args, attrs, tin, tout, simulator):
         from ..config import SIM_ROOT, SIM_HIDE_STDOUT
         tb_name = "testbench_LN"
         data, k_bias = args
@@ -65,7 +65,7 @@ class LayerNorm(Op):
         define = {
             "Height": dh, "Width_in": dw, "RMS_Norm": 0
         }
-        define_str = make_define(define)
+        define_str = make_define(define, simulator)
         cmd = f"make sim DEFINES={define_str} TB_NAME={tb_name}"
         if SIM_HIDE_STDOUT:
             subprocess.run(cmd, stdout=subprocess.DEVNULL, shell=True, cwd=SIM_ROOT)
@@ -117,7 +117,7 @@ class RMSNorm(Op):
         ret["return"] = {"name" : ret_name, "type" : self.ret_type, "shape" : self.shape}
         return ret
 
-    def modelsim(self, args, attrs, tin, tout):
+    def tb_simulate(self, args, attrs, tin, tout, simulator):
         from ..config import SIM_ROOT, SIM_HIDE_STDOUT
         tb_name = "testbench_LN"
         data, k_bias = args
@@ -129,7 +129,7 @@ class RMSNorm(Op):
         define = {
             "Height": dh, "Width_in": dw, "RMS_Norm": 1
         }
-        define_str = make_define(define)
+        define_str = make_define(define, simulator)
         cmd = f"make sim DEFINES={define_str} TB_NAME={tb_name}"
         if SIM_HIDE_STDOUT:
             subprocess.run(cmd, stdout=subprocess.DEVNULL, shell=True, cwd=SIM_ROOT)
@@ -165,7 +165,7 @@ class Softmax(Op):
         ret["return"] = {"name" : ret_name, "type" : self.ret_type, "shape" : self.shape}
         return ret
 
-    def modelsim(self, args, attrs, tin, tout):
+    def tb_simulate(self, args, attrs, tin, tout, simulator):
         from ..config import SIM_ROOT, SIM_HIDE_STDOUT
         tb_name = "testbench_SOFTMAX"
         data = args[0]
@@ -175,7 +175,7 @@ class Softmax(Op):
         define = {
             "Height": h, "Width_in": w
         }
-        define_str = make_define(define)
+        define_str = make_define(define, simulator)
         cmd = f"make sim DEFINES={define_str} TB_NAME={tb_name}"
         if SIM_HIDE_STDOUT:
             subprocess.run(cmd, stdout=subprocess.DEVNULL, shell=True, cwd=SIM_ROOT)
@@ -211,7 +211,7 @@ class Activation(Op):
         ret["return"] = {"name" : ret_name, "type" : self.ret_type, "shape" : self.shape}
         return ret
 
-    def modelsim(self, args, attrs, tin, tout):
+    def tb_simulate(self, args, attrs, tin, tout, simulator):
         from ..config import SIM_ROOT, SIM_HIDE_STDOUT
         tb_name = "testbench_ACT"
         data, weight = args
@@ -223,7 +223,7 @@ class Activation(Op):
         define = {
             "Height": h, "Width_in": w
         }
-        define_str = make_define(define)
+        define_str = make_define(define, simulator)
         cmd = f"make sim DEFINES={define_str} TB_NAME={tb_name}"
         if SIM_HIDE_STDOUT:
             subprocess.run(cmd, stdout=subprocess.DEVNULL, shell=True, cwd=SIM_ROOT)

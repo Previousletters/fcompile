@@ -10,7 +10,7 @@ from tvm.relay import transform
 
 from fcompile.fir import FModule
 from fcompile.transform import RelayFIR
-from fcompile.simulate import modelsim, result_diff_check, diff_fp16
+from fcompile.simulate import rtl_simulate, result_diff_check, diff_fp16
 from fcompile import config
 
 config.SIM_HIDE_STDOUT = True
@@ -60,7 +60,7 @@ def check_rms_norm():
         "data": data.numpy().reshape(1, 1, 128, 32),
         "weight": weight.reshape(1, 1, 1, 64),
     }
-    f_out = modelsim(f_mod, inputs)
+    f_out = rtl_simulate(f_mod, inputs)
     return t_out, f_out, 0.4  # torch_result, fcompile_verilog_result, threshold
 
 
@@ -82,7 +82,7 @@ def check_softmax():
     inputs = {
         "data": data.numpy().reshape(1, 1, 128, 32).astype("float16"),
     }
-    f_out = modelsim(f_mod, inputs)
+    f_out = rtl_simulate(f_mod, inputs)
     return t_out, f_out, 0.1  # torch_result, fcompile_verilog_result, threshold
 
 
@@ -107,7 +107,7 @@ def check_exp():
         "data": data.reshape(1, 1, 128, 32).astype("float16"),
         "weight": np.array(exp_wt + exp_bias + exp_x_region).astype("float16")
     }
-    f_out = modelsim(f_mod, inputs)
+    f_out = rtl_simulate(f_mod, inputs)
     return t_out, f_out, 0.1  # torch_result, fcompile_verilog_result, threshold
 
 
@@ -132,11 +132,11 @@ def check_tanh():
         "data": data.numpy().reshape(1, 1, 128, 32).astype("float16"),
         "weight": np.array(tanh_wt + tanh_bias + tanh_x_region).astype("float16")
     }
-    f_out = modelsim(f_mod, inputs)
+    f_out = rtl_simulate(f_mod, inputs)
     return t_out, f_out, 0.1  # torch_result, fcompile_verilog_result, threshold
 
 
-#check_rms_norm()
-#check_softmax()
-#check_exp()
+check_rms_norm()
+check_softmax()
+check_exp()
 check_tanh()

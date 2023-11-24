@@ -68,7 +68,7 @@ class Conv2D(AccelOp):
 
     name = "vit_conv2d"
 
-    def modelsim(self, args, attrs, tin, tout):
+    def tb_simulate(self, args, attrs, tin, tout, simulator):
         from ..config import SIM_ROOT, SIM_HIDE_STDOUT
         tb_name = "testbench_conv_mp"
         data, weight = args
@@ -91,7 +91,7 @@ class Conv2D(AccelOp):
             "Kx_L0" : kw, "Ky_L0" : kh, "Sx_L0" : sw, "Sy_L0" : sh, "Px_L0" : pw, "Py_L0" : ph, 
             "DAT_IN_scale_L0" : d_sc, "WT_scale_L0" : w_sc, "Conv_out_scale_L0" : o_sc
         }
-        define_str = make_define(define)
+        define_str = make_define(define, simulator)
         cmd = f"make sim DEFINES={define_str} TB_NAME={tb_name}"
         if SIM_HIDE_STDOUT:
             subprocess.run(cmd, stdout=subprocess.DEVNULL, shell=True, cwd=SIM_ROOT)
@@ -108,7 +108,7 @@ class MM(AccelOp):
 
     name = "vit_mm"
 
-    def modelsim(self, args, attrs, tin, tout):
+    def tb_simulate(self, args, attrs, tin, tout, simulator):
         from ..config import SIM_ROOT, SIM_HIDE_STDOUT
         tb_name = "testbench_MVM"
         data, weight = args
@@ -124,7 +124,7 @@ class MM(AccelOp):
             "DAT_DW_L0" : d_bw, "DAT_DW_L1" : o_bw, "Hin_L0" : dh, "Win_L0" : dw, "CHin_L0" : c, "CHout_L0" : o,
             "DAT_IN_scale_L0" : d_sc, "WT_scale_L0" : w_sc, "Conv_out_scale_L0" : o_sc
         }
-        define_str = make_define(define)
+        define_str = make_define(define, simulator)
         cmd = f"make sim DEFINES={define_str} TB_NAME={tb_name}"
         if SIM_HIDE_STDOUT:
             subprocess.run(cmd, stdout=subprocess.DEVNULL, shell=True, cwd=SIM_ROOT)
@@ -161,7 +161,7 @@ class Softmax(Op):
         return ret
 
 
-    def modelsim(self, args, attrs, tin, tout):
+    def tb_simulate(self, args, attrs, tin, tout, simulator):
         from ..config import SIM_ROOT, SIM_HIDE_STDOUT
         tb_name = "testbench_softmax"
         data = args[0]
@@ -182,7 +182,7 @@ class Softmax(Op):
             "DAT_DW_L0" : d_bw, "DAT_DW_L1" : o_bw, "Height" : dh*dw, 
             "Width_in" : c, "in_scale" : d_sc, "out_scale" : o_sc
         }
-        define_str = make_define(define)
+        define_str = make_define(define, simulator)
         cmd = f"make sim DEFINES={define_str} TB_NAME={tb_name}"
         if SIM_HIDE_STDOUT:
             subprocess.run(cmd, stdout=subprocess.DEVNULL, shell=True, cwd=SIM_ROOT)
@@ -229,7 +229,7 @@ class Transpose(Op):
         return ret
 
 
-    def modelsim(self, args, attrs, tin, tout):
+    def tb_simulate(self, args, attrs, tin, tout, simulator):
         from ..config import SIM_ROOT, SIM_HIDE_STDOUT
         tb_name = "testbench_TRANSPOSE"
         data = args[0]
@@ -245,7 +245,7 @@ class Transpose(Op):
         define = {
             "DAT_DW_L0" : d_bw, "DAT_DW_L1" : o_bw, "Height" : dh, "Width_in" : nw
         }
-        define_str = make_define(define)
+        define_str = make_define(define, simulator)
         cmd = f"make sim DEFINES={define_str} TB_NAME={tb_name}"
         if SIM_HIDE_STDOUT:
             subprocess.run(cmd, stdout=subprocess.DEVNULL, shell=True, cwd=SIM_ROOT)
@@ -301,7 +301,7 @@ class LayerNorm(Op):
         return ret
 
 
-    def modelsim(self, args, attrs, tin, tout):
+    def tb_simulate(self, args, attrs, tin, tout, simulator):
         from ..config import SIM_ROOT, SIM_HIDE_STDOUT
         tb_name = "testbench_LN"
         data, k_bias = args
@@ -316,7 +316,7 @@ class LayerNorm(Op):
             "DAT_DW_L0" : d_bw, "DAT_DW_L1" : o_bw, "Height" : dh, "Width_in" : dw,
             "in_scale" : d_sc, "wt_scale" : w_sc, "bias_scale" : b_sc, "out_scale" : o_sc
         }
-        define_str = make_define(define)
+        define_str = make_define(define, simulator)
         cmd = f"make sim DEFINES={define_str} TB_NAME={tb_name}"
         if SIM_HIDE_STDOUT:
             subprocess.run(cmd, stdout=subprocess.DEVNULL, shell=True, cwd=SIM_ROOT)
@@ -375,7 +375,7 @@ class Conv2DResAdd(Op):
         return ret
 
 
-    def modelsim(self, args, attrs, tin, tout):
+    def tb_simulate(self, args, attrs, tin, tout, simulator):
         from ..config import SIM_ROOT, SIM_HIDE_STDOUT
         tb_name = "testbench_mp_conv_res"
         data, weight, res_add = args
@@ -397,7 +397,7 @@ class Conv2DResAdd(Op):
             "Kx_L0" : kw, "Ky_L0" : kh, "Sx_L0" : sw, "Sy_L0" : sh, "Px_L0" : pw, "Py_L0" : ph, 
             "DAT_IN_scale_L0" : d_sc, "WT_scale_L0" : w_sc, "Conv_out_scale_L0" : o_sc, "Res_Add_scale" : r_sc
         }
-        define_str = make_define(define)
+        define_str = make_define(define, simulator)
         cmd = f"make sim DEFINES={define_str} TB_NAME={tb_name}"
         if SIM_HIDE_STDOUT:
             subprocess.run(cmd, stdout=subprocess.DEVNULL, shell=True, cwd=SIM_ROOT)
@@ -461,7 +461,7 @@ class Add(Op):
         return ret
 
 
-    def modelsim(self, args, attrs, tin, tout):
+    def tb_simulate(self, args, attrs, tin, tout, simulator):
         from ..config import SIM_ROOT, SIM_HIDE_STDOUT
         tb_name = "testbench_mp_conv_res"
         data, res_add = args
@@ -483,7 +483,7 @@ class Add(Op):
             "Kx_L0" : 1, "Ky_L0" : 1, "Sx_L0" : sw, "Sy_L0" : sh, "Px_L0" : pw, "Py_L0" : ph, 
             "DAT_IN_scale_L0" : d_sc, "WT_scale_L0" : 0, "Conv_out_scale_L0" : o_sc, "Res_Add_scale" : r_sc
         }
-        define_str = make_define(define)
+        define_str = make_define(define, simulator)
         cmd = f"make sim DEFINES={define_str} TB_NAME={tb_name}"
         if SIM_HIDE_STDOUT:
             subprocess.run(cmd, stdout=subprocess.DEVNULL, shell=True, cwd=SIM_ROOT)
@@ -520,7 +520,7 @@ class Activate(Op):
         return ret
 
 
-    def modelsim(self, args, attrs, tin, tout):
+    def tb_simulate(self, args, attrs, tin, tout, simulator):
         from ..config import SIM_ROOT, SIM_HIDE_STDOUT
         tb_name = "testbench_activation"
         data = args[0]
@@ -533,7 +533,7 @@ class Activate(Op):
             "DAT_DW_L0" : d_bw, "DAT_DW_L1" : o_bw, "Height" : dh, "Width_in" : dw,
             "in_scale" : d_sc, "out_scale" : o_sc
         }
-        define_str = make_define(define)
+        define_str = make_define(define, simulator)
         cmd = f"make sim DEFINES={define_str} TB_NAME={tb_name}"
         if SIM_HIDE_STDOUT:
             subprocess.run(cmd, stdout=subprocess.DEVNULL, shell=True, cwd=SIM_ROOT)

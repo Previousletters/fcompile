@@ -11,10 +11,11 @@ from tvm.relay import transform
 from fcompile.fir import FModule
 from fcompile.transform import RelayFIR
 from fcompile.quant import Quantize, Dequantize
-from fcompile.simulate import modelsim, result_diff_check, diff, diff_scale, process
+from fcompile.simulate import rtl_simulate, result_diff_check, diff, diff_scale, process
 from fcompile import config
 
 config.SIM_HIDE_STDOUT = False
+config.SIM_ROOT = "/home/shenao/fcompile/sim"
 
 @result_diff_check(diff)
 def check_conv2d():
@@ -50,7 +51,7 @@ def check_conv2d():
         "data" : process(dquanted, dscale).transpose((0, 2, 3, 1)),
         "weight" : process(wquanted, wscale).transpose((2, 3, 1, 0)),
     }
-    f_out = modelsim(f_mod, inputs)
+    f_out = rtl_simulate(f_mod, inputs)
     return t_out, f_out # torch_result, fcompile_verilog_result
 
 
@@ -88,7 +89,7 @@ def check_mm():
         "data" : process(dquanted, dscale).reshape(1, 1, 64, 64),
         "weight" : process(wquanted, wscale).reshape(1, 1, 64, 32),
     }
-    f_out = modelsim(f_mod, inputs)
+    f_out = rtl_simulate(f_mod, inputs)
     return t_out, f_out # torch_result, fcompile_verilog_result
 
 
@@ -121,7 +122,7 @@ def check_softmax():
     inputs = {
         "data" : process(dquanted, dscale).reshape(1, 1, 64, 64),
     }
-    f_out = modelsim(f_mod, inputs)
+    f_out = rtl_simulate(f_mod, inputs)
     return t_out, f_out, oscale, 5 # torch_result, fcompile_verilog_result, out_scale, same_threshold
 
 
@@ -154,7 +155,7 @@ def check_transpose():
     inputs = {
         "data" : process(dquanted, dscale).reshape(1, 1, 128, 64),
     }
-    f_out = modelsim(f_mod, inputs)
+    f_out = rtl_simulate(f_mod, inputs)
     return t_out, f_out # torch_result, fcompile_verilog_result
 
 
@@ -195,7 +196,7 @@ def check_layernorm():
         "data" : process(dquanted, dscale).reshape(1, 1, 128, 64),
         "k_bias" : np.concatenate((process(wquanted, wscale), process(bquanted, bscale)), axis=0).reshape(1, 1, 1, 128),
     }
-    f_out = modelsim(f_mod, inputs)
+    f_out = rtl_simulate(f_mod, inputs)
     return t_out, f_out, oscale, 1 # torch_result, fcompile_verilog_result
 
 
@@ -239,7 +240,7 @@ def check_conv2d_add():
         "weight" : process(wquanted, wscale).transpose((2, 3, 1, 0)),
         "res" : process(rquanted, rscale).transpose((0, 2, 3, 1)),
     }
-    f_out = modelsim(f_mod, inputs)
+    f_out = rtl_simulate(f_mod, inputs)
     return t_out, f_out, oscale, 1 # torch_result, fcompile_verilog_result
 
 
@@ -280,7 +281,7 @@ def check_matmul():
         "data" : process(dquanted, dscale),
         "weight" : process(wquanted, wscale).transpose((2, 3, 1, 0)),
     }
-    f_out = modelsim(f_mod, inputs)
+    f_out = rtl_simulate(f_mod, inputs)
     return t_out, f_out # torch_result, fcompile_verilog_result
 
 
@@ -313,15 +314,15 @@ def check_gelu():
     inputs = {
         "data" : process(dquanted, dscale),
     }
-    f_out = modelsim(f_mod, inputs)
+    f_out = rtl_simulate(f_mod, inputs)
     return t_out, f_out # torch_result, fcompile_verilog_result
 
 
 #check_conv2d()
-#check_mm()
+check_mm()
 #check_softmax()
 #check_transpose()
 #check_layernorm()
 #check_conv2d_add()
 #check_matmul()
-check_gelu()
+#check_gelu()

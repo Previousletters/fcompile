@@ -23,6 +23,20 @@ class Op:
         self.rt_shape = self.shape
         return True
 
+    def modelsim(self, args, attrs, tin, tout):
+        pass
+
+    def vivado(self, args, attrs, tin, tout):
+        pass
+
+    def tb_simulate(self, args, attrs, tin, tout, simulator="modelsim"):
+        if simulator == "modelsim":
+            return self.modelsim(args, attrs, tin, tout)
+        elif simulator == "vivado":
+            return self.vivado(args, attrs, tin, tout)
+        else:
+            raise RuntimeError("Could not find " + simulator + " support!")
+
 
 class Input(Op):
 
