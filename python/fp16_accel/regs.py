@@ -1,7 +1,7 @@
 import sys
 sys.path.append("../../genregs/")
 
-from genregs.cir import Input, FC, MVM, LayerNorm, Softmax, Transpose
+from genregs.cir import Input, FC, MVM, LayerNorm, Softmax, Transpose, Feature2Weight, Reshape, Split, Merge, TupleItem
 from genregs.transform import InferType, PrintExpr
 from genregs.export import Static, Dynamic
 from genregs.codegen import CodeGen
@@ -23,23 +23,45 @@ def main_static_jit():
 
 
 def main_dynamic_jit():
-    x = ne.Var("x", 64)
-    q = Input("q", [1, x, 512], "feature")
-    k = Input("k", [1, x, 512], "feature")
-    v = Input("v", [1, 1, x, 512], "weight")
-    # f2 = Input("l_bias", [1, 1, 32*2, 32*4], "weight")
-    # out = FC(f, f2)
-    kt = Transpose(k)
-    out = MVM(q, kt)
-    out = MVM(out, v)
+    # x = ne.Var("x", 64)
+    data = Input("data", [1, 19, 4096], "feature")
+    weight = Input("w1", [1, 1, 4096*2], "feature")
+    data = LayerNorm(data, weight)
+    qw = [Input(f"q{i}", [1, 1, 4096, 128], "weight") for i in range(32)]
+    kw = [Input(f"k{i}", [1, 1, 4096, 128], "weight") for i in range(2)]
+    vw = [Input(f"v{i}", [1, 1, 4096, 128], "weight") for i in range(2)]
+    q = [MVM(data, qw[i]) for i in range(32)]
+    k = [Transpose(MVM(data, kw[i])) for i in range(2)]
+    v = [Feature2Weight(MVM(data, vw[i])) for i in range(2)]
+    out = []
+    for i in range(16):
+        tp0 = MVM(Softmax(MVM(q[i+0], k[0])), v[0])
+        tp1 = MVM(Softmax(MVM(q[i+1], k[1])), v[1])
+        out += [tp0, tp1]
+    out = out[0]
+
+    InferType.infer(out)
+    PrintExpr.print(out)
+    model = Dynamic.JIT(out)
+    source = CodeGen(model).gen_head("model_test", prefix="block1_")
+    with open("test/source.h", "w") as f:
+        f.write(source)
+
+
+def chatglm_block():
+    n = Input("test", [1, 128, 128], "feature")
+    out = Split(n, axis=1)
+    out0 = TupleItem(out, 0)
+    out1 = TupleItem(out, 1)
+    out = Merge(out0, out1)
 
     InferType.infer(out)
     PrintExpr.print(out)
     model = Dynamic.JIT(out)
     source = CodeGen(model).gen_head("model_test")
-    with open("test/source.h", "w") as f:
-        f.write(source)
+    print(source)
 
 
 # main_static_jit()
-main_dynamic_jit()
+# main_dynamic_jit()
+chatglm_block()

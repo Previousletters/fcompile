@@ -1,5 +1,6 @@
 from .basic import *
 from ..ne import Var, If, For, Numb, expr_for_hook
+from .register import register_driver
 
 
 class MVM_Cfg:
@@ -29,6 +30,7 @@ class MVM_Cfg:
         self.out_ch_slice_last = None
 
 
+@register_driver("hbm", "fc", "1126")
 def FPGA_RunHBM_FC(f_in, wt, f_out, Out_to_BRAM, In_from_BRAM, out_base_addr, in_base_addr, tag, log2_WT_base_addr_Bank_Step=28, Left_WT_Base_Addr=0):
     current_in_base_addr = If(In_from_BRAM, in_base_addr, f_in.payload)
     current_out_base_addr = If(Out_to_BRAM, out_base_addr, f_out.payload)
@@ -114,6 +116,7 @@ def FPGA_RunHBM_FC(f_in, wt, f_out, Out_to_BRAM, In_from_BRAM, out_base_addr, in
     CSB_Read(tag, 64+19, 1)
 
 
+@register_driver("hbm", "mvm_cfg", "1126")
 def Get_MVM_Cfg(Hin, Win, CHin, CHout, in_feature_dw, wt_dw, wt_scale_dw):
     ret = MVM_Cfg()
 
@@ -142,9 +145,12 @@ def Get_MVM_Cfg(Hin, Win, CHin, CHout, in_feature_dw, wt_dw, wt_scale_dw):
     min_wt_depth = WT_CHin_div_Tin*((Tin*MAX_WT_DW)//HBM_AXI_DATA_WIDTH)*(Tout//HBM_Port)
 
     if min_dat_depth > DAT_BRAM_DEPTH:
+        print(f"Error: Hin={Hin}, Win={Win}, CHin={CHin}, CHout={CHout}")
+        print(f"Error: min_dat_depth={min_dat_depth}, DAT_BRAM_DEPTH={DAT_BRAM_DEPTH}")
         print("Error: FPGA DAT BRAM DEPTH not enough!!!!")
         exit(-1)
     if min_wt_depth > WT_BRAM_DEPTH*WT_BRAM_NUM:
+        print(f"Error: Hin={Hin}, Win={Win}, CHin={CHin}, CHout{CHout}")
         print("Error: FPGA WT BRAM DEPTH not enough!!!!!")
         exit(-1)
 
@@ -293,6 +299,7 @@ def FPGA_HBM_MVM_single_time(
     CSB_Read(tag, 64 + 19, 1)
 
 
+@register_driver("hbm", "mvm", "1126")
 def FPGA_HBM_MVM(mvm_cfg, relu_en, f_in, wt, f_out, Out_to_BRAM, In_from_BRAM, out_base_addr, in_base_addr, tag, log2_WT_base_addr_Bank_Step, Left_WT_Base_Addr):
     current_in_base_addr = f_in.payload
     current_out_base_addr = f_out.payload

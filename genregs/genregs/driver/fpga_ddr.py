@@ -11,7 +11,7 @@ class Block:
         self.board_addr = board_addr
 
 
-MEM = [Block(True, FPGA_DDR_SIZE, FPGA_DDR_BASE_ADDRESS)]
+MEM = [Block(True, FPGA_DDR_SIZE, 0)]
 
 
 def FPGA_Malloc(numbytes):

@@ -1,4 +1,4 @@
-from .cir import Input
+from .cir import Input, TupleItem, Cache, LoadCache, StoreCache
 
 
 # Deep First Search with memory
@@ -12,6 +12,14 @@ class Functor:
             return self.memo[expr]
         if isinstance(expr, Input):
             ret = self.visit_input(expr)
+        elif isinstance(expr, TupleItem):
+            ret = self.visit_tupleitem(expr)
+        elif isinstance(expr, Cache):
+            ret = self.visit_cache(expr)
+        elif isinstance(expr, LoadCache):
+            ret = self.visit_loadcache(expr)
+        elif isinstance(expr, StoreCache):
+            ret = self.visit_storecache(expr)
         else:
             ret = self.visit_func(expr)
         self.memo[expr] = ret
@@ -23,6 +31,21 @@ class Functor:
     def visit_func(self, expr):
         new_args = [self.visit(arg) for arg in expr.args]
         expr.args = new_args
+        return expr
+
+    def visit_tupleitem(self, expr):
+        return expr
+
+    def visit_cache(self, expr):
+        return expr
+
+    def visit_loadcache(self, expr):
+        expr.cache = self.visit(expr.cache)
+        return expr
+
+    def visit_storecache(self, expr):
+        expr.expr = self.visit(expr.expr)
+        expr.cache = self.visit(expr.cache)
         return expr
 
 
@@ -58,10 +81,47 @@ class PrintExpr(Functor):
         self.id += 1
         func = f"  {ret_name} = {expr.op_name}({arg_str})"
         if hasattr(expr, "shape"):
+            if expr.dtype == "tuple":
+                str_shape = []
+                for shape in expr.shape:
+                    str_shape.append("[" + ", ".join([str(i) for i in shape]) + "]")
+                func += " /* ret=(" + ", ".join(str_shape) + "), "
+            else:
+                func += " /* ret=(" + ", ".join([str(i) for i in expr.shape]) + "), "
+            func += "dtype=" + expr.dtype + " */"
+        self.body.append(func)
+        return ret_name
+
+    def visit_tupleitem(self, expr):
+        arg_name = self.visit(expr.expr)
+        ret_name = "%" + str(self.id)
+        self.id += 1
+        func = f"  {ret_name} = {arg_name}.{expr.index}"
+        if hasattr(expr, "shape"):
             func += " /* ret=(" + ", ".join([str(i) for i in expr.shape]) + "), "
             func += "dtype=" + expr.dtype + " */"
         self.body.append(func)
         return ret_name
+
+    def visit_cache(self, expr):
+        return expr.name
+
+    def visit_loadcache(self, expr):
+        cache_name = self.visit(expr.cache)
+        ret_name = "%" + str(self.id)
+        self.id += 1
+        shape = "(" + ", ".join([str(i) for i in expr.shape]) + ")"
+        func = f"  {ret_name} = {expr.op_name}({cache_name}, shape={shape}, dtype={expr.dtype})"
+        self.body.append(func)
+        return ret_name
+
+    def visit_storecache(self, expr):
+        ret_expr = self.visit(expr.expr)
+        cache_name = self.visit(expr.cache)
+        shape = "(" + ", ".join([str(i) for i in expr.shape]) + ")"
+        func = f"  {expr.op_name}({ret_expr}, {cache_name}, shape={shape}, dtype={expr.dtype})"
+        self.body.append(func)
+        return ret_expr
 
 
 # Infer Type Expr Pass
@@ -88,3 +148,17 @@ class InferType(Functor):
         checked_args = [self.visit(arg) for arg in expr.args]
         checked_ret = expr.infer(*checked_args)
         return checked_ret
+
+    def visit_tupleitem(self, expr):
+        checked_expr = self.visit(expr.expr)
+        return expr.infer(checked_expr)
+
+    def visit_cache(self, expr):
+        return None
+
+    def visit_loadcache(self, expr):
+        return expr.infer()
+
+    def visit_storecache(self, expr):
+        ret_expr = self.visit(expr.expr)
+        return ret_expr

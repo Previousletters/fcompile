@@ -54,7 +54,7 @@ class CodeGen:
 ''' % source_map
         return source
 
-    def gen_head(self, model_name, tab="  "):
+    def gen_head(self, model_name, prefix="", tab="  "):
         local_time = strftime('%Y-%m-%d %H:%M:%S', localtime())
         in_payload = []
         for key, value in self.model["inputs"].items():
@@ -77,6 +77,7 @@ class CodeGen:
             if len(attr_str) > 0 and len(call_str) > 0:
                 attr_str = ", " + attr_str
                 call_str = ", " + call_str
+            key = prefix + key
             run_model.append(tab + key + f"(device{call_str});")
             run_body_tp = [f"void {key}(HANDLE device{attr_str}) " + "{"]
             tab_block = 1

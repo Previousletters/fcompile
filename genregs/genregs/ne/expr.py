@@ -340,7 +340,7 @@ class If(Expr):
 
 
 if __name__ == "__main__":
-    a = Var("x") * Numb(1)
+    a = 11 * Numb(1)
     a = a // 2
     a = 1 - a
     a = If(a, Numb(1), Numb(3))

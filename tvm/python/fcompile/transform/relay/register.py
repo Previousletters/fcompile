@@ -23,4 +23,3 @@ def transform(name):
                 mod = tvm.relay.transform.InferType()(mod)
             return mod, params
         return Sequantial
-

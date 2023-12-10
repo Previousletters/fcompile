@@ -1,0 +1,2 @@
+#!/bin/bash
+g++ -Wno-int-to-pointer-cast ./HBM_c/main.cpp ./HBM_c/basic.cpp ./HBM_c/src/conv.cpp ./HBM_c/src/matrix.cpp ./HBM_c/src/others.cpp -I./HBM_c/src -I./HBM_c/ -o ./HBM_c/test

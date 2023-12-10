@@ -1,10 +1,12 @@
 from .basic import *
 from ..ffi import FP32_to_FP20
 from ..ne import Var, For, Numb, expr_for_hook
+from .register import register_driver
 
 Matrix_reg_bias = 192
 
 
+@register_driver("hbm", "softmax", "1126")
 def FPGA_Run_Softmax(feature_in, feature_out, Softmax_Out_and_In_Mode, tag):
     width = ((feature_in.width + AXI_BURST_LEN_SOFTMAX - 1) // AXI_BURST_LEN_SOFTMAX) * AXI_BURST_LEN_SOFTMAX
     dat_in_surface_stride = feature_in.height * width * Pixel_Data_Bytes
@@ -29,6 +31,7 @@ def FPGA_Run_Softmax(feature_in, feature_out, Softmax_Out_and_In_Mode, tag):
     CSB_Read(tag, Matrix_reg_bias + 1, 1)
 
 
+@register_driver("hbm", "activation", "1126")
 def FPGA_Run_Activation(fp16_wt, fp16_bias, fp16_x_region, feature_in, feature_out, Activation_Out_and_In_Mode, tag):
     width = ((feature_in.width + AXI_BURST_LEN_SOFTMAX - 1) // AXI_BURST_LEN_SOFTMAX) * AXI_BURST_LEN_SOFTMAX
     dat_in_surface_stride = Pixel_Data_Bytes * feature_in.height * width
@@ -48,7 +51,7 @@ def FPGA_Run_Activation(fp16_wt, fp16_bias, fp16_x_region, feature_in, feature_o
     CSB_Write(tag, Matrix_reg_bias+26,Activation_Out_and_In_Mode)
     CSB_Write(tag, Matrix_reg_bias+29,0b110000000000000000)
     for i in range(47):
-        parameter_addr = i+1 
+        parameter_addr = i+1
         if i < 16:
             CSB_Write(tag, Matrix_reg_bias+29,(parameter_addr<<18)+(1<<16)+fp16_wt[i])
         else:
@@ -61,6 +64,7 @@ def FPGA_Run_Activation(fp16_wt, fp16_bias, fp16_x_region, feature_in, feature_o
     CSB_Read(tag, Matrix_reg_bias + 1, 1)
 
 
+@register_driver("hbm", "layer_norm", "1126")
 def FPGA_Run_LN(feature_in, wt_and_bias, feature_out, RMS_Norm, LN_Out_and_In_Mode, tag):
     chin_padding_with_tout = ((feature_in.channel + Tout - 1) // Tout) * Tout
     LN_num_per_AXI_DW = AXI_DAT_WIDTH // (2*MAX_BN_DW)
@@ -97,7 +101,39 @@ def FPGA_Run_LN(feature_in, wt_and_bias, feature_out, RMS_Norm, LN_Out_and_In_Mo
     CSB_Read(tag, Matrix_reg_bias + 1, 1)
 
 
-def FPGA_Run_Transpose(feature_in, feature2weight_out, Transpose_Out_and_In_Mode, tag):
+@register_driver("hbm", "transpose", "1126")
+def FPGA_Run_Transpose(feature_in, feature2weight_out, Transpose_Out_and_In_Mode, tag, log2_WT_base_addr_Bank_Step=8, Left_WT_Base_Addr=0):
+    width = ((feature_in.width + Tout - 1) // Tout) * Tout
+    in_ch = ((feature_in.channel + T_quant_block - 1) // T_quant_block) * T_quant_block
+    WT_CHin_div_Tblock = in_ch//T_quant_block
+    wt_burst_times = ((feature_in.width + Tout - 1) // Tout)*WT_CHin_div_Tblock*(MAX_DAT_DW+T_quant_block*4)//MAX_DAT_DW
+    CHout_div_Tout = (width+Tout-1) // Tout
+    Block_wt_bits = Tout*MAX_DAT_DW+Tout*4*T_quant_block
+
+    WT_CHin_div_Tin = (in_ch+base_Tin-1)//base_Tin
+    WT_CHin_Padding_with_Tin = WT_CHin_div_Tin*base_Tin
+    DAT_IN_SURFACE_STRIDE = Pixel_Data_Bytes*width*feature_in.height
+
+    CSB_Write(tag, Matrix_reg_bias+4 ,DAT_IN_SURFACE_STRIDE)
+    CSB_Write(tag, Matrix_reg_bias+9 ,(in_ch+Tout-1) // Tout)
+    CSB_Write(tag, Matrix_reg_bias+11,width)
+    CSB_Write(tag, Matrix_reg_bias+19,feature_in.width)
+    CSB_Write(tag, Matrix_reg_bias+23,feature_in.channel)
+    CSB_Write(tag, Matrix_reg_bias+25,wt_burst_times)
+    CSB_Write(tag, Matrix_reg_bias+26,Transpose_Out_and_In_Mode)
+
+    CSB_Write(tag, Matrix_reg_bias+3,feature_in.payload)
+    CSB_Write(tag, Matrix_reg_bias+6,feature2weight_out.payload)
+
+    CSB_Write(tag, Matrix_reg_bias+7,log2_WT_base_addr_Bank_Step)
+    CSB_Write(tag, Matrix_reg_bias+8,Left_WT_Base_Addr)
+
+    CSB_Write(tag, Matrix_reg_bias+0, 0b010)
+    CSB_Read(tag, Matrix_reg_bias + 1, 1)
+
+
+@register_driver("hbm", "transpose", "1110")
+def FPGA_Run_Transpose_1110(feature_in, feature2weight_out, Transpose_Out_and_In_Mode, tag):
     width = ((feature_in.width + Tout - 1) // Tout) * Tout
     in_ch = ((feature_in.channel + T_quant_block - 1) // T_quant_block) * T_quant_block
     pixel_in = width
@@ -139,11 +175,28 @@ def FPGA_Run_Transpose(feature_in, feature2weight_out, Transpose_Out_and_In_Mode
     for_block_1 = For(chout, Numb(0), CHout_div_Tout, for_body_1)
     for_block_1.run(tag)
 
-    # for chout in range(CHout_div_Tout):
-    #     for chin in range(WT_CHin_div_Tblock):
-    #         in_base_addr = feature_in.payload+chout*(Pixel_Data_Bytes*Tout)+chin*(DAT_IN_SURFACE_STRIDE*T_quant_block//Tout)
-    #         CSB_Write(tag, Matrix_reg_bias+3 ,in_base_addr)
-    #         CSB_Write(tag, Matrix_reg_bias+6 ,dat_out_base_addr)
-    #         CSB_Write(tag, Matrix_reg_bias+0,0b00000010)
-    #         CSB_Read(tag, Matrix_reg_bias + 1, 1)
-    #         dat_out_base_addr = dat_out_base_addr + Block_wt_bits//8
+
+@register_driver("hbm", "feature2weight", "1126")
+def FPGA_Run_Feature2Weight(feature_in, weight_out, Out_and_In_Mode, tag, log2_WT_base_addr_Bank_Step=8, Left_WT_Base_Addr=0):
+    width = ((feature_in.width + Tout - 1) // Tout) * Tout
+    in_ch = ((feature_in.channel + T_quant_block - 1) // T_quant_block) * T_quant_block
+    WT_CHin_div_Tblock = in_ch//T_quant_block
+    wt_burst_times = ((feature_in.width + Tout - 1) // Tout)*WT_CHin_div_Tblock*(MAX_DAT_DW+T_quant_block*4)//MAX_DAT_DW
+    CHout_div_Tout = (width+Tout-1) // Tout
+    Block_wt_bits = Tout*MAX_DAT_DW+Tout*4*T_quant_block
+
+    WT_CHin_div_Tin = (in_ch+base_Tin-1)//base_Tin
+    WT_CHin_Padding_with_Tin = WT_CHin_div_Tin*base_Tin
+    DAT_IN_SURFACE_STRIDE = Pixel_Data_Bytes*feature_in.width*feature_in.height
+
+    CSB_Write(tag, Matrix_reg_bias+3,feature_in.payload)
+    CSB_Write(tag, Matrix_reg_bias+4,DAT_IN_SURFACE_STRIDE)
+    CSB_Write(tag, Matrix_reg_bias+6,weight_out.payload)
+    CSB_Write(tag, Matrix_reg_bias+7,log2_WT_base_addr_Bank_Step)
+    CSB_Write(tag, Matrix_reg_bias+8,Left_WT_Base_Addr)
+    CSB_Write(tag, Matrix_reg_bias+19,feature_in.width)
+    CSB_Write(tag, Matrix_reg_bias+20,(feature_in.width + Tout - 1) // Tout)
+    CSB_Write(tag, Matrix_reg_bias+26,Out_and_In_Mode)
+
+    CSB_Write(tag, Matrix_reg_bias+0, 0b10000000)
+    CSB_Read(tag, Matrix_reg_bias + 1, 1)

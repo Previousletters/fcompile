@@ -1,5 +1,6 @@
 from .fpga_ddr import FPGA_Malloc
 from ..ne import Expr
+from .register import register_driver
 
 Tb = 1
 HBM_Port = 32
@@ -71,6 +72,7 @@ class Mapped_Weight:
         self.wt_bit = None
 
 
+@register_driver("hbm", "Malloc_Feature", "1126")
 def Malloc_Feature(height, width, ch, scale=0, conv_out_scale=0, dat_bit=16):
     ret = Mapped_Feature()
     ret.scale = scale
@@ -92,6 +94,7 @@ def Malloc_Feature(height, width, ch, scale=0, conv_out_scale=0, dat_bit=16):
     return ret
 
 
+@register_driver("hbm", "Malloc_Weight", "1126")
 def Malloc_Weight(Ky, Kx, in_ch, out_ch, scale=0, wt_bit=4):
     ret = Mapped_Weight()
     ret.scale = scale

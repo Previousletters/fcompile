@@ -3,6 +3,7 @@ import numpy as np
 from .m_utils import PrintFir, GetFirVar
 from ..utils import shape2str
 
+
 class Base:
 
     Type = "Base"

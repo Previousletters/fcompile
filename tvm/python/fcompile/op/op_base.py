@@ -92,7 +92,7 @@ class Output(Op):
 class AccelFMap(Op):
 
     name = "accel_fmap"
-    arg_types = [[OpType.c_ptr, OpType.t_val, OpType.w_ddr]]
+    arg_types = [[OpType.c_ptr, OpType.t_val, OpType.w_ddr, OpType.const]]
     ret_type = OpType.f_ddr
     map_func = {OpType.c_ptr : CPtr2Feature, OpType.t_val : DLTensor2Feature, OpType.w_ddr : Weight2Feature}
 

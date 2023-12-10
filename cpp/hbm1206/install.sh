@@ -1,0 +1,17 @@
+cp ../zipped/fhbm1206/testbench/MVM_test/*.vh ./include/
+cp ../zipped/fhbm1206/testbench/ElementWise_test/*.vh ./include/
+cp ../zipped/fhbm1206/testbench/ElementWise_test/*.sv ./tb/
+cp ../zipped/fhbm1206/testbench/basic_task/*.vh ./include/
+cp ../zipped/fhbm1206/testbench/basic_task/*.sv ./tb/
+cp ../zipped/fhbm1206/testbench/HBM_FC_test/*.vh ./include/
+cp ../zipped/fhbm1206/testbench/HBM_FC_test/*.sv ./tb/
+cp ../zipped/fhbm1206/testbench/Matrix_test/*.vh ./include/
+cp ../zipped/fhbm1206/testbench/Matrix_test/*.sv ./tb/
+cp ../zipped/fhbm1206/testbench/HBM_MVM_test/*.vh ./include/
+cp ../zipped/fhbm1206/testbench/HBM_MVM_test/*.sv ./tb/
+cp ../zipped/fhbm1206/testbench/HBM_trans_test/*.vh ./include/
+cp ../zipped/fhbm1206/testbench/HBM_trans_test/*.sv ./tb/
+cp ../zipped/fhbm1206/testbench/HBM_FC_Activation_test/*.vh ./include/
+cp ../zipped/fhbm1206/testbench/HBM_FC_Activation_test/*.sv ./tb/
+cp ../zipped/fhbm1206/testbench/HBM_MVM_Activation_test/*.vh ./include/
+cp ../zipped/fhbm1206/testbench/HBM_MVM_Activation_test/*.sv ./tb/

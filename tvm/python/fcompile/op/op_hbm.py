@@ -12,7 +12,7 @@ from ..simulate import readmemh_fp as readmemh
 from ..simulate import writememh_fp as writememh
 
 
-# TODO: how to make k_factor and bias together into w_ddr
+# TODO: how to make k_factor and bias together into f_ddr
 @register_fpga_op("accel.hbm.layer_norm")
 class LayerNorm(Op):
 
@@ -21,17 +21,7 @@ class LayerNorm(Op):
     ret_type = OpType.f_ddr
 
     def param_process(self, args, attrs, tin, tout):
-        _, weight = args
-        if weight.size == 0:
-            return [np.array([]), np.array([])]
-        if len(weight.shape) == 1:
-            return [np.array([]), weight]
-        _, wt_width, _, _ = attrs["widths"]
-        H, W, I, O = weight.shape
-        new_weight = HWIO2OIHW(weight)
-        new_weight = parallel_weight_Tin(new_weight, O, I, H, W, tout, tin)
-        new_weight = np_to_bin(new_weight, int(wt_width))
-        return [np.array([]), new_weight]
+        return [np.array([]), np.array([])]
 
     def fpga_jit(self, name, args, attrs):
         ret = {}
@@ -76,7 +66,6 @@ class LayerNorm(Op):
         return output
 
 
-# TODO: how to make k_factor and bias together into w_ddr
 @register_fpga_op("accel.hbm.rms_norm")
 class RMSNorm(Op):
 
@@ -85,17 +74,7 @@ class RMSNorm(Op):
     ret_type = OpType.f_ddr
 
     def param_process(self, args, attrs, tin, tout):
-        _, weight = args
-        if weight.size == 0:
-            return [np.array([]), np.array([])]
-        if len(weight.shape) == 1:
-            return [np.array([]), weight]
-        _, wt_width, _, _ = attrs["widths"]
-        H, W, I, O = weight.shape
-        new_weight = HWIO2OIHW(weight)
-        new_weight = parallel_weight_Tin(new_weight, O, I, H, W, tout, tin)
-        new_weight = np_to_bin(new_weight, int(wt_width))
-        return [np.array([]), new_weight]
+        return [np.array([]), np.array([])]
 
     def fpga_jit(self, name, args, attrs):
         ret = {}

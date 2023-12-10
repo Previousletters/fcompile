@@ -4,6 +4,7 @@ from ..utils import shape2str
 
 map_ops = [AccelFMap, AccelWMap, TVMMap]
 
+
 def get_map_op(ret_type, arg_types):
     if ret_type in arg_types:
         return None
@@ -23,7 +24,7 @@ class DataMap(Mutator):
         new_fexpr = FCall([fmod.fexpr], new_op, {}, 0)
         fmod.fexpr = self.visit(new_fexpr)
         return fmod
-    
+
     def get_id(self):
         if hasattr(self, "id"):
             self.id += 1
