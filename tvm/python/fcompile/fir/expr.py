@@ -1,5 +1,3 @@
-import numpy as np
-
 from .m_utils import PrintFir, GetFirVar
 from ..utils import shape2str
 
@@ -8,20 +6,17 @@ class Base:
 
     Type = "Base"
 
-    def __init__(self, name, args, op, attrs):
-        self.expr_name = name
+    def __init__(self, args, op, attrs):
         self.args = args
         self.op = op
         self.attrs = attrs
 
     def __str__(self):
-        str_args = [arg.expr_name for arg in self.args]
-        str_args = ", ".join(str_args)
-        str_shape = shape2str(self.op.shape)
+        str_shape = f"ret={shape2str(self.op.shape)}, dtype={self.op.dtype}"
         if hasattr(self, "data"):
             dshape = self.data.shape
-            str_shape = str_shape + " : " + shape2str(dshape) 
-        return f"{self.expr_name} = {self.op.name}({str_args}) /* {str_shape} */"
+            str_shape = str_shape + " : " + f"const={shape2str(dshape)}"
+        return f"/* {str_shape} */"
 
 
 class FVar(Base):
@@ -29,7 +24,8 @@ class FVar(Base):
     Type = "Var"
 
     def __init__(self, name, op):
-        super().__init__(name, [], op, {})
+        super().__init__([], op, {})
+        self.expr_name = name
 
 
 class FCVar(Base):
@@ -37,32 +33,25 @@ class FCVar(Base):
     Type = "CVar"
 
     def __init__(self, name, op, data):
-        super().__init__(name, [], op, {})
+        super().__init__([], op, {})
         self.data = data
+        self.expr_name = name
 
 
 class FCall(Base):
 
     Type = "FCall"
 
-    def __init__(self, args, op, attrs, id):
-        name = "%" + str(id)
-        super().__init__(name, args, op, attrs)
+    def __init__(self, args, op, attrs):
+        super().__init__(args, op, attrs)
 
 
 class FExtern(Base):
 
     Type = "FExtern"
 
-    def __init__(self, args, op, attrs, id):
-        name = "%" + str(id)
-        super().__init__(name, args, op, attrs)
-
-    def __str__(self):
-        str_args = [arg.expr_name for arg in self.args]
-        str_args = ", ".join(str_args)
-        str_shape = shape2str(self.op.shape)
-        return f"{self.expr_name} = {self.op.func_name}({str_args}) /* {str_shape} */"
+    def __init__(self, args, op, attrs):
+        super().__init__(args, op, attrs)
 
 
 class FModule:

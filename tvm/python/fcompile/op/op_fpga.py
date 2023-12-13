@@ -2,14 +2,14 @@ FPGA_OP_MAP = {}
 
 
 def register_fpga_op(op_name, level=10):
-    def _register_fn(fn):
+    def _register_obj(obj):
         global FPGA_OP_MAP
-        FPGA_OP_MAP[op_name] = fn
+        FPGA_OP_MAP[op_name] = obj
 
-        def _call(*args, **kwargs):
-            return fn(*args, **kwargs)
-        return _call
-    return _register_fn
+        #def _call(*args, **kwargs):
+        #    return fn(*args, **kwargs)
+        return obj
+    return _register_obj
 
 
 def make_define(define: dict, simulator: str) -> str:

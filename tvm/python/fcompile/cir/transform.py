@@ -1,4 +1,4 @@
-from .cir import Input, TupleItem, Cache, LoadCache, StoreCache
+from .expr import Input, TupleItem, Cache, LoadCache, StoreCache
 
 
 # Deep First Search with memory

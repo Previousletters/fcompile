@@ -64,4 +64,8 @@ def chatglm_block():
 
 # main_static_jit()
 # main_dynamic_jit()
-chatglm_block()
+# chatglm_block()
+x = ne.Var("x")
+y = ne.Var("y")
+n = x + y*5
+print(n)

@@ -10,15 +10,8 @@ from ..fir import FVar, FCVar, FCall, FExtern
 class RelayFIR(ExprFunctor):
 
     def convert(self, mod):
+        self.id = 0
         return self.visit(mod["main"])
-    
-    def get_id(self):
-        if hasattr(self, "id"):
-            self.id += 1
-            return self.id
-        else:
-            self.id = 0
-            return self.id
 
     def visit_function(self, func):
         return self.visit(func.body)
@@ -34,8 +27,7 @@ class RelayFIR(ExprFunctor):
         if call_op in FPGA_OP_MAP.keys():
             funct = FPGA_OP_MAP[call_op](dshape, dtype)
             args = [self.visit(arg) for arg in call.args]
-            id_ = self.get_id()
-            return FCall(args, funct, attrs, id_)
+            return FCall(args, funct, attrs)
         else:
             args = [self.visit(arg) for arg in call.args]
             var_ = []
@@ -43,9 +35,9 @@ class RelayFIR(ExprFunctor):
                 var = relay.var(f"var{n}", shape=arg.op.shape, dtype=arg.op.dtype)
                 var_.append(var)
             new_call = relay.Call(call.op, var_, call.attrs, call.type_args)
-            id_ = self.get_id()
-            funct = TVMOp(var_, new_call, dshape, dtype, id_)
-            return FExtern(args, funct, attrs, id_)
+            funct = TVMOp(var_, new_call, dshape, dtype, self.id)
+            self.id += 1
+            return FExtern(args, funct, attrs)
 
     def visit_var(self, var):
         dshape = get_const_tuple(var.checked_type.shape)
@@ -57,5 +49,6 @@ class RelayFIR(ExprFunctor):
         dshape = get_const_tuple(const.checked_type.shape)
         dtype = const.checked_type.dtype
         funct = Const(dshape, dtype)
-        id_ = "const" + str(self.get_id())
-        return FCVar(id_, funct, const.data.asnumpy())
+        const_name = f"const_{self.id}"
+        self.id += 1
+        return FCVar(const_name, funct, const.data.asnumpy())

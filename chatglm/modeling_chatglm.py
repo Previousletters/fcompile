@@ -25,7 +25,7 @@ from transformers.utils import logging
 from transformers.generation.logits_process import LogitsProcessor
 from transformers.generation.utils import LogitsProcessorList, StoppingCriteriaList, GenerationConfig, ModelOutput
 
-from .configuration_chatglm import ChatGLMConfig
+from configuration_chatglm import ChatGLMConfig
 
 # flags required to enable jit fusion kernels
 
@@ -751,7 +751,7 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
             config.hidden_size // config.num_attention_heads if config.kv_channels is None else config.kv_channels
         )
 
-        self.rotary_pos_emb = RotaryEmbedding(rotary_dim // 2, original_impl=config.original_rope, device=device,
+        self.rotary_pos_emb = RotaryEmbedding(rotary_dim // 2, device=device,
                                               dtype=config.torch_dtype)
         self.encoder = init_method(GLMTransformer, config, **init_kwargs)
         self.output_layer = init_method(nn.Linear, config.hidden_size, config.padded_vocab_size, bias=False,
@@ -1291,3 +1291,6 @@ class ChatGLMForSequenceClassification(ChatGLMPreTrainedModel):
             hidden_states=transformer_outputs.hidden_states,
             attentions=transformer_outputs.attentions,
         )
+
+
+model = ChatGLMModel(ChatGLMConfig())

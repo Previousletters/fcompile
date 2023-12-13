@@ -1,6 +1,8 @@
 from ..utils import shape2byte
 from ..codegen import OpType, Layout
 from ..codegen.function import *
+from .. import cir
+
 
 class Op:
 
@@ -94,7 +96,7 @@ class AccelFMap(Op):
     name = "accel_fmap"
     arg_types = [[OpType.c_ptr, OpType.t_val, OpType.w_ddr, OpType.const]]
     ret_type = OpType.f_ddr
-    map_func = {OpType.c_ptr : CPtr2Feature, OpType.t_val : DLTensor2Feature, OpType.w_ddr : Weight2Feature}
+    map_func = {OpType.c_ptr: CPtr2Feature, OpType.t_val: DLTensor2Feature, OpType.w_ddr: Weight2Feature}
 
     def fpga_jit(self, name, args, attrs):
         ret = {}

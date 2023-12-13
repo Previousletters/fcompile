@@ -21,7 +21,7 @@ class DataMap(Mutator):
 
     def transform(self, fmod):
         new_op = Output(fmod.fexpr.op.shape, fmod.fexpr.op.dtype)
-        new_fexpr = FCall([fmod.fexpr], new_op, {}, 0)
+        new_fexpr = FCall([fmod.fexpr], new_op, {})
         fmod.fexpr = self.visit(new_fexpr)
         return fmod
 
@@ -52,13 +52,11 @@ class DataMap(Mutator):
                     new_attrs["widths"].append(call.attrs["widths"][index+offset])
                     new_attrs["scales"].append(call.attrs["scales"][index+offset])
                 new_op = new_op(arg.op.shape, arg.op.dtype)
-                new_id = self.get_id()
-                new_arg = FCall([arg], new_op, new_attrs, new_id)
+                new_arg = FCall([arg], new_op, new_attrs)
                 new_args.append(new_arg)
             else:
                 new_args.append(arg)
-        new_id = self.get_id()
-        return FCall(new_args, call.op, call.attrs, new_id)
+        return FCall(new_args, call.op, call.attrs)
 
     def visit_extern(self, call):
         ret_types = [arg.op.ret_type for arg in call.args]
@@ -72,13 +70,12 @@ class DataMap(Mutator):
             if new_op != None:
                 width = arg.attrs["widths"][-1]
                 scale = arg.attrs["scales"][-1]
-                new_attrs = {"widths" : [width], "scales" : [scale]}
+                new_attrs = {"widths": [width], "scales": [scale]}
                 new_op = new_op(arg.op.shape, arg.op.dtype)
-                new_id = self.get_id()
-                new_arg = FCall([arg], new_op, new_attrs, new_id)
+                new_arg = FCall([arg], new_op, new_attrs)
                 new_args.append(new_arg)
             else:
                 new_args.append(arg)
         new_id = self.get_id()
         new_op = TVMOp(call.op.var_, call.op.expr, call.op.shape, call.op.dtype, new_id)
-        return FExtern(new_args, new_op, call.attrs, new_id)
+        return FExtern(new_args, new_op, call.attrs)

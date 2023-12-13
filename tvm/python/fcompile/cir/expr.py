@@ -29,7 +29,7 @@ class Input(Op):
 
     def __init__(self, name, shape=None, dtype=None):
         self.name = name
-        if shape != None and dtype != None:
+        if shape is not None and dtype is not None:
             self.set_shape(shape, dtype)
 
     def build(self, shape, dtype):
@@ -189,6 +189,10 @@ class MVM_BN_Res(MVM):
 
 class LayerNorm(Op):
     op_name = "layer_norm"
+
+    def __init__(self, *args, mode=0b011111):
+        self.args = args
+        self.mode = mode
 
     def infer(self, f_d, f_w):
         if f_d[1] != "feature" or f_w[1] != "feature" or f_w[0][2] != f_d[0][2]*2:

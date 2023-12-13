@@ -5,7 +5,8 @@ from tvm import relay
 from tvm import IRModule
 from tvm.relay import transform
 from fcompile.fir import FModule
-from fcompile.transform import RelayFIR, FPGAParameters, DataMap, FPGAJit
+from fcompile.cir import PrintExpr
+from fcompile.transform import RelayFIR, FPGAParameters, DataMap, Lower
 from fcompile.codegen import CCodeGen
 
 
@@ -28,6 +29,8 @@ def main_accel_ccodegen():
     print(f_mod)
     f_mod = DataMap().transform(f_mod)
     print(f_mod)
+    c_ir = Lower().build(f_mod)
+    PrintExpr.print(c_ir)
     '''
     jit_mod = FPGAJit().Jit(f_mod)
     print(jit_mod)
