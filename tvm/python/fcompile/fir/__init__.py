@@ -1,2 +1,2 @@
 from .expr import *
-from .functor import Functor, Mutator
+from .functor import Functor, Mutator, Visitor

@@ -60,10 +60,10 @@ def block():
 
 def kv_cache():
     seq = ne.Var("seq")
-    data = cir.Input("data", [19, 1, 128], "feature")
-    q_weight = cir.Input("q_weight", [1, 1, 128, 128*2], "weight")
-    k_weight = cir.Input("k_weight", [1, 1, 128, 128*2], "weight")
-    v_weight = cir.Input("v_weight", [1, 1, 128, 128*2], "weight")
+    data = cir.Input("data", [1, 1, 128], "feature")
+    q_weight = cir.Input("q_weight", [1, 1, 128, 128], "weight")
+    k_weight = cir.Input("k_weight", [1, 1, 128, 128], "weight")
+    v_weight = cir.Input("v_weight", [1, 1, 128, 128], "weight")
 
     k_cache = cir.Cache("k_cache", 64*256)
     v_cache = cir.Cache("v_cache", 64*256)
@@ -71,15 +71,14 @@ def kv_cache():
     k_data = cir.MVM(data, k_weight)
     v_data = cir.MVM(data, v_weight)
 
-    kc_data = cir.LoadCache(k_cache, [1, seq, 256], "feature")
+    kc_data = cir.LoadCache(k_cache, [1, seq, 128], "feature")
     k_data = cir.Merge(kc_data, k_data, axis=1)
     k_data = cir.StoreCache(k_data, k_cache)
 
     k_data = cir.Transpose(k_data)
     scores = cir.MVM(q_data, k_data)
-    scores = cir.Softmax(scores)
 
-    vc_data = cir.LoadCache(v_cache, [1, seq, 256], "feature")
+    vc_data = cir.LoadCache(v_cache, [1, seq, 128], "feature")
     v_data = cir.Merge(vc_data, v_data, axis=1)
     v_data = cir.StoreCache(v_data, v_cache)
     v_data = cir.Feature2Weight(v_data)
@@ -88,7 +87,7 @@ def kv_cache():
     InferType.infer(scores)
     PrintExpr.print(scores)
     model = Dynamic.JIT(scores)
-    source = CodeGen(model).gen_head("model_test", prefix="block1_")
+    source = CodeGen(model).gen_head("kvcache", prefix="mod_")
     with open("test/source.h", "w") as f:
         f.write(source)
 

@@ -53,16 +53,16 @@ class Functor:
 class PrintExpr(Functor):
 
     @classmethod
-    def print(cls, expr):
-        cls().show_main(expr)
+    def print(cls, expr, func_name="main"):
+        cls().show_main(expr, func_name)
 
-    def show_main(self, expr):
+    def show_main(self, expr, func_name):
         self.id = 0
         self.args = []
         self.body = []
         ret_name = self.visit(expr)
         arg_str = ", ".join(self.args)
-        print(f"def main({arg_str}) " + "{")
+        print(f"def {func_name}({arg_str}) " + "{")
         print("\n".join(self.body))
         print(f"  return {ret_name}\n" + "}")
 

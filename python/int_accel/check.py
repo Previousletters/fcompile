@@ -15,7 +15,7 @@ from fcompile.simulate import rtl_simulate, result_diff_check, diff, diff_scale,
 from fcompile import config
 
 config.SIM_HIDE_STDOUT = False
-config.SIM_ROOT = "/home/shenao/fcompile/sim"
+config.SIM_ROOT = "/home/previous/fcompile/vit64x32/sim"
 
 @result_diff_check(diff)
 def check_conv2d():
@@ -32,7 +32,7 @@ def check_conv2d():
     wscale = int(quantize.scale[0])
 
     tp_out = F.conv2d(dquanted, wquanted, None, stride=1, padding=0)
-    
+
     oquanted = dequantize(tp_out)
     oscale = int(dequantize.scale[0])
     t_out = process(oquanted, oscale).transpose((0, 2, 3, 1))
@@ -105,7 +105,7 @@ def check_softmax():
     dscale = int(quantize.scale[0])
 
     tp_out = F.softmax(dquanted, dim=1)
-    
+
     oquanted = dequantize(tp_out)
     oscale = int(dequantize.scale[0])
     t_out = process(oquanted, oscale).reshape(1, 1, 64, 64)
@@ -318,7 +318,7 @@ def check_gelu():
     return t_out, f_out # torch_result, fcompile_verilog_result
 
 
-#check_conv2d()
+check_conv2d()
 check_mm()
 #check_softmax()
 #check_transpose()

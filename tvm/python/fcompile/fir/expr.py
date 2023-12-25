@@ -46,6 +46,26 @@ class FCall(Base):
         super().__init__(args, op, attrs)
 
 
+class FFunction(Base):
+
+    Type = "FFunction"
+
+    class OpCustom:
+
+        def __init__(self, shape, dtype, arg_types, ret_type):
+            self.shape, self.dtype = shape, dtype
+            self.arg_types = arg_types
+            self.ret_type = ret_type
+
+    def __init__(self, args, body, fused_ops, arg_types, attrs):
+        self.args = args
+        self.body = body
+        self.fused_ops = fused_ops
+        self.name = "fused_" + "_".join(self.fused_ops[::-1])
+        self.attrs = attrs
+        self.op = self.OpCustom(body.op.shape, body.op.dtype, arg_types, body.op.ret_type)
+
+
 class FExtern(Base):
 
     Type = "FExtern"

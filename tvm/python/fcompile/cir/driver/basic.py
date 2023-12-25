@@ -37,7 +37,7 @@ def CSB_Read(tag, addr, target):
 
 
 def CSB_For(expr, tag):
-    tag.reg_ops.append(expr)
+    tag.reg_ops.append([2] + expr)
 
 
 def CSB_End(expr, tag):

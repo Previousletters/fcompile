@@ -1,13 +1,15 @@
 import numpy as np
-from ..op import Const
-from ..fir import Mutator, FCVar
+from ...op import Const
+from ...fir import Mutator, FCVar
+from .register import register_transform
+
 
 class SetParams(Mutator):
 
     def set(self, fexpr, params):
         self.params = params
         return self.visit(fexpr)
-        
+
     def visit_var(self, var):
         if var.expr_name in self.params.keys():
             data = self.params[var.expr_name]
@@ -40,7 +42,8 @@ class ProcessParams(Mutator):
         return call
 
 
-def FPGAParameters(fmod, params):
+@register_transform("param_const")
+def wrapper(fmod, params):
     new_fexpr = SetParams().set(fmod.fexpr, params)
     fmod.fexpr = ProcessParams().process(new_fexpr, fmod.tin, fmod.tout)
     return fmod

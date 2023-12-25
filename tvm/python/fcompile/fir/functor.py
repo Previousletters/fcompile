@@ -1,7 +1,7 @@
 class Functor:
 
     def __init__(self):
-        self.memo_map = {} # {expr : [return, number]}
+        self.memo_map = {}  # {expr : [return, number]}
 
     def visit(self, fexpr):
         if fexpr in self.memo_map.keys():
@@ -16,6 +16,8 @@ class Functor:
             ret = self.visit_call(fexpr)
         elif fexpr.Type == "FExtern":
             ret = self.visit_extern(fexpr)
+        elif fexpr.Type == "FFunction":
+            ret = self.visit_function(fexpr)
         else:
             raise RuntimeError("Unknow type of " + fexpr.Type)
 
@@ -29,12 +31,16 @@ class Functor:
         return cvar
 
     def visit_call(self, call):
-        new_args = [self.visit(arg) for arg in call.args]
+        _ = [self.visit(arg) for arg in call.args]
         return call
 
     def visit_extern(self, call):
-        new_args = [self.visit(arg) for arg in call.args]
+        _ = [self.visit(arg) for arg in call.args]
         return call
+
+    def visit_function(self, function):
+        _ = [self.visit(arg) for arg in function.args]
+        return function
 
 
 class Mutator(Functor):
@@ -48,3 +54,18 @@ class Mutator(Functor):
         new_args = [self.visit(arg) for arg in call.args]
         call.args = new_args
         return call
+
+
+class Visitor(Functor):
+
+    def visit_var(self, var):
+        pass
+
+    def visit_cvar(self, cvar):
+        pass
+
+    def visit_call(self, call):
+        _ = [self.visit(arg) for arg in call.args]
+
+    def visit_extern(self, call):
+        _ = [self.visit(arg) for arg in call.args]

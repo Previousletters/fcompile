@@ -75,7 +75,8 @@ def FPGA_Run_LN(feature_in, wt_and_bias, feature_out, RMS_Norm, LN_Out_and_In_Mo
     dat_out_surface_stride = Pixel_Data_Bytes * feature_out.height * feature_out.width
     dat_out_line_stride = Pixel_Data_Bytes * feature_out.width
     temp = 1.0/(chin_padding_with_tout*1.0)
-    fp20_data = FP32_to_FP20(temp)
+    # fp20_data = FP32_to_FP20(temp)
+    fp20_data = temp
 
     CSB_Write(tag, Matrix_reg_bias+2 ,wt_and_bias.payload)
     CSB_Write(tag, Matrix_reg_bias+3 ,feature_in.payload)

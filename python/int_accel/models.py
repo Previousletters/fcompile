@@ -157,9 +157,8 @@ import tvm
 from tvm.relay import frontend
 from tvm.relay import transform
 import onnx
-from fcompile.transform import transform as ftransform
 from fcompile.fir import FModule
-from fcompile.transform import RelayFIR, FPGAParameters, DataMap, FPGAJit
+from fcompile.transform import RelayFIR, Ftransform, Rtransform
 from fcompile.codegen import CCodeGen
 import os
 
@@ -172,17 +171,15 @@ def compile():
     mod = transform.InferType()(mod)
     print(mod)
     pass_list = ["convert_type", "infer_precision", "convert_vit", "eliminate"]
-    mod, params = ftransform(pass_list)(mod, params)
+    mod, params = Rtransform(pass_list)(mod, params)
     print(mod)
     np_params = {}
     for name, data in params.items():
         np_params[name] = data.asnumpy()
     f_mod = FModule(RelayFIR().convert(mod), tin=64, tout=32)
-    f_mod = FPGAParameters(f_mod, np_params)
-    print(f_mod)
-    f_mod = DataMap().transform(f_mod)
-    print(f_mod)
-    jit_mod = FPGAJit().Jit(f_mod)
+    f_mod = Ftransform("param_const")(f_mod, params)
+    f_mod = Ftransform("data_map")(f_mod)
+    jit_mod = Ftransform("fpga_jit")(f_mod)
     print(jit_mod)
     c_mod, params, _ = CCodeGen().build(jit_mod)
 
@@ -204,17 +201,17 @@ def compile_vit():
     mod = transform.ConvertLayout({"nn.conv2d" : ["NHWC", "HWIO"]})(mod)
     mod = transform.InferType()(mod)
     pass_list = ["convert_type", "infer_precision", "convert_vit", "eliminate"]
-    mod, params = ftransform(pass_list)(mod, params)
+    mod, params = Rtransform(pass_list)(mod, params)
     print(mod)
     np_params = {}
     for name, data in params.items():
         np_params[name] = data.asnumpy()
     f_mod = FModule(RelayFIR().convert(mod), tin=64, tout=32)
     print(f_mod)
-    f_mod = FPGAParameters(f_mod, np_params)
-    f_mod = DataMap().transform(f_mod)
-    print(f_mod)
-    jit_mod = FPGAJit().Jit(f_mod)
+    f_mod = Ftransform("param_const")(f_mod, params)
+    f_mod = Ftransform("data_map")(f_mod)
+    jit_mod = Ftransform("fpga_jit")(f_mod)
+    print(jit_mod)
     c_mod, params, _ = CCodeGen().build(jit_mod)
 
     os.makedirs("test", exist_ok=True)

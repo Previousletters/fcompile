@@ -25,7 +25,9 @@
     }
 ]
 '''
-from ..fir import *
+from ...fir import *
+from .register import register_transform
+
 
 class FPGAJit(Functor):
 
@@ -46,14 +48,12 @@ class FPGAJit(Functor):
         self.visit(fmod.fexpr)
         return self.jit_memo
 
-
     def visit_var(self, var):
         name = var.expr_name
         ret = var.op.fpga_jit(name)
         ret["node_type"] = "var"
         self.jit_memo.append(ret)
         return ret["return"]
-
 
     def visit_cvar(self, cvar):
         name = cvar.expr_name
@@ -64,7 +64,6 @@ class FPGAJit(Functor):
         self.jit_memo.append(ret)
         return ret["return"]
 
-    
     def visit_call(self, call):
         args = [self.visit(arg) for arg in call.args]
         name = call.expr_name.replace("%", "")
@@ -81,7 +80,6 @@ class FPGAJit(Functor):
             ret["node_type"] = "call"
         self.jit_memo.append(ret)
         return ret["return"]
-    
 
     def visit_extern(self, call):
         args = [self.visit(arg) for arg in call.args]
@@ -90,3 +88,8 @@ class FPGAJit(Functor):
         ret["node_type"] = "extern"
         self.jit_memo.append(ret)
         return ret["return"]
+
+
+@register_transform("fpga_jit")
+def wrapper(fmod):
+    return FPGAJit().Jit(fmod)

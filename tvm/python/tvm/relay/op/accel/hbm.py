@@ -1,10 +1,8 @@
-from tvm.relay import expr
-
 from . import _make
-from ..dyn.nn import _make as _dyn_make
-from ...expr import const, Expr, Constant
+from ...expr import const
 
 from tvm.ir import container
+
 
 def get_pad_tuple1d(padding):
     """Common code to get the 1 dimensional pad option
@@ -65,14 +63,29 @@ def conv2d(
         activate
     )
 
-def mm(
+def matmul(
     data,
     weight,
     widths=None,
     scales=None,
     activate=0
 ):
-    return _make.hbm_mm(
+    return _make.hbm_matmul(
+        data,
+        weight,
+        widths,
+        scales,
+        activate
+    )
+
+def linear(
+    data,
+    weight,
+    widths=None,
+    scales=None,
+    activate=0
+):
+    return _make.hbm_linear(
         data,
         weight,
         widths,

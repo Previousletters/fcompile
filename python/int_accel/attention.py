@@ -4,7 +4,6 @@ from torch import nn
 import numpy as np
 from math import sqrt
 
-import tvm
 from tvm import relay
 from tvm import IRModule
 from tvm.relay import transform
@@ -13,10 +12,12 @@ from fcompile.fir import FModule
 from fcompile.transform import RelayFIR
 from fcompile.quant import Quantize, Dequantize
 from fcompile.quant import nn as fqnn
-from fcompile.simulate import modelsim, result_diff_check, diff, diff_scale, process
+from fcompile.simulate import rtl_simulate, result_diff_check, diff, diff_scale, process
 from fcompile import config
 
 config.SIM_HIDE_STDOUT = False
+config.SIM_ROOT = "/home/previous/fcompile/vit64x32/sim"
+
 
 class SelfAttention(nn.Module):
     # input : batch_size * seq_len * input_dim
@@ -57,12 +58,12 @@ class SelfAttention(nn.Module):
 
         aquanted = self.quantize(atten)
         self.a2scale = int(self.quantize.scale[0])
-        
+
         output = torch.bmm(aquanted, V) # Q * K.T() * V # batch_size * seq_len * dim_v
 
         oquanted = self.quantize(output)
         self.oscale = int(self.quantize.scale[0])
-        
+
         return oquanted
 
 
@@ -104,12 +105,12 @@ def check_attention():
 
     dquanted = quantize(data)
     dscale = int(quantize.scale[0])
-    qwidth, qdscale = atten.q.bit_width, int(atten.q.scale[0])
-    qwscale, qoscale = int(atten.q.scale_weight[0]), int(atten.q.scale_out[0])
-    kwidth, kdscale = atten.k.bit_width, int(atten.k.scale[0])
-    kwscale, koscale = int(atten.k.scale_weight[0]), int(atten.k.scale_out[0])
-    vwidth, vdscale = atten.v.bit_width, int(atten.v.scale[0])
-    vwscale, voscale = int(atten.v.scale_weight[0]), int(atten.v.scale_out[0])
+    qwidth, qdscale = atten.q.bwidth, int(atten.q.bscale[0])
+    qwscale, qoscale = int(atten.q.wscale[0]), int(atten.q.oscale[0])
+    kwidth, kdscale = atten.k.bwidth, int(atten.k.bscale[0])
+    kwscale, koscale = int(atten.k.wscale[0]), int(atten.k.oscale[0])
+    vwidth, vdscale = atten.v.bwidth, int(atten.v.bscale[0])
+    vwscale, voscale = int(atten.v.wscale[0]), int(atten.v.oscale[0])
 
     qweight = quantize(atten.q.weight)
     kweight = quantize(atten.k.weight)
@@ -135,16 +136,17 @@ def check_attention():
         "nweight" : process(nweight.detach(), nscale),
         "mask" : np.zeros((1, 1, 64, 64), dtype="int8"),
     }
-    f_out = modelsim(f_mod, inputs)
+    f_out = rtl_simulate(f_mod, inputs)
     return t_out, f_out, oscale, 5 # torch_result, fcompile_verilog_result, out_scale, same_threshold
 
 
-#check_attention()
+check_attention()
 
+'''
 if __name__ == "__main__":
     name = "./test/atten_jit.onnx"
     width = 8
     data = torch.randn(size=(1, 64, 64)) / 2
     model = SelfAttention(64, 64, 64, width)
     torch.onnx.export(model, data, name, input_names=["input"], output_names=["output"])
-
+'''

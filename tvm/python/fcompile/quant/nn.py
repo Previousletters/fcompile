@@ -99,7 +99,9 @@ class MatAdd(nn.Module):
         return Dequant.apply(output, self.bwidth, self.oscale)
 
 
+'''
 from torch.onnx.symbolic_registry import register_op 
+'''
 from torch.onnx.symbolic_helper import parse_args 
 
 @parse_args("v", "is", "v", "v", "f", "i") 
@@ -111,6 +113,8 @@ def layer_norm(g, input, normalized_shape, weight, bias, eps, cudnn_enable):
 def gelu(g, input, approximate):
     args = [input]
     return g.op("custom::GELU", *args) 
- 
+
+'''
 register_op("layer_norm", layer_norm, "", 13) 
 register_op("gelu", gelu, "", 13) 
+'''

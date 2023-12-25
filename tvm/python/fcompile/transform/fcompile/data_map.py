@@ -1,6 +1,7 @@
-from ..op import *
-from ..fir import FCall, FExtern, Mutator
-from ..utils import shape2str
+from ...op import *
+from ...fir import FCall, FFunction, FExtern, Mutator
+from ...utils import shape2str
+from .register import register_transform
 
 map_ops = [AccelFMap, AccelWMap, TVMMap]
 
@@ -20,7 +21,10 @@ def get_map_op(ret_type, arg_types):
 class DataMap(Mutator):
 
     def transform(self, fmod):
-        new_op = Output(fmod.fexpr.op.shape, fmod.fexpr.op.dtype)
+        if isinstance(fmod.fexpr, FFunction):
+            new_op = Output(fmod.fexpr.body.op.shape, fmod.fexpr.body.op.dtype)
+        else:
+            new_op = Output(fmod.fexpr.op.shape, fmod.fexpr.op.dtype)
         new_fexpr = FCall([fmod.fexpr], new_op, {})
         fmod.fexpr = self.visit(new_fexpr)
         return fmod
@@ -79,3 +83,34 @@ class DataMap(Mutator):
         new_id = self.get_id()
         new_op = TVMOp(call.op.var_, call.op.expr, call.op.shape, call.op.dtype, new_id)
         return FExtern(new_args, new_op, call.attrs)
+
+    def visit_function(self, function):
+        ret_types = [arg.op.ret_type for arg in function.args]
+        new_args = []
+        function.args = [self.visit(arg) for arg in function.args]
+        arg_types = function.op.arg_types
+        index_list = range(len(function.args))
+        zipped_data = zip(ret_types, arg_types, function.args, index_list)
+        offset = 0
+        for ret, intype, arg, index in zipped_data:
+            new_op = get_map_op(ret, intype)
+            if new_op is not None:
+                width = function.attrs["widths"][index+offset]
+                scale = function.attrs["scales"][index+offset]
+                new_attrs = {"widths": [width], "scales": [scale]}
+                if len(function.attrs["scales"]) != len(function.args) + 1:
+                    offset += 1
+                    new_attrs["widths"].append(function.attrs["widths"][index+offset])
+                    new_attrs["scales"].append(function.attrs["scales"][index+offset])
+                new_op = new_op(arg.op.shape, arg.op.dtype)
+                new_arg = FCall([arg], new_op, new_attrs)
+                new_args.append(new_arg)
+            else:
+                new_args.append(arg)
+        function.args = new_args
+        return function
+
+
+@register_transform("data_map")
+def wrapper(fmod):
+    return DataMap().transform(fmod)

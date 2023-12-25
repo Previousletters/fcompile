@@ -1,4 +1,4 @@
-class CIR:
+class Placeholder:
 
     class F:
 
@@ -13,3 +13,5 @@ class CIR:
         @staticmethod
         def pad(h, w, c):
             pass
+
+    ones_zeros = "ones_zeros"

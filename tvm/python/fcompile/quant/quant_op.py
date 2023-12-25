@@ -28,7 +28,7 @@ class Quant(Function):
         data_step = torch.pow(torch.tensor(2.0), -scale)
         tensor.clamp_(-data_range, data_range-data_step)
         del ori_data
-        return torch.round_(tensor/data_step)*data_step
+        return torch.floor_(tensor/data_step + 0.5)*data_step
 
     @staticmethod
     def backward(ctx, grad):
@@ -54,7 +54,7 @@ class Dequant(Function):
         data_step = torch.pow(torch.tensor(2.0), -scale)
         tensor.clamp_(-data_range, data_range-data_step)
         del ori_data
-        return torch.round_(tensor/data_step)*data_step
+        return torch.floor_(tensor/data_step + 0.5)*data_step
 
     @staticmethod
     def backward(ctx, grad):
@@ -74,7 +74,7 @@ class Quantize(nn.Module):
         self.bit_width = _try_get_del(kwargs, "bit_width", 8)
         self.scale = _try_get_del(kwargs, "scale", [10])
         super(Quantize, self).__init__()
-    
+
     def forward(self, input):
         return Quant.apply(input, self.bit_width, self.scale)
 
@@ -84,7 +84,7 @@ class Dequantize(nn.Module):
         self.bit_width = _try_get_del(kwargs, "bit_width", 8)
         self.scale = _try_get_del(kwargs, "scale", [10])
         super(Dequantize, self).__init__()
-    
+
     def forward(self, input):
         return Dequant.apply(input, self.bit_width, self.scale)
 

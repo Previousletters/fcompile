@@ -1,3 +1,4 @@
+from fcompile import ne
 import numpy as np
 from .driver.basic import Mapped_Weight, Mapped_Feature, Tout
 from .driver import get_driver
@@ -10,6 +11,7 @@ class Op:
 
     def __init__(self, *args):
         self.args = args
+        self.index = None
 
 
 class TupleItem(Op):
@@ -29,6 +31,7 @@ class Input(Op):
 
     def __init__(self, name, shape=None, dtype=None):
         self.name = name
+        self.index = None
         if shape is not None and dtype is not None:
             self.set_shape(shape, dtype)
 
@@ -283,7 +286,7 @@ class ElementWise(Op):
     def build(self, f_a: Mapped_Feature, f_b: Mapped_Feature):
         self.reg_ops = []
         out = get_driver("hbm", "Malloc_Feature")(f_a.height, f_a.width, f_a.channel, 0, 0, 16)
-        get_driver("hbm", "elementwise")(f_a, out, 0, self)
+        # get_driver("hbm", "elementwise")(f_a, out, 0, self)
         return out
 
 
@@ -369,6 +372,28 @@ class Merge(Op):
         self.dtype = "feature"
         return [self.shape, self.dtype]
 
+    def build(self, f_a: Mapped_Feature, f_b: Mapped_Feature):
+        self.reg_ops = []
+        tout_shape_a = [((f_a.channel + Tout-1) // Tout), f_a.height, f_a.width, Tout]
+        tout_shape_b = [((f_b.channel + Tout-1) // Tout), f_b.height, f_b.width, Tout]
+        tout_shape_f = [((self.shape[2] + Tout-1) // Tout), self.shape[0], self.shape[1], Tout]
+        out = get_driver("hbm", "Malloc_Feature")(self.shape[0], self.shape[1], self.shape[2], 0, 0, 16)
+        if self.axis == 2:
+            self.reg_ops.append([10, out.payload, f_a.payload, f_a.height*f_a.width*Tout*2])
+            self.reg_ops.append([10, out.payload + f_a.height*f_a.width*Tout*2, f_b.payload, f_b.height*f_b.width*Tout*2])
+        else:
+            axis = self.axis + 1
+            var = ne.Var("loop_1")
+            size_a = tout_shape_a[2] * tout_shape_a[3] * 2
+            size_b = tout_shape_b[2] * tout_shape_b[3] * 2
+            offset_f = tout_shape_f[2] * tout_shape_f[3]
+            tout_numb = tout_shape_f[0] * tout_shape_f[1]
+            self.reg_ops.append([2, var, 0, tout_numb])
+            self.reg_ops.append([10, out.payload + var * offset_f, f_a.payload + var * size_a, size_a])
+            self.reg_ops.append([10, out.payload + size_a + var * offset_f, f_b.payload + var * size_b, size_b])
+            self.reg_ops.append([-1])
+        return out
+
 
 class Cache:
 
@@ -391,6 +416,10 @@ class LoadCache:
     def infer(self):
         return [self.shape, self.dtype]
 
+    def build(self):
+        out = get_driver("hbm", "Malloc_Feature")(self.shape[0], self.shape[1], self.shape[2], 0, 0, 16)
+        return out
+
 
 class StoreCache:
 
@@ -404,3 +433,6 @@ class StoreCache:
         self.shape = f[0]
         self.dtype = f[1]
         return [self.shape, self.dtype]
+
+    def build(self, f):
+        return f

@@ -19,7 +19,7 @@ def main_test_accel_relay():
 import numpy as np
 
 from fcompile.fir import FModule
-from fcompile.transform import RelayFIR, FPGAParameters, DataMap, FPGAJit
+from fcompile.transform import RelayFIR, Ftransform
 from fcompile.codegen import CCodeGen
 
 def main_accel_ccodegen():
@@ -39,11 +39,11 @@ def main_accel_ccodegen():
         "w1" : np.random.randint(-10, 10, (3, 3, 3, 32), "int8"),
         "w2" : np.random.randint(-10, 10, (3, 3, 32, 64), "int8"),
     }
-    f_mod = FPGAParameters(f_mod, params)
+    f_mod = Ftransform("param_const")(f_mod, params)
     print(f_mod)
-    f_mod = DataMap().transform(f_mod)
+    f_mod = Ftransform("data_map")(f_mod)
     print(f_mod)
-    jit_mod = FPGAJit().Jit(f_mod)
+    jit_mod = Ftransform("fpga_jit")(f_mod)
     print(jit_mod)
     c_mod, params, _ = CCodeGen().build(jit_mod)
 
@@ -73,11 +73,11 @@ def main_accel_extern_ccodegen():
         "w1" : np.random.randint(-10, 10, (3, 3, 3, 32), "int8"),
         "w2" : np.random.randint(-10, 10, (3, 3, 32, 64), "int8"),
     }
-    f_mod = FPGAParameters(f_mod, params)
+    f_mod = Ftransform("param_const")(f_mod, params)
     print(f_mod)
-    f_mod = DataMap().transform(f_mod)
+    f_mod = Ftransform("data_map")(f_mod)
     print(f_mod)
-    jit_mod = FPGAJit().Jit(f_mod)
+    jit_mod = Ftransform("fpga_jit")(f_mod)
     print(jit_mod)
     c_mod, params, e_mod = CCodeGen().build(jit_mod)
 
@@ -154,11 +154,11 @@ def main_attention_ccodegen():
         "vweight" : np.random.randint(-10, 10, (1, 1, 64, 64), "int8"),
         "nweight" : np.random.randint(-10, 10, (1, 1, 64, 64), "int8"),
     }
-    f_mod = FPGAParameters(f_mod, params)
+    f_mod = Ftransform("param_const")(f_mod, params)
     print(f_mod)
-    f_mod = DataMap().transform(f_mod)
+    f_mod = Ftransform("data_map")(f_mod)
     print(f_mod)
-    jit_mod = FPGAJit().Jit(f_mod)
+    jit_mod = Ftransform("fpga_jit")(f_mod)
     print(jit_mod)
     c_mod, params, _ = CCodeGen().build(jit_mod)
 
