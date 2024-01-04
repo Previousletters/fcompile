@@ -69,7 +69,7 @@ def main_atten_ccodegen():
         "w1": np.random.randn(1, 1, 32, 64).astype("float16"),
     }
     f_mod = Ftransform("param_const")(f_mod, params)
-    #f_mod = Ftransform("fusion_ops")(f_mod)
+    f_mod = Ftransform("fusion_ops")(f_mod)
     f_mod = Ftransform("data_map")(f_mod)
     print(f_mod)
     c_mod = Ftransform("cir_lower")(f_mod)
