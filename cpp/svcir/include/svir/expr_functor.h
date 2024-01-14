@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include <svir/expr.h>
 
-using namespace svir;
+namespace svir {
 
 template<typename T>
 class Functor {
@@ -24,6 +24,10 @@ class Functor {
             T new_expr = Visit_(expr->as<svir::SVCall>());
             memo_[expr] = new_expr;
             return new_expr;
+        } else if (expr->IsInstance<svir::SVConstant>()) {
+            T new_expr = Visit_(expr->as<svir::SVConstant>());
+            memo_[expr] = new_expr;
+            return new_expr;
         }
         return T();
     }
@@ -32,6 +36,9 @@ class Functor {
         return T();
     }
     virtual T Visit_(SVCall* call) {
+        return T();
+    }
+    virtual T Visit_(SVConstant* constant) {
         return T();
     }
 
@@ -65,5 +72,6 @@ class Mutator {
     std::unordered_map<SVExpr*, int> memo_;
 };
 
+};
 
 #endif

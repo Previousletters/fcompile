@@ -9,7 +9,7 @@
 #include <svir/expr.h>
 #include <svir/expr_functor.h>
 
-using namespace svir;
+namespace svir {
 
 std::string shape_str(std::vector<int> shape, std::string dtype) {
     std::stringstream str;
@@ -77,5 +77,6 @@ class Print : public Functor<std::string> {
     int id_;
 };
 
+};
 
 #endif

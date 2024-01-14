@@ -22,9 +22,23 @@ class SVVar : public SVExpr {
     std::vector<int> shape;
 };
 
+class SVConstant : public SVExpr {
+  public:
+    SVConstant(const std::string& name, const std::vector<int>& shape, Tensor data)
+           : name(std::move(name)), shape(std::move(shape)), data(std::move(data)){
+        type_index_ = TypeDefs().Constant;
+    };
+
+    static constexpr int _type_index = TypeDefs::Constant;
+
+    std::string name;
+    std::vector<int> shape;
+    Tensor data;
+};
+
 class SVCall : public SVExpr {
   public:
-    SVCall(Op* op, const std::vector<SVExpr*>& args, const Attrs& attrs)
+    SVCall(Op* op, const std::vector<SVExpr*>& args, Attrs* attrs)
            : args(std::move(args)), op(std::move(op)), attrs(std::move(attrs)) {
         type_index_ = TypeDefs().Call;
     };
@@ -33,7 +47,7 @@ class SVCall : public SVExpr {
 
     std::vector<SVExpr*> args;
     Op* op;
-    Attrs attrs;
+    Attrs* attrs;
 };
 
 class SVTensor : public SVExpr {

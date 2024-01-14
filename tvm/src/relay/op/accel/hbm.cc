@@ -8,8 +8,6 @@
 namespace tvm {
 namespace relay {
 
-TVM_REGISTER_NODE_TYPE(AccelOpAttrs);
-
 namespace hbm {
 
 Expr MakeAccelHBMConv2D(Expr data, Expr weight, Array<IndexExpr> strides, Array<IndexExpr> padding,

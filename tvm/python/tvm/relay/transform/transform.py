@@ -1148,3 +1148,23 @@ def AnnotateSpans():
         The regsistered AnnotateSpans pass.
     """
     return _ffi_api.AnnotateSpans()
+
+
+def DenseToConv2D():
+    return _ffi_api.DenseToConv2D()
+
+
+def EleminateShapeTrans():
+    return _ffi_api.EleminateShapeTrans()
+
+
+def ConvertVSCAccel(precision={}, sim_8bit=0):
+    return _ffi_api.ConvertVSCAccel(precision, sim_8bit)
+
+
+def FusedVSCOps():
+    return _ffi_api.FusedVSCOps()
+
+
+def ProcessVSCWeight(params):
+    return _ffi_api.ProcessVSCWeight(params)

@@ -32,6 +32,7 @@ struct AccelOpAttrs : public tvm::AttrsNode<AccelOpAttrs> {
   Array<IndexExpr> widths;
   Array<IndexExpr> scales;
   IndexExpr activate;
+  IndexExpr channels;
 
   TVM_DECLARE_ATTRS(AccelOpAttrs, "relay.attrs.accel.OpAttrs") {
     TVM_ATTR_FIELD(strides)
@@ -74,6 +75,9 @@ struct AccelOpAttrs : public tvm::AttrsNode<AccelOpAttrs> {
         .describe("The enable list for widths and scales.")
         .set_default(NullValue<Array<IndexExpr>>());
     TVM_ATTR_FIELD(activate)
+        .describe("The enable list for widths and scales.")
+        .set_default(NullValue<IndexExpr>());
+    TVM_ATTR_FIELD(channels)
         .describe("The enable list for widths and scales.")
         .set_default(NullValue<IndexExpr>());
   }

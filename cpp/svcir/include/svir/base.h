@@ -6,12 +6,22 @@
 #include <vector>
 #include <unordered_map>
 
+#define MERGE_BODY(a, b) static bool a##b
+
+#define MERGE(a, b) MERGE_BODY(a, b)
+
 namespace svir {
+
+struct Tensor {
+    void* data;
+    uint64_t size;
+};
 
 struct TypeDefs {
     enum TypeDef {
         Expr,
         Var,
+        Constant,
         Call,
         Tensor,
         Tuple
@@ -53,7 +63,7 @@ struct Report {
     SVExpr* out;
 };
 
-typedef bool (*InferRel_t)(std::vector<SVExpr*>, Attrs, Report*);
+typedef bool (*InferRel_t)(std::vector<SVExpr*>, Attrs*, Report*);
 
 class Op {
   public:
@@ -64,6 +74,11 @@ class Op {
 
     static bool Register(const std::string& name, int in_num, int out_num, InferRel_t infer) {
         memo_[name] = Op(name, in_num, out_num, infer);
+        return true;
+    }
+
+    static bool RegisterAttrs(const std::string& op_name, const std::string& attr_name, void* attr_func) {
+        memo_[op_name].attributes[attr_name] = attr_func;
         return true;
     }
 
@@ -80,8 +95,8 @@ class Op {
     int in_num;
     int out_num;
     InferRel_t infer;
+    std::unordered_map<std::string, void*> attributes;
 };
-
 
 };
 

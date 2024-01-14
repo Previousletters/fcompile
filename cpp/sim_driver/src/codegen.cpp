@@ -72,14 +72,9 @@ QueryPerformanceCounter(&start_cfg);
     }
 }
 
-void CSB_Save_Model_Burst(const std::string& file, const std::string& prefix, const std::string& tab) {
-    std::ofstream source(file, std::ios::app);
-    time_t now = time(0);
-    char* dt = ctime(&now);
-    source << "// generated at " << dt;
+void CSB_Save_Model_Burst(std::ofstream& source, const std::string& prefix, const std::string& tab) {
     for (int i = 0; i < csbs.size(); i++) {
-        source << std::endl;
-        source << "void " << prefix << i << "_op (HANDLE device) {\n";
+        source << "void " << prefix << " (HANDLE device) {\n";
         source <<
             R"CODE(#ifdef REGS_DEBUG
 LARGE_INTEGER start_cfg;
@@ -96,7 +91,7 @@ QueryPerformanceFrequency(&freq);
         int id = 0;
         for (auto n : csbs[i]) {
             if (n.first) {
-                if (n.second.first == ignored[0] || n.second.first == ignored[1] || n.second.first == 221) {
+                if (n.second.first == ignored[0] || n.second.first == ignored[1]) {
                     CSB_Save_Model_Burst_Cfg(source, reg_cfg, tab, id);
                     reg_cfg.clear();
                     source << tab << "CSB_Write(device, " << n.second.first << ", " << n.second.second << ");\n";
@@ -126,12 +121,11 @@ printf("run time     = %fs \n",time_sec1);
         }
         source << "}\n";
     }
-    source.close();
 }
 
 void CSB_Save_Model(std::ofstream& source, const std::string& prefix, const std::string& tab) {
     for (int i = 0; i < csbs.size(); i++) {
-        source << "void " << prefix << i << "_op (HANDLE device) {\n";
+        source << "void " << prefix << " (HANDLE device) {\n";
         source <<
             R"CODE(#ifdef REGS_DEBUG
 LARGE_INTEGER start_cfg;
@@ -244,7 +238,12 @@ void CSB_Clear() {
 }
 
 addr_t node_inputs;
+addr_t node_weights;
 addr_t node_outputs;
+
+attr_t attr_inputs;
+attr_t attr_weights;
+attr_t attr_outputs;
 
 void Addr_Save_Model(std::ofstream& source, const std::string& prefix, const std::string& tab) {
     time_t now = time(0);
@@ -254,20 +253,102 @@ void Addr_Save_Model(std::ofstream& source, const std::string& prefix, const std
     std::cout << "Found " << node_inputs.size() << " inputs: ";
     for (auto& input : node_inputs) {
         std::cout << input.first << " ";
-        source << "static int " << prefix << input.first << "_payload" << " = " << input.second.first << ";" << std::endl;
-        source << "static int " << prefix << input.first << "_payload_size" << " = " << input.second.second << ";" << std::endl;
+        source << "uint64_t " << prefix << input.first << "_payload" << " = " << "0x"
+               << std::hex << std::setw(9) << std::setfill('0')<< input.second.first << std::dec << ";" << std::endl;
+        source << "int " << prefix << input.first << "_payload_size" << " = " << input.second.second << ";" << std::endl;
     }
     std::cout << std::endl;
     source << std::endl;
+    if (node_weights.size()) {
+        source << "// weights payload and payload_size" << std::endl;
+        std::cout << "Found " << node_weights.size() << " weights: ";
+        for (auto& weight : node_weights) {
+            std::cout << weight.first << " ";
+            source << "uint64_t " << prefix << weight.first << "_payload" << " = " << "0x"
+                   << std::hex << std::setw(9) << std::setfill('0')<< weight.second.first << std::dec << ";" << std::endl;
+            source << "int " << prefix << weight.first << "_payload_size" << " = " << weight.second.second << ";" << std::endl;
+        }
+        std::cout << std::endl;
+        source << std::endl;
+    }
     if (node_outputs.size()) {
         source << "// outputs payload and payload_size" << std::endl;
         std::cout << "Found " << node_outputs.size() << " outputs: ";
         for (auto& output : node_outputs) {
             std::cout << output.first << " ";
-            source << "static int " << prefix << output.first << "_payload" << " = " << output.second.first << ";" << std::endl;
-            source << "static int " << prefix << output.first << "_payload_size" << " = " << output.second.second << ";" << std::endl;
+            source << "uint64_t " << prefix << output.first << "_payload" << " = " << "0x"
+                   << std::hex << std::setw(9) << std::setfill('0')<< output.second.first << std::dec << ";" << std::endl;
+            source << "int " << prefix << output.first << "_payload_size" << " = " << output.second.second << ";" << std::endl;
         }
         std::cout << std::endl;
         source << std::endl;
+    }
+}
+
+void Attr_Save_Model(std::ofstream& source, const std::string& prefix, const std::string& tab) {
+    time_t now = time(0);
+    char* dt = ctime(&now);
+    source << "// generated at " << dt << std::endl;
+    source << "// inputs bin inf" << std::endl;
+    std::cout << "Found " << attr_inputs.size() << " inputs: ";
+    for (auto& input : attr_inputs) {
+        std::cout << input.first << " ";
+        source << "struct bin_inf* " << prefix << input.first << " = get_bin_inf(" << input.second.addr << ", " << input.second.size << ", \"" << input.second.fname << "\");" << std::endl;
+    }
+    std::cout << std::endl;
+    source << std::endl;
+    if (attr_outputs.size()) {
+        source << "// outputs bin inf" << std::endl;
+        std::cout << "Found " << attr_outputs.size() << " outputs: ";
+        for (auto& output : attr_outputs) {
+            std::cout << output.first << " ";
+            source << "struct bin_inf* " << prefix << output.first << " = get_bin_inf(" << output.second.addr << ", " << output.second.size << ", \"" << output.second.fname << "\");" << std::endl;
+        }
+        std::cout << std::endl;
+        source << std::endl;
+    }
+
+    source << "void write_input_DDR(HANDLE device) {" << std::endl;
+    for (auto& input : attr_inputs) {
+        source << tab << "h2cx_device_write_bin(device, " << prefix << input.first << ");" << std::endl;
+    }
+    source << "}\n" << std::endl;
+
+    source << "void verify_input_DDR(HANDLE device) {" << std::endl;
+    for (auto& input : attr_inputs) {
+        source << tab << "verify_data_write(device, " << prefix << input.first << ");" << std::endl;
+    }
+    source << "}\n" << std::endl;
+
+    source << "void read_output_DDR(HANDLE device) {" << std::endl;
+    for (auto& output : attr_outputs) {
+        source << tab << "c2hx_device_read_bin(device, " << prefix << output.first << ");" << std::endl;
+    }
+    source << "}\n" << std::endl;
+    if (attr_weights.size()) {
+        source << "// weights HBM" << std::endl;
+        std::cout << "Found " << attr_weights.size() << " weights: ";
+        source <<"void write_weight_HBM(HANDLE device, int group) {" << std::endl;
+        source << tab << "char file_name[200]" << std::endl;
+        source << tab << "for (int i = 0; i < group; i++) {" << std::endl;
+        for (auto& weight : attr_weights) {
+            std::cout << weight.first << " ";
+            source << tab << tab << "sprintf(file_name, \"" << weight.second.fname <<"\", i);" << std::endl;
+            source << tab << tab << "struct bin_inf* " << prefix << weight.first << " = get_bin_inf(" << weight.second.addr << ", " << weight.second.size << ", file_name);" << std::endl;
+            source << tab << tab << "h2cx_device_write_bin(device, " << prefix << weight.first << ");" << std::endl;
+        }
+        source << tab << "}" << std::endl;
+        std::cout << std::endl;
+        source << "}\n" << std::endl;
+        source <<"void verify_weight_HBM(HANDLE device, int group) {" << std::endl;
+        source << tab << "char file_name[200]" << std::endl;
+        source << tab << "for (int i = 0; i < group; i++) {" << std::endl;
+        for (auto& weight : attr_weights) {
+            source << tab << tab << "sprintf(file_name, \"" << weight.second.fname <<"\", i);" << std::endl;
+            source << tab << tab << "struct bin_inf* " << prefix << weight.first << " = get_bin_inf(" << weight.second.addr << ", " << weight.second.size << ", file_name);" << std::endl;
+            source << tab << tab << "verify_data_write(device, " << prefix << weight.first << ");" << std::endl;
+        }
+        source << tab << "}" << std::endl;
+        source << "}\n" << std::endl;
     }
 }

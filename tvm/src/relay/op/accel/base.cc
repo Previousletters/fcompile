@@ -9,6 +9,7 @@ namespace tvm {
 namespace relay {
 
 TVM_REGISTER_NODE_TYPE(QuantAttrs);
+TVM_REGISTER_NODE_TYPE(AccelOpAttrs);
 
 namespace base {
 

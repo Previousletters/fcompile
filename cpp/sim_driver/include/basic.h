@@ -23,7 +23,6 @@ typedef int HANDLE;
 
 //typedef int HANDLE;
 #define FPGA_NULL ((void *)0xFFFFFFFF)
-#define CNN_IP_BASE_ADDR 0x100000
 #define Run_on_FPGA
 //#define log2_WT_base_addr_Bank_Step (28)
 
@@ -65,6 +64,14 @@ struct Mapped_Weight
 void CSB_Write(HANDLE user_device, int addr, int data);
 void CSB_Read(HANDLE user_device, int addr, int data);
 int CSB_Read(HANDLE user_device, int addr);
+
+struct Mapped_Feature* InputAddr(struct Mapped_Feature*, const std::string&);
+struct Mapped_Weight* InputAddr(struct Mapped_Weight*, const std::string&);
+struct Mapped_Feature* OutputAddr(struct Mapped_Feature*, const std::string&);
+
+struct Mapped_Feature* InputAddr(struct Mapped_Feature*, const std::string&, const std::string&);
+struct Mapped_Weight* InputAddr(struct Mapped_Weight*, const std::string&, const std::string&);
+struct Mapped_Feature* OutputAddr(struct Mapped_Feature*, const std::string&, const std::string&);
 
 struct Mapped_Feature* Malloc_Feature(int height, int width, int ch, int scale, int conv_out_scale, int dat_bit);
 struct Mapped_Weight* Malloc_Weight(int Ky, int Kx, int in_ch, int out_ch, int scale, int wt_bit);
