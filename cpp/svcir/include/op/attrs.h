@@ -31,6 +31,10 @@ struct TransposeAttrs : public Attrs {
     int left_wt_base_addr;
 };
 
+struct LayerNormAttrs : public Attrs {
+    int out_and_in_mode;
+};
+
 };
 
 #endif

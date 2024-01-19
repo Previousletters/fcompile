@@ -63,6 +63,10 @@ struct Mapped_Weight
 };
 
 /////////////////////////////////
+
+uint64_t GetSizeFeature(int height, int width, int ch);
+uint64_t GetSizeWeight(int chin, int chout);
+
 void CSB_Write(HANDLE user_device, int addr, int data);
 void CSB_Read(HANDLE user_device, int addr, int data);
 int CSB_Read(HANDLE user_device, int addr);

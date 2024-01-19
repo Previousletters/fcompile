@@ -15,13 +15,17 @@ namespace transform {
 
 class InferType : public Mutator {
 
-    void Visit_(SVVar* var) final {
-        var->checked = new SVTensor(var->shape, "feature");
+    void Visit_(Constant* constant) final {
+        constant->checked = new Tensor(constant->shape, constant->dtype);
     }
 
-    void Visit_(SVCall* call) final {
+    void Visit_(Var* var) final {
+        var->checked = new Tensor(var->shape, "feature");
+    }
+
+    void Visit_(Call* call) final {
         Report* report = new Report();
-        std::vector<SVExpr*> new_args;
+        std::vector<Expr*> new_args;
         for (auto arg : call->args) {
             Mutator::Visit(arg);
             report->args.push_back(arg->checked);

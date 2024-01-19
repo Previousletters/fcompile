@@ -1,6 +1,7 @@
-#ifndef __SVIR_EXPR_PRINT__
-#define __SVIR_EXPR_PRINT__
+#ifndef __IR_EXPR_PRINT__
+#define __IR_EXPR_PRINT__
 
+#include "expr.h"
 #include <sstream>
 #include <string>
 #include <vector>
@@ -32,7 +33,7 @@ std::string vector_str(std::vector<std::string> var) {
 
 class Print : public Functor<std::string> {
   public:
-    std::string print(SVExpr* expr) {
+    std::string print(Expr* expr) {
         id_ = 0;
         sstream_.str("");
         svar_ = {};
@@ -42,17 +43,30 @@ class Print : public Functor<std::string> {
         return show;
     }
 
-    std::string Visit_(SVVar* var) final {
+    std::string Visit_(Constant* constant) final {
+        sstream_ << "  "  << constant->name << " = " << "constant(" << constant->dtype << ", ";
+        for (int i = 0; i < constant->fname.size()-1; i++) {
+            sstream_ << "\"" << constant->fname[i] << "\"" << ", ";
+        }
+        sstream_ << "\"" << *(constant->fname.end()-1) << "\");";
+        if (constant->checked) {
+            sstream_ << " " << shape_str(constant->checked->as<Tensor>()->shape, constant->checked->as<Tensor>()->dtype);
+        }
+        sstream_ << std::endl;
+        return constant->name;
+    }
+
+    std::string Visit_(Var* var) final {
         sstream_ << "  "  << var->name << " = " << "var();";
         svar_.push_back(var->name);
         if (var->checked) {
-            sstream_ << " " << shape_str(var->checked->as<SVTensor>()->shape, var->checked->as<SVTensor>()->dtype);
+            sstream_ << " " << shape_str(var->checked->as<Tensor>()->shape, var->checked->as<Tensor>()->dtype);
         }
         sstream_ << std::endl;
         return var->name;
     }
 
-    std::string Visit_(SVCall* call) final {
+    std::string Visit_(Call* call) final {
         std::vector<std::string> args;
         for (auto arg : call->args) {
             args.push_back(Functor<std::string>::Visit(arg));
@@ -65,7 +79,7 @@ class Print : public Functor<std::string> {
         }
         sstream_ << *(args.end()-1) << ");";
         if (call->checked) {
-            sstream_ << " " << shape_str(call->checked->as<SVTensor>()->shape, call->checked->as<SVTensor>()->dtype);
+            sstream_ << " " << shape_str(call->checked->as<Tensor>()->shape, call->checked->as<Tensor>()->dtype);
         }
         sstream_ << std::endl;
         return out;

@@ -290,35 +290,14 @@ struct Mapped_Feature* mul(struct Mapped_Feature* input_a, struct Mapped_Feature
 
 int test(int seq) {
     std::string path_prefix = "./test/";
-    struct Mapped_Feature* data = InputAddr(Malloc_Feature(1, seq, 4096, 0, 0, 16), "data");
-    struct Mapped_Feature* ln_weight = InputAddr(Malloc_Feature(1, 1, 4096 * 2, 0, 0, 16), "ln_weight");
-    struct Mapped_Weight* q_weight = InputAddr(Malloc_Weight(1, 1, 4096, 128 * 32, 0, 4), "q_weight");
-    struct Mapped_Feature* q_bias = InputAddr(Malloc_Feature(1, 1, 256 * 32, 0, 0, 16), "q_bias");
-    struct Mapped_Weight* k_weight = InputAddr(Malloc_Weight(1, 1, 4096, 128 * 2, 0, 4), "k_weight");
-    struct Mapped_Feature* k_bias = InputAddr(Malloc_Feature(1, 1, 256 * 2, 0, 0, 16), "k_bias");
-    struct Mapped_Weight* v_weight = InputAddr(Malloc_Weight(1, 1, 4096, 128 * 2, 0, 4), "v_weight");
-    struct Mapped_Feature* v_bias = InputAddr(Malloc_Feature(1, 1, 256 * 2, 0, 0, 16), "v_bias");
+    struct Mapped_Feature* data = InputAddr(Malloc_Feature(1, seq, 128, 0, 0, 16), "data");
+    struct Mapped_Feature* pos_in = InputAddr(Malloc_Feature(1, 1, 64*seq, 0, 0, 16), "pos_in");
 
     // LayerNorm
-    struct Mapped_Feature* ln_out = Malloc_Feature(1, seq, 4096, 0, 0, 16);
-    FPGA_Run_LN(data, ln_weight, ln_out, 0, 0, 0);
-    Reshape(ln_out, seq, 1, 4096); // emb_qury: (32, seq, 128) // !!!!Warnning!!!!
+    struct Mapped_Feature* pos_out = Malloc_Feature(1, seq, 128, 0, 0, 16);
+    FPGA_Run_PosEmb(data, pos_in, pos_out, seq, 0);
 
-    // Get QKV
-    struct Mapped_Feature* q_data = Malloc_Feature(seq, 1, 128 * 32, 0, 0, 16);
-    struct Mapped_Feature* k_data = Malloc_Feature(seq, 1, 128 * 2, 0, 0, 16);
-    struct Mapped_Feature* v_data = Malloc_Feature(seq, 1, 128 * 2, 0, 0, 16);
-    FPGA_RunHBM_MVM_BN(0, mode_mvm_bn, ln_out, q_weight, q_bias, q_data, 1, 0, 0, 0, 0, 0, 28, 0);
-    FPGA_RunHBM_MVM_BN(0, mode_mvm_bn, ln_out, k_weight, k_bias, k_data, 1, 0, 0, 0, 0, 0, 28, 0);
-    FPGA_RunHBM_MVM_BN(0, mode_mvm_bn, ln_out, v_weight, v_bias, v_data, 1, 0, 0, 0, 0, 0, 28, 0);
-    std::cout << "ln_out" << ": " << ln_out << std::endl;
-    std::cout << "q_data" << ": " << q_data << std::endl;
-    std::cout << "k_data" << ": " << k_data << std::endl;
-    std::cout << "v_data" << ": " << v_data << std::endl;
-    OutputAddr(ln_out, "ln_result");
-    OutputAddr(q_data, "q_result");
-    OutputAddr(k_data, "k_result");
-    OutputAddr(v_data, "v_result");
+    OutputAddr(pos_out, "pos_out");
 
     /*
      * /----------------\
@@ -326,10 +305,10 @@ int test(int seq) {
      * \----------------/
      */
     CSB_Finish(); // 函数结束标志，生成 <name>0(HANDLE device) 函数
-    std::string name = "LN_QKV_19_4096x128x32";
+    std::string name = "PosEmb_19x1x128";
     std::ofstream source(name + ".h");
     Addr_Save_Model(source, "");
-    // Attr_Save_Model(source, "");
+    //Attr_Save_Model(source, "");
     CSB_Save_Model(source, name);
     // CSB_Save_Model_Burst(source, name);
     CSB_Clear(); // CSB记录清空，重新开始记录
@@ -338,10 +317,10 @@ int test(int seq) {
 
 int test_n(int seq) {
     std::string path_prefix = "./test/";
-    struct Mapped_Feature* data = InputAddr(Malloc_Feature(1, seq, 4096, 0, 0, 16), "data");
-    struct Mapped_Feature* ln_weight = InputAddr(Malloc_Feature(1, 1, 4096 * 2, 0, 0, 16), "ln_weight");
-    struct Mapped_Weight* q_weight = InputAddr(Malloc_Weight(1, 1, 4096, 128 * 1, 0, 4), "q_weight");
-    struct Mapped_Feature* q_bias = InputAddr(Malloc_Feature(1, 1, 256 * 1, 0, 0, 16), "q_bias");
+    struct Mapped_Feature* data = InputAddr(Malloc_Feature(1, seq, 4096, 0, 0, 16), "data", path_prefix+"data.bin");
+    struct Mapped_Feature* ln_weight = InputAddr(Malloc_Feature(1, 1, 4096 * 2, 0, 0, 16), "ln_weight", path_prefix+"ln_weight.bin");
+    struct Mapped_Weight* q_weight = InputAddr(Malloc_Weight(1, 1, 4096, 128 * 1, 0, 4), "q_weight", path_prefix+"q_weight.bin");
+    struct Mapped_Feature* q_bias = InputAddr(Malloc_Feature(1, 1, 256 * 1, 0, 0, 16), "q_bias", path_prefix+"q_bias.bin");
 
     // LayerNorm
     struct Mapped_Feature* ln_out = Malloc_Feature(1, seq, 4096, 0, 0, 16);
@@ -353,8 +332,8 @@ int test_n(int seq) {
     FPGA_RunHBM_MVM_BN(0, mode_mvm_bn, ln_out, q_weight, q_bias, q_data, 1, 0, 0, 0, 0, 0, 28, 0);
     std::cout << "ln_out" << ": " << ln_out << std::endl;
     std::cout << "q_data" << ": " << q_data << std::endl;
-    OutputAddr(ln_out, "ln_result");
-    OutputAddr(q_data, "q_result");
+    OutputAddr(ln_out, "ln_result", path_prefix+"ln_result.bin");
+    OutputAddr(q_data, "q_result", path_prefix+"q_result.bin");
 
     /*
      * /----------------\
@@ -364,8 +343,8 @@ int test_n(int seq) {
     CSB_Finish(); // 函数结束标志，生成 <name>0(HANDLE device) 函数
     std::string name = "LN_QKV_19_4096x128";
     std::ofstream source(name + ".h");
-    Addr_Save_Model(source, "");
-    // Attr_Save_Model(source, "");
+    //Addr_Save_Model(source, "");
+    Attr_Save_Model(source, "");
     CSB_Save_Model(source, name);
     // CSB_Save_Model_Burst(source, name);
     CSB_Clear(); // CSB记录清空，重新开始记录
@@ -376,6 +355,7 @@ int test_n(int seq) {
 
 int main() {
     // chatglm_block_main(19);
-    test_n(19);
+    // test_n(19);
+    test(19);
     return 0;
 }

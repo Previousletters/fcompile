@@ -1,5 +1,5 @@
-#ifndef __SVIR_BASE__
-#define __SVIR_BASE__
+#ifndef __IR_BASE__
+#define __IR_BASE__
 
 #include <iostream>
 #include <string>
@@ -12,7 +12,7 @@
 
 namespace svir {
 
-struct Tensor {
+struct DlTensor {
     void* data;
     uint64_t size;
 };
@@ -28,10 +28,10 @@ struct TypeDefs {
     };
 };
 
-class SVExpr {
+class Expr {
   public:
-    SVExpr() = default;
-    SVExpr(int type_index) : type_index_(std::move(type_index)) {};
+    Expr() = default;
+    Expr(int type_index) : type_index_(std::move(type_index)) {};
 
     template<typename TargetObj>
     bool IsInstance() const{
@@ -49,7 +49,7 @@ class SVExpr {
     };
 
     static constexpr int _type_index = TypeDefs::Expr;
-    SVExpr* checked = nullptr; 
+    Expr* checked = nullptr; 
 
   protected:
     int type_index_;
@@ -59,11 +59,11 @@ struct Attrs {
 };
 
 struct Report {
-    std::vector<SVExpr*> args;
-    SVExpr* out;
+    std::vector<Expr*> args;
+    Expr* out;
 };
 
-typedef bool (*InferRel_t)(std::vector<SVExpr*>, Attrs*, Report*);
+typedef bool (*InferRel_t)(std::vector<Expr*>, Attrs*, Report*);
 
 class Op {
   public:
