@@ -2,6 +2,8 @@
 
 void FPGA_Run_Elementwise(int ElementWise_Mode, struct Mapped_Feature* feature_a, struct Mapped_Feature* feature_b, struct Mapped_Feature* feature_out, int Out_and_In_Mode, HANDLE device)
 {
+    ObjCheck(feature_a);
+    ObjCheck(feature_b);
     int CHin_div_Tout = (feature_a->channel+Tout-1) / Tout; // in->width=out->chout
     int dat_in_surface_stride = Pixel_Data_Bytes*feature_a->width*feature_a->height;
     int dat_in_line_stride = Pixel_Data_Bytes*feature_a->width;
@@ -24,4 +26,6 @@ void FPGA_Run_Elementwise(int ElementWise_Mode, struct Mapped_Feature* feature_a
     //Kick of the run
     CSB_Write(device, Elementwise_reg_bias+14,0b01);//Elementwise_start
 	while (CSB_Read(device, Elementwise_reg_bias+1) != 1){	}
+    AutoFree(feature_a);
+    AutoFree(feature_b);
 }

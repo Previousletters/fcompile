@@ -54,11 +54,12 @@ int FP32_to_FP20(float fp32_i)
 
 void FPGA_Run_Softmax(struct Mapped_Feature* feature_in, struct Mapped_Feature* feature_out, int Softmax_Out_and_In_Mode, HANDLE device)
 {
+    ObjCheck(feature_in);
     int width = ((feature_in->width + AXI_BURST_LEN_SOFTMAX - 1) / AXI_BURST_LEN_SOFTMAX) * AXI_BURST_LEN_SOFTMAX;
-    int dat_in_surface_stride = Pixel_Data_Bytes * feature_in->height * width;
-    int dat_in_line_stride = Pixel_Data_Bytes * width;
-    int dat_out_surface_stride = Pixel_Data_Bytes * feature_out->height * width;
-    int dat_out_line_stride = Pixel_Data_Bytes * width;
+    int dat_in_surface_stride = Pixel_Data_Bytes * feature_in->height * feature_in->width;
+    int dat_in_line_stride = Pixel_Data_Bytes * feature_in->width;
+    int dat_out_surface_stride = Pixel_Data_Bytes * feature_out->height * feature_in->width;
+    int dat_out_line_stride = Pixel_Data_Bytes * feature_in->width;
 
     CSB_Write(device, Matrix_reg_bias+2 ,0);
 	CSB_Write(device, Matrix_reg_bias+3 ,(uint64_t)(feature_in->payload));
@@ -84,12 +85,15 @@ void FPGA_Run_Softmax(struct Mapped_Feature* feature_in, struct Mapped_Feature* 
 	CSB_Write(device, Matrix_reg_bias+22,0b00001000);//Ln_start
     
 	while (CSB_Read(device, Matrix_reg_bias+1) != 1) {}
+    AutoFree(feature_in);
 }
 
 
 void FPGA_Run_Activation(int parameters_addr, struct Mapped_Feature* feature_in, struct Mapped_Feature* feature_out, int Activation_Out_and_In_Mode, HANDLE device)
 {
-    int width = ((feature_in->width + AXI_BURST_LEN_SOFTMAX - 1) / AXI_BURST_LEN_SOFTMAX) * AXI_BURST_LEN_SOFTMAX;
+    ObjCheck(feature_in);
+    // int width = ((feature_in->width + AXI_BURST_LEN_SOFTMAX - 1) / AXI_BURST_LEN_SOFTMAX) * AXI_BURST_LEN_SOFTMAX;
+    int width = feature_in->width;
     int dat_in_surface_stride = Pixel_Data_Bytes * feature_in->height * width;
     int dat_in_line_stride = Pixel_Data_Bytes * width;
     int dat_out_surface_stride = Pixel_Data_Bytes * feature_out->height * width;
@@ -103,6 +107,7 @@ void FPGA_Run_Activation(int parameters_addr, struct Mapped_Feature* feature_in,
 	CSB_Write(device, Matrix_reg_bias+7 ,dat_out_surface_stride);
 	CSB_Write(device, Matrix_reg_bias+8 ,dat_out_line_stride);
 	CSB_Write(device, Matrix_reg_bias+9 ,(feature_in->channel+Tout-1) / Tout);
+    CSB_Write(device, Matrix_reg_bias+10,feature_in->height);//pixel_in
     CSB_Write(device, Matrix_reg_bias+11,width);//Win
     CSB_Write(device, Matrix_reg_bias+12,feature_in->width);//pixel_in
     CSB_Write(device, Matrix_reg_bias+13,Activation_Out_and_In_Mode);
@@ -120,10 +125,13 @@ void FPGA_Run_Activation(int parameters_addr, struct Mapped_Feature* feature_in,
 	while (CSB_Read(device, Matrix_reg_bias+1) != 1)
 	{
     }
+    AutoFree(feature_in);
 }
 
 void FPGA_Run_LN(struct Mapped_Feature* feature_in, struct Mapped_Feature* wt_and_bias, struct Mapped_Feature* feature_out, int RMS_Norm, int LN_Out_and_In_Mode, HANDLE device)
 {
+    ObjCheck(feature_in);
+    ObjCheck(wt_and_bias);
     int chin_padding_with_tout = ((feature_in->channel + Tout - 1) / Tout) * Tout;
     int LN_num_per_AXI_DW = AXI_DAT_WIDTH/(2*MAX_BN_DW);
     int Layer_Norm = 1-RMS_Norm;
@@ -158,10 +166,13 @@ void FPGA_Run_LN(struct Mapped_Feature* feature_in, struct Mapped_Feature* wt_an
     CSB_Write(device, Matrix_reg_bias+21,0);
 	CSB_Write(device, Matrix_reg_bias+22,0b0100000);//Ln_stage1_start
 	while (CSB_Read(device, Matrix_reg_bias+1) != 1){	}
+    AutoFree(feature_in);
+    AutoFree(wt_and_bias);
 }
 
 void FPGA_Run_Transpose(struct Mapped_Feature* feature_in, struct Mapped_Weight* feature2weight_out, int Transpose_Out_and_In_Mode, HANDLE device, int log2_WT_base_addr_Bank_Step, int Left_WT_Base_Addr)
 {
+    ObjCheck(feature_in);
     int width = ((feature_in->width + Tout - 1) / Tout) * Tout;
     int in_ch = ((feature_in->channel + T_quant_block - 1) / T_quant_block) * T_quant_block;
 	int pixel_in,pixel_out,wt_burst_times,CHout_div_Tout, Block_wt_bits;
@@ -199,13 +210,15 @@ void FPGA_Run_Transpose(struct Mapped_Feature* feature_in, struct Mapped_Weight*
 	CSB_Write(device, Matrix_reg_bias+22,0b010);
 	while (CSB_Read(device, Matrix_reg_bias+1) != 1){	}
 	//Kick of the run
+    AutoFree(feature_in);
 }
 
 
 void FPGA_Run_Feature2Weight(struct Mapped_Feature* feature_in, struct Mapped_Weight* weight_out, int Out_and_In_Mode, HANDLE device, int log2_WT_base_addr_Bank_Step, int Left_WT_Base_Addr)
 {
-    int width = ((feature_in->width + Tout - 1) / Tout) * Tout;
-    int in_ch = ((feature_in->channel + T_quant_block - 1) / T_quant_block) * T_quant_block;
+    ObjCheck(feature_in);
+    int width = ((feature_in->width + T_quant_block - 1) / T_quant_block) * T_quant_block;
+    int in_ch = ((feature_in->channel + Tout - 1) / Tout) * Tout;
 	int pixel_in,pixel_out,wt_burst_times,CHout_div_Tout, Block_wt_bits;
     int WT_CHin_div_Tblock = in_ch/T_quant_block;
     wt_burst_times = ((feature_in->width + Tout - 1) / Tout)*WT_CHin_div_Tblock*(MAX_DAT_DW+T_quant_block*4)/MAX_DAT_DW;
@@ -214,7 +227,7 @@ void FPGA_Run_Feature2Weight(struct Mapped_Feature* feature_in, struct Mapped_We
 
     int WT_CHin_div_Tin = (in_ch+base_Tin-1)/base_Tin;
     int WT_CHin_Padding_with_Tin = WT_CHin_div_Tin*base_Tin;
-    int DAT_IN_SURFACE_STRIDE = Pixel_Data_Bytes*feature_in->width*feature_in->height;
+    int DAT_IN_SURFACE_STRIDE = Pixel_Data_Bytes*width*feature_in->height;
     int Height = feature_in->height * feature_in->width;
 	
 	CSB_Write(device, Matrix_reg_bias+2 ,0);
@@ -239,11 +252,14 @@ void FPGA_Run_Feature2Weight(struct Mapped_Feature* feature_in, struct Mapped_We
     CSB_Write(device, Matrix_reg_bias+21,0);
 	CSB_Write(device, Matrix_reg_bias+22,0b000001);
 	while (CSB_Read(device, Matrix_reg_bias+1) != 1){	}
+    AutoFree(feature_in);
 	//Kick of the run
 }
 
 void FPGA_Run_PosEmb(struct Mapped_Feature* feature_in, struct Mapped_Feature* pos_in, struct Mapped_Feature* feature_out, int Pos_Num, int Out_and_In_Mode, HANDLE device)
 {
+    ObjCheck(feature_in);
+    ObjCheck(pos_in);
     int chin_padding_with_tout = ((feature_in->channel + Tout - 1) / Tout) * Tout;
     int PosEmb_in_line_stride = Pixel_Data_Bytes * Pos_Num;
     int dat_in_surface_stride = Pixel_Data_Bytes * feature_in->height * feature_in->width;
@@ -273,6 +289,7 @@ void FPGA_Run_PosEmb(struct Mapped_Feature* feature_in, struct Mapped_Feature* p
     CSB_Write(device, Matrix_reg_bias+21,PosEmb_in_line_stride);
 	CSB_Write(device, Matrix_reg_bias+22,0b0100);
 	while (CSB_Read(device, Matrix_reg_bias+1) != 1){	}
+    AutoFree(feature_in);
 }
 
 

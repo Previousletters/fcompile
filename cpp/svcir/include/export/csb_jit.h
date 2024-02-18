@@ -1,6 +1,7 @@
 #ifndef __EXPORT_CSB_JIT__
 #define __EXPORT_CSB_JIT__
 
+#include <iostream>
 #include <map>
 #include <cstdint>
 #include <cstdlib>
@@ -77,6 +78,7 @@ class CSBCodeGen {
                 if (ddr_base + ddr_size == it.addr) {
                     ddr_size += it.size;
                 } else {
+                    std::cerr << "*Error! DDR weight could not wrapper as one binary file!" << std::endl;
                     ddr_size = 0;
                 }
             }
@@ -100,6 +102,7 @@ class CSBCodeGen {
                 if (hbm_base + hbm_size == it.addr) {
                     hbm_size += it.size;
                 } else {
+                    std::cerr << "*Error! HBM weight could not wrapper as one binary file!" << std::endl;
                     hbm_size = 0;
                 }
             }

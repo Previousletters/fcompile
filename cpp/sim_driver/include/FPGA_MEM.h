@@ -22,9 +22,11 @@ uint64_t board_address;  /* the address of MEM on FPGA board */
 #define FPGA_NULL ((void *)0xFFFFFFFF)
 
 void *FPGA_DDR_malloc(unsigned int numbytes);
-void FPGA_DDR_free(void *firstbyte);
+void FPGA_DDR_free(void *, int);
+void FPGA_DDR_show();
 
 void* FPGA_HBM_malloc(unsigned int numbytes);
 void FPGA_HBM_free(void* firstbyte);
+void FPGA_HBM_show();
 
 #endif

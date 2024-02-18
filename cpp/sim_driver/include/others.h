@@ -5,16 +5,6 @@
 
 #include "basic.h"
 
-#define Tb 1
-#define base_Tin 128
-#define Tout 32
-#define MAX_BN_DW 16
-#define MAX_DAT_DW 16
-#define T_quant_block    128 //base_Tin //equal to the base_Tin
-#define AXI_BURST_LEN_SOFTMAX 4
-#define AXI_DAT_WIDTH (MAX_DAT_DW*Tout*Tb)
-#define Pixel_Data_Bytes ((AXI_DAT_WIDTH)>>3)        
-#define log2_AXI_BURST_LEN  5
 #define Elementwise_reg_bias 128 
 ///// function for software//////////
 

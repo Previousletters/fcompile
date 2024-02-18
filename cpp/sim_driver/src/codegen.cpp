@@ -139,6 +139,7 @@ QueryPerformanceFrequency(&freq);
 #endif
 )CODE";
         int start = 1;
+        int op_numb = 0;
         for (auto& n : csbs[i]) {
             if (n.first) {
                 if (start) {
@@ -165,10 +166,11 @@ QueryPerformanceCounter(&start_run);
 QueryPerformanceCounter(&stop_run);
 time_sec0 = (unsigned long long)(stop_cfg.QuadPart - start_cfg.QuadPart) / (double)freq.QuadPart;
 time_sec1 = (unsigned long long)(stop_run.QuadPart - start_run.QuadPart) / (double)freq.QuadPart;
-printf("cfg reg time = %fs \n",time_sec0);
-printf("run time     = %fs \n",time_sec1);
-#endif
 )CODE";
+                source << "printf(\"op "<< op_numb << " cfg reg time = %fs \\n\",time_sec0);" << std::endl;
+                source << "printf(\"op "<< op_numb << " run time     = %fs \\n\",time_sec1);" << std::endl;
+                source << "#endif" << std::endl;
+                op_numb++;
             }
         }
         source << "}\n";
@@ -196,6 +198,7 @@ QueryPerformanceFrequency(&freq);
 #endif
 )CODE";
         int start = 1;
+        int op_numb = 0;
         for (auto& n : csbs[i]) {
             if (n.first) {
                 if (start) {
@@ -222,10 +225,11 @@ QueryPerformanceCounter(&start_run);
 QueryPerformanceCounter(&stop_run);
 time_sec0 = (unsigned long long)(stop_cfg.QuadPart - start_cfg.QuadPart) / (double)freq.QuadPart;
 time_sec1 = (unsigned long long)(stop_run.QuadPart - start_run.QuadPart) / (double)freq.QuadPart;
-printf("cfg reg time = %fs \n",time_sec0);
-printf("run time     = %fs \n",time_sec1);
-#endif
 )CODE";
+                source << "printf(\"op "<< op_numb << " cfg reg time = %fs \\n\",time_sec0);" << std::endl;
+                source << "printf(\"op "<< op_numb << " run time     = %fs \\n\",time_sec1);" << std::endl;
+                source << "#endif" << std::endl;
+                op_numb++;
             }
         }
         source << "}\n";
@@ -233,44 +237,45 @@ printf("run time     = %fs \n",time_sec1);
     source.close();
 }
 
-void CSB_Clear() {
-    csbs.clear();
-}
-
+addr_t node_ddrs;
+addr_t node_hbms;
 addr_t node_inputs;
-addr_t node_weights;
 addr_t node_outputs;
 
 attr_t attr_inputs;
 attr_t attr_weights;
 attr_t attr_outputs;
 
+extern unsigned int hbm_has_initialized;
+extern unsigned int ddr_has_initialized;
+
+void CSB_Clear() {
+    hbm_has_initialized = 0;
+    ddr_has_initialized = 0;
+    csbs.clear();
+    node_ddrs.clear();
+    node_hbms.clear();
+    node_inputs.clear();
+    node_outputs.clear();
+}
+
 void Addr_Save_Model(std::ofstream& source, const std::string& prefix, const std::string& tab) {
     time_t now = time(0);
     char* dt = ctime(&now);
     source << "// generated at " << dt << std::endl;
-    source << "// inputs payload and payload_size" << std::endl;
-    std::cout << "Found " << node_inputs.size() << " inputs: ";
-    for (auto& input : node_inputs) {
-        std::cout << input.first << " ";
-        source << "uint64_t " << prefix << input.first << "_payload" << " = " << "0x"
-               << std::hex << std::setw(9) << std::setfill('0')<< input.second.first << std::dec << ";" << std::endl;
-        source << "int " << prefix << input.first << "_payload_size" << " = " << input.second.second << ";" << std::endl;
-    }
-    std::cout << std::endl;
-    source << std::endl;
-    if (node_weights.size()) {
-        source << "// weights payload and payload_size" << std::endl;
-        std::cout << "Found " << node_weights.size() << " weights: ";
-        for (auto& weight : node_weights) {
-            std::cout << weight.first << " ";
-            source << "uint64_t " << prefix << weight.first << "_payload" << " = " << "0x"
-                   << std::hex << std::setw(9) << std::setfill('0')<< weight.second.first << std::dec << ";" << std::endl;
-            source << "int " << prefix << weight.first << "_payload_size" << " = " << weight.second.second << ";" << std::endl;
+    if (node_inputs.size()) {
+        source << "// inputs payload and payload_size" << std::endl;
+        std::cout << "Found " << node_inputs.size() << " inputs: ";
+        for (auto& input : node_inputs) {
+            std::cout << input.first << " ";
+            source << "uint64_t " << prefix << input.first << "_payload" << " = " << "0x"
+                   << std::hex << std::setw(9) << std::setfill('0')<< input.second.first << std::dec << ";" << std::endl;
+            source << "int " << prefix << input.first << "_payload_size" << " = " << input.second.second << ";" << std::endl;
         }
         std::cout << std::endl;
         source << std::endl;
     }
+    std::cout << std::endl;
     if (node_outputs.size()) {
         source << "// outputs payload and payload_size" << std::endl;
         std::cout << "Found " << node_outputs.size() << " outputs: ";
@@ -283,6 +288,41 @@ void Addr_Save_Model(std::ofstream& source, const std::string& prefix, const std
         std::cout << std::endl;
         source << std::endl;
     }
+    std::cout << std::endl;
+    if (node_ddrs.size()) {
+        source << "// ddrs payload and payload_size" << std::endl;
+        std::cout << "Found " << node_ddrs.size() << " ddrs: ";
+        for (auto& input : node_ddrs) {
+            if (input.second.first == -1 && input.second.second == -1) {
+                source << "// " << input.first << std::endl;
+                continue;
+            }
+            std::cout << input.first << " ";
+            source << "uint64_t " << prefix << input.first << "_payload" << " = " << "0x"
+                   << std::hex << std::setw(9) << std::setfill('0')<< input.second.first << std::dec << ";" << std::endl;
+            source << "int " << prefix << input.first << "_payload_size" << " = " << input.second.second << ";" << std::endl;
+        }
+        std::cout << std::endl;
+        source << std::endl;
+    }
+    std::cout << std::endl;
+    if (node_hbms.size()) {
+        source << "// hbms payload and payload_size" << std::endl;
+        std::cout << "Found " << node_hbms.size() << " hbms: ";
+        for (auto& weight : node_hbms) {
+            if (weight.second.first == -1 && weight.second.second == -1) {
+                source << "// " << weight.first << std::endl;
+                continue;
+            }
+            std::cout << weight.first << " ";
+            source << "uint64_t " << prefix << weight.first << "_payload" << " = " << "0x"
+                   << std::hex << std::setw(9) << std::setfill('0')<< weight.second.first << std::dec << ";" << std::endl;
+            source << "int " << prefix << weight.first << "_payload_size" << " = " << weight.second.second << ";" << std::endl;
+        }
+        std::cout << std::endl;
+        source << std::endl;
+    }
+
 }
 
 void Attr_Save_Model(std::ofstream& source, const std::string& prefix, const std::string& tab) {

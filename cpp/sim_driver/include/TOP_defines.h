@@ -71,8 +71,11 @@
 #define log2_MAX_BN_DW 4//log2_MAX_DAT_DW
 #define AXI_BN_WIDTH (MAX_BN_DW*Tout*Tb)
 #define log2_AXI_BN_WIDTH (log2_MAX_BN_DW +log2_Tout+log2_Tb)
-#define BN_FIFO_DEP ((AXI_BURST_LEN*MAX_DAT_DW*Tb)/(MAX_BN_DW*2))
-#define log2_BN_FIFO_DEP (log2_AXI_BURST_LEN+log2_MAX_DAT_DW+log2_Tb-log2_MAX_BN_DW-1)
+#define SIGNLE_BN_FIFO_DEP ((AXI_BURST_LEN*MAX_DAT_DW*Tb)/(MAX_BN_DW*2))
+#define BN_FIFO_DEP (4*SIGNLE_BN_FIFO_DEP)
+#define log2_BN_FIFO_DEP (log2_AXI_BURST_LEN+log2_MAX_DAT_DW+log2_Tb-log2_MAX_BN_DW+1)
+#define BN_FIFO_NUM ((MAX_BN_DW*2)/(MAX_DAT_DW*Tb))
+#define BN_SURFACE_STRIDE ((Tout*MAX_BN_DW*2) >> 3)
 
 #define Pixel_Data_Width (AXI_DAT_WIDTH)
 #define Pixel_Data_Bytes ((AXI_DAT_WIDTH)>>3)        
@@ -100,7 +103,7 @@
 ///////////////////   ON-CHIP BUF  ////////////////////
 #define DAT_BRAM_NUM 1
 #define log2_DAT_BRAM_NUM 0
-#define DAT_BRAM_DEPTH ((1<<20)/base_Tin/MAX_DAT_DW/DAT_BRAM_NUM)  //18: 256Kb for ASIC.
+#define DAT_BRAM_DEPTH ((1<<22)/base_Tin/MAX_DAT_DW/DAT_BRAM_NUM)  //18: 256Kb for ASIC.
                                                               //23: 8Mb for ZCU104, single BRAM buf is 512(depth)*72(width)= 36864 bit
 #define log2_DAT_BRAM_DEPTH (log2(DAT_BRAM_DEPTH))
 #define DAT_BRAM_WIDTH (base_Tin*MAX_DAT_DW)
@@ -109,7 +112,7 @@
 #define WT_BRAM_NUM HBM_Port
 #define WT_BRAM_WIDTH (HBM_AXI_DATA_WIDTH) //(64*MAX_WT_DW)
 #define log2_WT_BRAM_NUM (log2(WT_BRAM_NUM))
-#define WT_BRAM_DEPTH ((1<<25)/HBM_AXI_DATA_WIDTH/WT_BRAM_NUM)  //18: 256Kb for ASIC.
+#define WT_BRAM_DEPTH ((1<<24)/HBM_AXI_DATA_WIDTH/WT_BRAM_NUM)  //18: 256Kb for ASIC.
                                                               //23: 8Mb for ZCU104, single BRAM buf is 512(depth)*72(width)= 36864 bit
 #define log2_WT_BRAM_DEPTH (log2(WT_BRAM_DEPTH))
 

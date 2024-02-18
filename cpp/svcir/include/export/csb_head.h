@@ -95,7 +95,7 @@ class CSBHead : public Functor<void*> {
     }
 
   private:
-    typedef hbm::regops_t (*csb_handle_t)(std::vector<void*>, Attrs*);
+    typedef hbm::regops_t (*csb_handle_t)(std::vector<void*>&, Expr*, Attrs*);
 
     void* Visit_(Constant* constant) final {
         void* mapped_ = const_mapped[constant];
@@ -140,9 +140,9 @@ class CSBHead : public Functor<void*> {
         for (auto arg : call->args) {
             new_args.push_back(this->Visit(arg));
         }
-        new_args.push_back(Malloc(call->checked->as<Tensor>()));
-        hbm::regops_t regs = ((csb_handle_t)call->op->attributes["csb_driver"])(new_args, call->attrs);
-        csb_regs.push_back(regs);
+        hbm::regops_t regs = ((csb_handle_t)call->op->attributes["csb_driver"])(new_args, call->checked, call->attrs);
+        if (regs.size())
+            csb_regs.push_back(regs);
         return *(new_args.end()-1);
     }
 

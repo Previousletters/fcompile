@@ -9,45 +9,53 @@
 
 namespace svir {
 
-hbm::regops_t csb_mvm(std::vector<void*> args, Attrs* attrs) {
+hbm::regops_t csb_mvm(std::vector<void*>& args, Expr* checked, Attrs* attrs) {
+    std::vector<int> oshape = checked->as<Tensor>()->shape;
     hbm::Mapped_Feature* input = static_cast<hbm::Mapped_Feature*>(args[0]);
     hbm::Mapped_Weight* weight = static_cast<hbm::Mapped_Weight*>(args[1]);
-    hbm::Mapped_Feature* output = static_cast<hbm::Mapped_Feature*>(args[2]);
+    hbm::Mapped_Feature* output = hbm::Malloc_Feature(oshape[0], oshape[1], oshape[2], 0, 0, 16);
     MVMAttrs* mvm_attr = static_cast<MVMAttrs*>(attrs);
     hbm::FPGA_RunHBM_MVM(mvm_attr->relu, hbm::mode_mvm, input, weight, output, mvm_attr->skip, mvm_attr->out_to_BRAM, mvm_attr->in_from_BRAM, mvm_attr->out_base_addr, mvm_attr->in_base_addr, 0, mvm_attr->log2_bank_step, mvm_attr->left_wt_base_addr);
+    args.push_back((void*)output);
     return hbm::CSB_Finish();
 }
 
 OP_ATTRS_REG("mvm", "csb_driver", (void*)(&csb_mvm));
 
-hbm::regops_t csb_mvm_bn(std::vector<void*> args, Attrs* attrs) {
+hbm::regops_t csb_mvm_bn(std::vector<void*>& args, Expr* checked, Attrs* attrs) {
+    std::vector<int> oshape = checked->as<Tensor>()->shape;
     hbm::Mapped_Feature* input = static_cast<hbm::Mapped_Feature*>(args[0]);
     hbm::Mapped_Weight* weight = static_cast<hbm::Mapped_Weight*>(args[1]);
     hbm::Mapped_Feature* bn = static_cast<hbm::Mapped_Feature*>(args[2]);
-    hbm::Mapped_Feature* output = static_cast<hbm::Mapped_Feature*>(args[3]);
+    hbm::Mapped_Feature* output = hbm::Malloc_Feature(oshape[0], oshape[1], oshape[2], 0, 0, 16);
     MVMAttrs* mvm_attr = static_cast<MVMAttrs*>(attrs);
     hbm::FPGA_RunHBM_MVM_BN(mvm_attr->relu, hbm::mode_mvm_bn, input, weight, bn, output, mvm_attr->skip, mvm_attr->out_to_BRAM, mvm_attr->in_from_BRAM, mvm_attr->out_base_addr, mvm_attr->in_base_addr, 0, mvm_attr->log2_bank_step, mvm_attr->left_wt_base_addr);
+    args.push_back((void*)output);
     return hbm::CSB_Finish();
 }
 
 OP_ATTRS_REG("mvm_bn", "csb_driver", (void*)(&csb_mvm_bn));
 
-hbm::regops_t csb_transpose(std::vector<void*> args, Attrs* attrs) {
+hbm::regops_t csb_transpose(std::vector<void*>& args, Expr* checked, Attrs* attrs) {
+    std::vector<int> oshape = checked->as<Tensor>()->shape;
     hbm::Mapped_Feature* input = static_cast<hbm::Mapped_Feature*>(args[0]);
-    hbm::Mapped_Weight* weight = static_cast<hbm::Mapped_Weight*>(args[1]);
+    hbm::Mapped_Weight* weight = hbm::Malloc_Weight(1, 1, oshape[0], oshape[1], 0, 4);
     TransposeAttrs* new_attr = static_cast<TransposeAttrs*>(attrs);
     hbm::FPGA_Run_Transpose(input, weight, new_attr->out_and_in_mode, 0, new_attr->log2_bank_step, new_attr->left_wt_base_addr);
+    args.push_back((void*)weight);
     return hbm::CSB_Finish();
 }
 
 OP_ATTRS_REG("transpose", "csb_driver", (void*)(&csb_transpose));
 
-hbm::regops_t csb_layer_norm(std::vector<void*> args, Attrs* attrs) {
+hbm::regops_t csb_layer_norm(std::vector<void*>& args, Expr* checked, Attrs* attrs) {
+    std::vector<int> oshape = checked->as<Tensor>()->shape;
     hbm::Mapped_Feature* input = static_cast<hbm::Mapped_Feature*>(args[0]);
     hbm::Mapped_Feature* weight = static_cast<hbm::Mapped_Feature*>(args[1]);
-    hbm::Mapped_Feature* output = static_cast<hbm::Mapped_Feature*>(args[2]);
+    hbm::Mapped_Feature* output = hbm::Malloc_Feature(oshape[0], oshape[1], oshape[2], 0, 0, 16);
     LayerNormAttrs* new_attr = static_cast<LayerNormAttrs*>(attrs);
     hbm::FPGA_Run_LN(input, weight, output, 0, new_attr->out_and_in_mode);
+    args.push_back((void*)output);
     return hbm::CSB_Finish();
 }
 

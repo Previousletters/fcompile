@@ -14,9 +14,12 @@ void *FPGA_DDR_malloc(unsigned int numbytes)
 	 
 	if(!ddr_has_initialized)
 	{
-		ddr_mcb[0].available=1;
-		ddr_mcb[0].blocksize=FPGA_DDR_SIZE;
-		ddr_mcb[0].board_address=FPGA_DDR_BASE_ADDRESS;
+        ddr_mcb.clear();
+        mem_control_block new_ddr_mcb;
+		new_ddr_mcb.available=1;
+		new_ddr_mcb.blocksize=FPGA_DDR_SIZE;
+		new_ddr_mcb.board_address=FPGA_DDR_BASE_ADDRESS;
+        ddr_mcb.push_back(new_ddr_mcb);
 		ddr_has_initialized=1;
 	}
 	//Debug_ddr_mcb();
@@ -50,9 +53,9 @@ void *FPGA_DDR_malloc(unsigned int numbytes)
 	return memory_location;
 }
 
-void FPGA_DDR_free(void *firstbyte) 
+void FPGA_DDR_free(void *firstbyte, int real_size) 
 {
-	unsigned int current_ddr_mcb_num=0;
+	unsigned int current_ddr_mcb_num=-1;
 	for(int i=0;i<ddr_mcb.size();i++)
 	{
 		if(ddr_mcb[i].board_address == (uint64_t)firstbyte)
@@ -60,8 +63,52 @@ void FPGA_DDR_free(void *firstbyte)
 			current_ddr_mcb_num=i;
 			break;
 		}
+		if(ddr_mcb[i].board_address < (uint64_t)firstbyte && ddr_mcb[i].board_address + ddr_mcb[i].blocksize > (uint64_t)firstbyte)
+		{
+			current_ddr_mcb_num=i;
+			break;
+		}
 	}
-	ddr_mcb[current_ddr_mcb_num].available=1;
+    if (current_ddr_mcb_num == -1)
+        return;
+    if (ddr_mcb[current_ddr_mcb_num].board_address == (uint64_t)firstbyte)
+        if (real_size == ddr_mcb[current_ddr_mcb_num].blocksize) {
+            ddr_mcb[current_ddr_mcb_num].available=1;
+        } else if (real_size == 0) {
+            std::cout << "*Free* : Noting to do!" << std::endl;
+        } else if (real_size < ddr_mcb[current_ddr_mcb_num].blocksize) {
+            mem_control_block new_ddr_mcb_1;
+            new_ddr_mcb_1.available = 0;
+            new_ddr_mcb_1.board_address=(uint64_t)firstbyte + real_size;
+            new_ddr_mcb_1.blocksize = ddr_mcb[current_ddr_mcb_num].blocksize - real_size;
+            ddr_mcb.insert(ddr_mcb.begin()+current_ddr_mcb_num+1,new_ddr_mcb_1);
+            ddr_mcb[current_ddr_mcb_num].available=1;
+            ddr_mcb[current_ddr_mcb_num].blocksize = real_size;
+        }
+    else {
+        ddr_mcb[current_ddr_mcb_num].blocksize = (uint64_t)firstbyte - ddr_mcb[current_ddr_mcb_num].board_address;
+        mem_control_block new_ddr_mcb;
+        new_ddr_mcb.available=1;
+        new_ddr_mcb.board_address=(uint64_t)firstbyte;
+        int diff_size = ddr_mcb[current_ddr_mcb_num].board_address + ddr_mcb[current_ddr_mcb_num].blocksize - (uint64_t)firstbyte;
+        if (real_size == diff_size) {
+            new_ddr_mcb.blocksize = diff_size;
+            ddr_mcb.insert(ddr_mcb.begin()+current_ddr_mcb_num+1,new_ddr_mcb);
+            current_ddr_mcb_num += 1;
+        } else if (real_size == 0) {
+            std::cout << "*Free* : Noting to do!" << std::endl;
+        } else if (real_size < diff_size) {
+            new_ddr_mcb.blocksize = real_size;
+            ddr_mcb.insert(ddr_mcb.begin()+current_ddr_mcb_num+1,new_ddr_mcb);
+            current_ddr_mcb_num += 1;
+            mem_control_block new_ddr_mcb_1;
+            new_ddr_mcb_1.available = 0;
+            new_ddr_mcb_1.board_address=(uint64_t)firstbyte + real_size;
+            new_ddr_mcb_1.blocksize = diff_size - real_size;
+            ddr_mcb.insert(ddr_mcb.begin()+current_ddr_mcb_num+1,new_ddr_mcb_1);
+        }
+
+    }
 	if(current_ddr_mcb_num!=ddr_mcb.size()-1)
 	{
 		if(ddr_mcb[current_ddr_mcb_num+1].available)
@@ -80,6 +127,19 @@ void FPGA_DDR_free(void *firstbyte)
 	}
 }
 
+void FPGA_DDR_show() {
+    std::cout << "******************* DDR MEM ********************" << std::endl;
+    for (auto i : ddr_mcb) {
+        std::cout << "* start: "
+                  << std::hex << std::setw(9) << std::setfill('0') << i.board_address
+                  << " end: "
+                  << std::hex << std::setw(9) << std::setfill('0') << i.board_address + i.blocksize << std::dec
+                  << " available: " << (int)i.available << " *" << std::endl;
+        ;
+    }
+    std::cout << "************************************************" << std::endl;
+}
+
 /***************************************** HBM **********************************************/
 
 vector<mem_control_block> hbm_mcb(1);
@@ -92,9 +152,12 @@ void* FPGA_HBM_malloc(unsigned int numbytes)
 
 	if (!hbm_has_initialized)
 	{
-		hbm_mcb[0].available = 1;
-		hbm_mcb[0].blocksize = FPGA_HBM_SIZE;
-		hbm_mcb[0].board_address = FPGA_HBM_BASE_ADDRESS;
+        hbm_mcb.clear();
+        mem_control_block new_hbm_mcb;
+		new_hbm_mcb.available=1;
+		new_hbm_mcb.blocksize=FPGA_HBM_SIZE;
+		new_hbm_mcb.board_address=FPGA_HBM_BASE_ADDRESS;
+        hbm_mcb.push_back(new_hbm_mcb);
 		hbm_has_initialized = 1;
 	}
 	//Debug_hbm_mcb();
@@ -139,6 +202,8 @@ void FPGA_HBM_free(void* firstbyte)
 			break;
 		}
 	}
+    if (current_hbm_mcb_num == -1)
+        return;
 	hbm_mcb[current_hbm_mcb_num].available = 1;
 	if (current_hbm_mcb_num != hbm_mcb.size() - 1)
 	{
@@ -156,4 +221,17 @@ void FPGA_HBM_free(void* firstbyte)
 			hbm_mcb.erase(hbm_mcb.begin() + current_hbm_mcb_num, hbm_mcb.begin() + current_hbm_mcb_num + 1);
 		}
 	}
+}
+
+void FPGA_HBM_show() {
+    std::cout << "******************* HBM MEM ********************" << std::endl;
+    for (auto i : hbm_mcb) {
+        std::cout << "* start: "
+                  << std::hex << std::setw(9) << std::setfill('0') << i.board_address
+                  << " end: "
+                  << std::hex << std::setw(9) << std::setfill('0') << i.board_address + i.blocksize << std::dec
+                  << " available: " << (int)i.available << " *" << std::endl;
+        ;
+    }
+    std::cout << "************************************************" << std::endl;
 }

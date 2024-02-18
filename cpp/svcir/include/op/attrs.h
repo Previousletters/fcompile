@@ -6,7 +6,7 @@
 namespace svir {
 
 struct ActivateAttrs : public Attrs {
-    int params;
+    int out_and_in_mode;
 };
 
 struct MVMAttrs : public Attrs {
@@ -33,6 +33,21 @@ struct TransposeAttrs : public Attrs {
 
 struct LayerNormAttrs : public Attrs {
     int out_and_in_mode;
+};
+
+struct SoftmaxAttrs : public Attrs {
+    int out_and_in_mode;
+};
+
+struct F2WeightAttrs : public Attrs {
+    int out_and_in_mode;
+    int log2_bank_step;
+    int left_wt_base_addr;
+};
+
+struct PosEmbAttrs : public Attrs {
+    int out_and_in_mode;
+    int pos_numb;
 };
 
 };

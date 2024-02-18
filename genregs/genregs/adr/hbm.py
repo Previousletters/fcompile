@@ -1,0 +1,109 @@
+from .base import Op, Call, Var, Constant, DataEnum, DataType
+
+
+def var_ddr(name, shape, dtype=DataEnum.fp16):
+    dtype = DataType(dtype, DataEnum.ddr)
+    return Var(name, shape, dtype)
+
+
+def const_ddr(name, data, shape=None, dtype=DataEnum.fp16):
+    dtype = DataType(dtype, DataEnum.ddr)
+    return Constant(name, data, shape, dtype)
+
+
+def const_hbm(name, data, shape=None, dtype=DataEnum.int4):
+    dtype = DataType(dtype, DataEnum.hbm)
+    return Constant(name, data, shape, dtype)
+
+
+def mvm(*args, skip=1, log2_step=28):
+    if skip == 1:
+        attrs = {
+            "skip": skip,
+            "log2_step": log2_step
+        }
+        return Call(Op.Get("accel.hbm.mvm"), args[:2], attrs)
+    elif skip == 2:
+        attrs = {
+            "skip": skip,
+            "log2_step": log2_step
+        }
+        return Call(Op.Get("accel.hbm.mvm"), args[:3], attrs)
+    else:
+        print("Error! make mvm")
+        exit(-1)
+
+
+def mvm_bn(data, weight, wt_and_bias, skip=1, log2_step=28):
+    attrs = {
+        "skip": skip,
+        "log2_step": log2_step
+    }
+    return Call(Op.Get("accel.hbm.mvm_bn"), [data, weight, wt_and_bias], attrs)
+
+
+def mvm_bn_res(*args, skip=1, res_mul=0, arg_max=0, relu=0, log2_step=28):
+    if skip == 1:
+        attrs = {
+            "skip": skip,
+            "res_mode": (res_mul << 1) | relu,
+            "log2_step": log2_step,
+            "arg_max": arg_max,
+        }
+        return Call(Op.Get("accel.hbm.mvm_bn_res"), args[:4], attrs)
+    elif skip == 2:
+        attrs = {
+            "skip": skip,
+            "res_mode": (res_mul << 1) | relu,
+            "arg_max": arg_max,
+            "log2_step": log2_step
+        }
+        return Call(Op.Get("accel.hbm.mvm_bn_res"), args[:5], attrs)
+    else:
+        print("Error! make mvm_bn_res")
+        exit(-1)
+
+
+def add(data0, data1):
+    attrs = {}
+    return Call(Op.Get("accel.hbm.add"), [data0, data1], attrs)
+
+
+def layer_norm(data, weight, rms=0):
+    attrs = {"rms": rms}
+    return Call(Op.Get("accel.hbm.layer_norm"), [data, weight], attrs)
+
+
+def softmax(data):
+    attrs = {}
+    return Call(Op.Get("accel.hbm.softmax"), [data], attrs)
+
+
+def pos_emb(data, weight, out_and_in_mode=0):
+    attrs = {
+        "out_and_in_mode": out_and_in_mode,
+    }
+    return Call(Op.Get("accel.hbm.pos_emb"), [data, weight], attrs)
+
+
+def transpose(data, out_and_in_mode=0, log2_step=28):
+    attrs = {
+        "out_and_in_mode": out_and_in_mode,
+        "log2_step": log2_step
+    }
+    return Call(Op.Get("accel.hbm.transpose"), [data], attrs)
+
+
+def feature2weight(data, out_and_in_mode=0, log2_step=28):
+    attrs = {
+        "out_and_in_mode": out_and_in_mode,
+        "log2_step": log2_step
+    }
+    return Call(Op.Get("accel.hbm.feature2weight"), [data], attrs)
+
+
+def activate(data, weight, out_and_in_mode=0):
+    attrs = {
+        "out_and_in_mode": out_and_in_mode,
+    }
+    return Call(Op.Get("accel.hbm.activate"), [data, weight], attrs)

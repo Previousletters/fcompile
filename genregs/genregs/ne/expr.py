@@ -24,11 +24,11 @@ class Expr:
 
     def simplify(self, max_numb=0):
         new_args = [arg.simplify(max_numb) for arg in self.args]
-        self.args = new_args
+        new_expr = Expr(new_args, self.op)
         if isinstance(new_args[0], Numb) and isinstance(new_args[1], Numb):
-            return Numb(eval(str(self)))
+            return Numb(eval(str(new_expr)))
         else:
-            return self
+            return new_expr
 
     def __add__(self, data):
         new_expr = data
@@ -189,13 +189,40 @@ class Expr:
         return self.simplify(max_numb=1) <= new_expr
 
     def __eq__(self, new_expr):
+        vars0 = self.get_vars()
+        vars1 = new_expr.get_vars()
+        if vars0 != vars1:
+            return False
+        self_str = self.export("py")
+        expr_str = new_expr.export("py")
+        index = [0 for i in range(len(vars0))]
+        while 1:
+            self_numb = self_str
+            expr_numb = expr_str
+            for n in range(len(vars0)):
+                self_numb = self_numb.replace(vars0[n][0], str(index[n]))
+                expr_numb = expr_numb.replace(vars0[n][0], str(index[n]))
+            if eval(self_numb) != eval(expr_numb):
+                return False
+            carry_over = 1
+            for n in range(len(index))[::-1]:
+                if index[n]+carry_over != vars0[n][1]:
+                    carry_over = 0
+                    index[n] += 1
+                else:
+                    index[n] = 0
+            if carry_over:
+                break
+        return True
+        '''
         if isinstance(new_expr, Expr):
             if self.op == new_expr.op and len(self.args) == len(new_expr.args):
                 for i in range(len(self.args)):
-                    if self.args[i] != self.new_expr.args[i]:
+                    if self.args[i] != new_expr.args[i]:
                         return False
                 return True
         return False
+        '''
 
     def export(self, tag):
         return "(" + self.args[0].export(tag) + \
@@ -215,17 +242,17 @@ class Var(Expr):
     def __eq__(self, new_expr):
         if isinstance(new_expr, Var):
             return self.name == new_expr.name
-        return False
+        return super().__eq__(new_expr)
 
     def get_vars(self):
-        vars = [self.name]
+        vars = [[self.name, self.max_data]]
         return vars
 
     def simplify(self, max_numb=0):
         if max_numb:
             return Numb(self.max_data)
         else:
-            return self
+            return Var(self.name, self.max_data)
 
     def export(self, tag):
         return self.name
@@ -239,18 +266,17 @@ class Numb(Expr):
     def __eq__(self, new_expr):
         if isinstance(new_expr, Numb):
             return self.data == new_expr.data
-        return False
+        return super().__eq__(new_expr)
 
     def get_vars(self):
         vars = []
         return vars
 
     def simplify(self, max_numb=0):
-        return self
+        return Numb(self.data)
 
     def export(self, tag):
         if tag == "cpp":
-            self.data = self.data % (1 << 32)
             return str(self.data)
         else:
             return str(self.data)
@@ -340,10 +366,10 @@ class If(Expr):
 
 
 if __name__ == "__main__":
-    a = 11 * Numb(1)
+    a = 12 * Numb(1)
     a = a // 2
     a = 1 - a
-    a = If(a, Numb(1), Numb(3))
     print(a)
-    a = a.simplify()
-    print(a.export("cpp"))
+    b = a.simplify()
+    print(b.export("cpp"))
+    print(a)

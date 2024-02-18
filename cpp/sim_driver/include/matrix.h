@@ -5,16 +5,6 @@
 
 #include "basic.h"
 
-#define Tb 1
-#define base_Tin 128
-#define Tout 32
-#define MAX_BN_DW 16
-#define MAX_DAT_DW 16
-#define T_quant_block    128 //base_Tin //equal to the base_Tin
-#define AXI_BURST_LEN_SOFTMAX 4
-#define AXI_DAT_WIDTH (MAX_DAT_DW*Tout*Tb)
-#define Pixel_Data_Bytes ((AXI_DAT_WIDTH)>>3)        
-#define log2_AXI_BURST_LEN  5
 #define Matrix_reg_bias 192
 
 ///// function for software//////////
@@ -36,4 +26,4 @@ void FPGA_Run_Activation(int parameters_addr, struct Mapped_Feature* feature_in,
 
 void FPGA_Run_PosEmb(struct Mapped_Feature* feature_in, struct Mapped_Feature* pos_in, struct Mapped_Feature* feature_out, int Pos_Num, int Out_and_In_Mode, HANDLE device=0);
 
-#endif /* SRC_VPU_H_ */
+#endif
