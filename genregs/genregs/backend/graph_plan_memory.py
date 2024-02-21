@@ -13,9 +13,14 @@ class StorageNode:
     def get_address(self, offset):
         return self.address + offset
 
-    def set_address(self, address):
+    def set_address(self, address=None):
+        if address is None:
+            return self.address + self.byte_size
         if isinstance(address, ne.Expr):
             address = address.simplify(1).data
+        if hasattr(self, "address"):
+            if self.address != address:
+                print("*WARNING* : StorageNode new address dosen't match: ", self.address, address)
         self.address = address
         return self.address + self.byte_size
 
@@ -69,11 +74,17 @@ class Storage:
     def free(self, id):
         self.free_.append(id)
 
-    def set_address(self, base_addr_map):
-        for prefix in base_addr_map.keys():
-            addr = base_addr_map[prefix]
-            for id in self.memo_[prefix].keys():
-                addr = self.memo_[prefix][id].set_address(addr)
+    def set_address(self, base_addr_map=None):
+        if base_addr_map is None:
+            for prefix in self.memo_.keys():
+                addr = None
+                for id in self.memo_[prefix].keys():
+                    addr = self.memo_[prefix][id].set_address(addr)
+        else:
+            for prefix in base_addr_map.keys():
+                addr = base_addr_map[prefix]
+                for id in self.memo_[prefix].keys():
+                    addr = self.memo_[prefix][id].set_address(addr)
 
     def get_address(self, id, offset):
         for memo_ in self.memo_.values():

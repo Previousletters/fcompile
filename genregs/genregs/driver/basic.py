@@ -40,20 +40,20 @@ def CSB_End(expr, tag):
 
 def CSB_Write(regs, addr, data):
     if data is None:
-        regs.append([1, addr, 0])
+        regs.append([1, addr, 0, 0])
     elif isinstance(data, ne.Expr):
-        regs.append([1, addr, data.simplify().export("cpp")])
+        regs.append([1, addr, data.simplify().export("cpp"), len(data.get_vars())])
     else:
-        regs.append([1, addr, data & 0xffffffff])
+        regs.append([1, addr, data & 0xffffffff, 0])
 
 
 def CSB_Read(regs, addr, data):
     if data is None:
-        regs.append([0, addr, 0])
+        regs.append([0, addr, 0, 0])
     elif isinstance(data, ne.Expr):
-        regs.append([0, addr, data])
+        regs.append([0, addr, data.simplify().export("cpp"), len(data.get_vars())])
     else:
-        regs.append([0, addr, data & 0xffffffff])
+        regs.append([0, addr, data & 0xffffffff, 0])
 
 
 def HWC2NHWT(shape):

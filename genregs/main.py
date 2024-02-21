@@ -66,9 +66,11 @@ def chatglm_with_kvcache():
     print(output)
 
     output = infer_type(output)
-    expr, source, storage, _ = backend.csb_head(output, "chatglm", 0x200000000, 0x0)
-    with open("source.h", "w") as f:
+    expr, source, storage, _, params = backend.cfg_head(output, "chatglm", 0x200000000, 0x0)
+    with open("./test/source.h", "w") as f:
         f.write(source)
+    with open("./test/task_cfgs.bin", "wb") as f:
+        f.write(params)
     print(expr)
     print(storage)
     
@@ -84,7 +86,7 @@ def check_testbench():
     output = infer_type(output)
     expr, source, storage, mod = backend.testbench(output, "chatglm", 0x200000000, 0x0)
     expr, source, storage, mod1 = backend.csb_head(output, "chatglm", 0x200000000, 0x0)
-    with open("source.h", "w") as f:
+    with open("./test/source.h", "w") as f:
         f.write(source)
     print(expr)
     print(storage)
@@ -93,5 +95,5 @@ def check_testbench():
 
 
 if __name__ == "__main__":
-    # chatglm_with_kvcache()
-    check_testbench()
+    chatglm_with_kvcache()
+    # check_testbench()

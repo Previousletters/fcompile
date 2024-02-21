@@ -1,6 +1,7 @@
 from ..adr import Functor, DataEnum, Tensor, Tuple
 from .graph_plan_memory import GraphPlanMemory
 from .codegen_csb_head import CodeGenCSBHead
+from .codegen_cfg_head import CodeGenCFGHead
 
 
 class GraphCSBHead(Functor):
@@ -132,3 +133,9 @@ def csb_head(expr, mod_name, ddr_init_addr, hbm_init_addr):
     expr, mod, storage = GraphCSBHead().build(expr, ddr_init_addr, hbm_init_addr)
     source = CodeGenCSBHead().build(mod_name, mod, storage)
     return expr, source, storage, mod
+
+
+def cfg_head(expr, mod_name, ddr_init_addr, hbm_init_addr):
+    expr, mod, storage = GraphCSBHead().build(expr, ddr_init_addr, hbm_init_addr)
+    source, params = CodeGenCFGHead().build(mod_name, mod, storage)
+    return expr, source, storage, mod, params

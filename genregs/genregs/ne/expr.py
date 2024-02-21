@@ -366,9 +366,7 @@ class If(Expr):
 
 
 if __name__ == "__main__":
-    a = 12 * Numb(1)
-    a = a // 2
-    a = 1 - a
+    a = 12 * (Var("test") + 2)
     print(a)
     b = a.simplify()
     print(b.export("cpp"))

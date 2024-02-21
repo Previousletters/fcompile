@@ -55,6 +55,7 @@ def MVMDriver(args, output, attrs):
         exit(-1)
 
 
+Op.Get("accel.hbm.mvm").attrs["cfg_id"] = 0b00001000
 Op.Get("accel.hbm.mvm").attrs["driver"] = MVMDriver
 Op.Get("accel.hbm.mvm").attrs["testbench"] = MVMTestbench
 
@@ -67,6 +68,7 @@ def MVMBNDriver(args, output, attrs):
         exit(-1)
 
 
+Op.Get("accel.hbm.mvm_bn").attrs["cfg_id"] = 0b01001000
 Op.Get("accel.hbm.mvm_bn").attrs["driver"] = MVMBNDriver
 
 
@@ -89,13 +91,14 @@ def MVMBNResDriver(args, output, attrs):
         exit(-1)
 
 
+Op.Get("accel.hbm.mvm_bn_res").attrs["cfg_id"] = 0b11001000
 Op.Get("accel.hbm.mvm_bn_res").attrs["driver"] = MVMBNResDriver
 
 
 def AddDriver(args, output, attrs):
     return []
 
-
+Op.Get("accel.hbm.add").attrs["cfg_id"] = 0b00000001
 Op.Get("accel.hbm.add").attrs["driver"] = AddDriver
 
 
@@ -103,6 +106,7 @@ def SoftmaxDriver(args, output, attrs):
     return FPGA_Run_Softmax(args[0], output, 0)
 
 
+Op.Get("accel.hbm.softmax").attrs["cfg_id"] = 0b00000101
 Op.Get("accel.hbm.softmax").attrs["driver"] = SoftmaxDriver
 
 
@@ -110,6 +114,7 @@ def LayerNormDriver(args, output, attrs):
     return FPGA_Run_LN(args[0], args[1], output, attrs["rms"], 0)
 
 
+Op.Get("accel.hbm.layer_norm").attrs["cfg_id"] = 0b00000111
 Op.Get("accel.hbm.layer_norm").attrs["driver"] = LayerNormDriver
 
 
@@ -117,6 +122,7 @@ def PosEmbDriver(args, output, attrs):
     return FPGA_Run_PosEmb(args[0], args[1], output, 0)
 
 
+Op.Get("accel.hbm.pos_emb").attrs["cfg_id"] = 0b00000100
 Op.Get("accel.hbm.pos_emb").attrs["driver"] = PosEmbDriver
 
 
@@ -124,6 +130,7 @@ def TransposeDriver(args, output, attrs):
     return FPGA_Run_Transpose(args[0], output, attrs["out_and_in_mode"], attrs["log2_step"], 0)
 
 
+Op.Get("accel.hbm.transpose").attrs["cfg_id"] = 0b00000011
 Op.Get("accel.hbm.transpose").attrs["driver"] = TransposeDriver
 
 
@@ -131,6 +138,7 @@ def Feature2WeightDriver(args, output, attrs):
     return FPGA_Run_Feature2Weight(args[0], output, attrs["out_and_in_mode"], attrs["log2_step"], 0)
 
 
+Op.Get("accel.hbm.feature2weight").attrs["cfg_id"] = 0b00000010
 Op.Get("accel.hbm.feature2weight").attrs["driver"] = Feature2WeightDriver
 
 
@@ -138,4 +146,5 @@ def ActivateDriver(args, output, attrs):
     return FPGA_Run_Activation(args[1], args[0], output, 0)
 
 
+Op.Get("accel.hbm.activate").attrs["cfg_id"] = 0b00000110
 Op.Get("accel.hbm.activate").attrs["driver"] = ActivateDriver
