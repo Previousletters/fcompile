@@ -1,5 +1,4 @@
 from ..adr import Op, Tuple, Tensor
-from .basic import get_tensor_size
 
 
 def SplitDriver(args, output, attrs):
@@ -8,7 +7,7 @@ def SplitDriver(args, output, attrs):
     for t in output.tensors:
         t.offset = offset
         new_tensors.append(t)
-        offset += get_tensor_size(t)
+        offset += t.get_bytesize()
     return Tuple(new_tensors)
 
 

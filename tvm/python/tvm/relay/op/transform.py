@@ -857,7 +857,7 @@ def split(data, indices_or_sections, axis=0):
     if isinstance(indices_or_sections, int):
         ret_size = indices_or_sections
     else:
-        ret_size = len(indices_or_sections) + 1
+        ret_size = len(indices_or_sections)
     return TupleWrapper(_make.split(data, indices_or_sections, axis), ret_size)
 
 

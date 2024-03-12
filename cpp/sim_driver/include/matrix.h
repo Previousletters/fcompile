@@ -16,9 +16,9 @@ int FP32_to_FP20(float fp32_i);
 // RMS_Norm 与tasks对应，0时为Layer_Norm，1时为RMS_Norm
 void FPGA_Run_LN(struct Mapped_Feature* feature_in, struct Mapped_Feature* wt_and_bias, struct Mapped_Feature* feature_out, int RMS_Norm, int LN_Out_and_In_Mode, HANDLE device=0);
 
-void FPGA_Run_Transpose(struct Mapped_Feature* feature_in, struct Mapped_Weight* feature2weight_out, int Transpose_Out_and_In_Mode, HANDLE device=0, int log2_WT_base_addr_Bank_Step=8, int Left_WT_Base_Addr=0);
+void FPGA_Run_Transpose(struct Mapped_Feature* feature_in, struct Mapped_Weight* feature2weight_out, int Transpose_Out_and_In_Mode, HANDLE device=0, int log2_WT_base_addr_Bank_Step=28, int Left_WT_Base_Addr=0);
 
-void FPGA_Run_Feature2Weight(struct Mapped_Feature* feature_in, struct Mapped_Weight* weight_out, int Out_and_In_Mode, HANDLE device=0, int log2_WT_base_addr_Bank_Step=8, int Left_WT_Base_Addr=0);
+void FPGA_Run_Feature2Weight(struct Mapped_Feature* feature_in, struct Mapped_Weight* weight_out, int Out_and_In_Mode, HANDLE device=0, int log2_WT_base_addr_Bank_Step=28, int Left_WT_Base_Addr=0);
 
 void FPGA_Run_Softmax(struct Mapped_Feature* feature_in, struct Mapped_Feature* feature_out, int Softmax_Out_and_In_Mode, HANDLE device=0);
 

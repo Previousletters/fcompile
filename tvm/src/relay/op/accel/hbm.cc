@@ -591,5 +591,111 @@ with the layer input to produce a tensor of outputs.
 }
 
 
+Expr MakeAccelHBMRotaryPosEmb(Expr data, Expr weight) {
+  auto attrs = make_object<AccelOpAttrs>();
+  attrs->strides = {1, 1};
+  attrs->padding = {0, 0};
+  attrs->kernel_size = {1, 1};
+  attrs->widths = {0};
+  attrs->scales = {0};
+  attrs->activate = 0;
+  attrs->kernel_layout = "HWIO";
+  attrs->data_layout = "NHWC";
+  attrs->out_layout = "NHWC";
+  const Op& op = Op::Get("accel.hbm.rotary_pos_emb");
+  return Call(op, {data, weight}, Attrs(attrs), {});
+}
+
+TVM_REGISTER_GLOBAL("relay.op.accel._make.rotary_pos_emb")
+    .set_body_typed([](Expr data, Expr weight) {
+      return MakeAccelHBMRotaryPosEmb(data, weight);
+    });
+
+bool AccelHBMRotaryPosEmbRel(const Array<Type>& types, int num_inputs, const Attrs& attrs,
+                       const TypeReporter& reporter) {
+  ICHECK_EQ(types.size(), 3);
+  const auto* data = types[0].as<TensorTypeNode>();
+  const auto* weight = types[1].as<TensorTypeNode>();
+  if (data == nullptr) return false;
+  if (weight == nullptr) return false;
+  reporter->Assign(types[2], TensorType(data->shape, data->dtype));
+  return true;
+}
+
+RELAY_REGISTER_OP("accel.hbm.rotary_pos_emb")
+    .describe(R"code(2D convolution layer (e.g. spatial convolution over sequences).
+
+This layer creates a convolution kernel that is convolved
+with the layer input to produce a tensor of outputs.
+
+- **data**: This depends on the `layout` parameter. Input is 3D array of shape
+            (batch_size, in_channels, width) if `layout` is `NCW`.
+- **weight**: (channels, in_channels, kernel_size)
+- **out**:  This depends on the `layout` parameter. Output is 3D array of shape
+            (batch_size, channels, out_width) if `layout` is `NCW`.
+
+)code" TVM_ADD_FILELINE)
+    .set_attrs_type<AccelOpAttrs>()
+    .set_num_inputs(2)
+    .add_argument("data", "Tensor", "The input tensor.")
+    .add_argument("weight", "Tensor", "The weight tensor.")
+    .set_support_level(2)
+    .add_type_rel("AccelHBMRotaryPosEmb", AccelHBMRotaryPosEmbRel);
+
+
+Expr MakeAccelHBMAttention(Expr query, Expr key, Expr value) {
+  auto attrs = make_object<AccelOpAttrs>();
+  attrs->strides = {1, 1};
+  attrs->padding = {0, 0};
+  attrs->kernel_size = {1, 1};
+  attrs->widths = {0};
+  attrs->scales = {0};
+  attrs->activate = {0};
+  attrs->kernel_layout = "HWIO";
+  attrs->data_layout = "NHWC";
+  attrs->out_layout = "NHWC";
+  const Op& op = Op::Get("accel.hbm.attention");
+  return Call(op, {query, key, value}, Attrs(attrs), {});
+}
+
+TVM_REGISTER_GLOBAL("relay.op.accel._make.attention")
+    .set_body_typed([](Expr query, Expr key, Expr value) {
+      return MakeAccelHBMAttention(query, key, value);
+    });
+
+bool AccelHBMAttentionRel(const Array<Type>& types, int num_inputs, const Attrs& attrs,
+                       const TypeReporter& reporter) {
+  ICHECK_EQ(types.size(), 4);
+  const auto* query = types[0].as<TensorTypeNode>();
+  const auto* key = types[1].as<TensorTypeNode>();
+  const auto* value = types[2].as<TensorTypeNode>();
+  if (query == nullptr) return false;
+  if (key == nullptr) return false;
+  if (value == nullptr) return false;
+  //TODO: trans_layout 
+  reporter->Assign(types[3], TensorType(query->shape, query->dtype));
+  return true;
+}
+
+RELAY_REGISTER_OP("accel.hbm.attention")
+    .describe(R"code(2D convolution layer (e.g. spatial convolution over sequences).
+
+This layer creates a convolution kernel that is convolved
+with the layer input to produce a tensor of outputs.
+
+- **data**: This depends on the `layout` parameter. Input is 3D array of shape
+            (batch_size, in_channels, width) if `layout` is `NCW`.
+- **weight**: (channels, in_channels, kernel_size)
+- **out**:  This depends on the `layout` parameter. Output is 3D array of shape
+            (batch_size, channels, out_width) if `layout` is `NCW`.
+
+)code" TVM_ADD_FILELINE)
+    .set_attrs_type<AccelOpAttrs>()
+    .set_num_inputs(3)
+    .add_argument("query", "Tensor", "The input tensor.")
+    .add_argument("key", "Tensor", "The weight tensor.")
+    .add_argument("value", "Tensor", "The weight tensor.")
+    .set_support_level(2)
+    .add_type_rel("AccelHBMAttention", AccelHBMAttentionRel);
 }
 }

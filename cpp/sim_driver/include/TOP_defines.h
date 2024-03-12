@@ -72,8 +72,8 @@
 #define AXI_BN_WIDTH (MAX_BN_DW*Tout*Tb)
 #define log2_AXI_BN_WIDTH (log2_MAX_BN_DW +log2_Tout+log2_Tb)
 #define SIGNLE_BN_FIFO_DEP ((AXI_BURST_LEN*MAX_DAT_DW*Tb)/(MAX_BN_DW*2))
-#define BN_FIFO_DEP (4*SIGNLE_BN_FIFO_DEP)
-#define log2_BN_FIFO_DEP (log2_AXI_BURST_LEN+log2_MAX_DAT_DW+log2_Tb-log2_MAX_BN_DW+1)
+#define BN_FIFO_DEP (1*SIGNLE_BN_FIFO_DEP)
+#define log2_BN_FIFO_DEP (log2_AXI_BURST_LEN+log2_MAX_DAT_DW+log2_Tb-log2_MAX_BN_DW-1)
 #define BN_FIFO_NUM ((MAX_BN_DW*2)/(MAX_DAT_DW*Tb))
 #define BN_SURFACE_STRIDE ((Tout*MAX_BN_DW*2) >> 3)
 

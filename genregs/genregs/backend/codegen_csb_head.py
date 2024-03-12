@@ -194,7 +194,7 @@ QueryPerformanceCounter(&start_run);
                     cfg_start = 1
                 self.func_body.append(f"{self.tab}CSB_Write(device, {reg[1]}, {reg[2]});")
             elif reg[0] == 0:
-                self.func_body.append(f"{self.tab}While(device, CSB_Read({reg[1]}) != {reg[2]}) " + "{}")
+                self.func_body.append(f"{self.tab}While(CSB_Read(device, {reg[1]}) != {reg[2]}) " + "{}")
                 self.func_body.append("""#ifdef REGS_DEBUG
 QueryPerformanceCounter(&stop_run);
 time_sec0 = (unsigned long long)(stop_cfg.QuadPart - start_cfg.QuadPart) / (double)freq.QuadPart;

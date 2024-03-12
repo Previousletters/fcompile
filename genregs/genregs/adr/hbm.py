@@ -1,19 +1,20 @@
 from .base import Op, Call, Var, Constant, DataEnum, DataType
+from ..device import HBM
 
 
-def var_ddr(name, shape, dtype=DataEnum.fp16):
+def var_ddr(name, shape, dtype=DataEnum.fp16, device=HBM):
     dtype = DataType(dtype, DataEnum.ddr)
-    return Var(name, shape, dtype)
+    return Var(name, shape, dtype, device)
 
 
-def const_ddr(name, data, shape=None, dtype=DataEnum.fp16):
+def const_ddr(name, data, shape=None, dtype=DataEnum.fp16, device=HBM):
     dtype = DataType(dtype, DataEnum.ddr)
-    return Constant(name, data, shape, dtype)
+    return Constant(name, data, shape, dtype, device)
 
 
-def const_hbm(name, data, shape=None, dtype=DataEnum.int4):
+def const_hbm(name, data, shape=None, dtype=DataEnum.int4, device=HBM):
     dtype = DataType(dtype, DataEnum.hbm)
-    return Constant(name, data, shape, dtype)
+    return Constant(name, data, shape, dtype, device)
 
 
 def mvm(*args, skip=1, log2_step=28):
@@ -67,6 +68,11 @@ def mvm_bn_res(*args, skip=1, res_mul=0, arg_max=0, relu=0, log2_step=28):
 def add(data0, data1):
     attrs = {}
     return Call(Op.Get("accel.hbm.add"), [data0, data1], attrs)
+
+
+def mul(data0, data1):
+    attrs = {}
+    return Call(Op.Get("accel.hbm.mul"), [data0, data1], attrs)
 
 
 def layer_norm(data, weight, rms=0):

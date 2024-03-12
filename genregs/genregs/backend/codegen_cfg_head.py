@@ -1,7 +1,7 @@
 import numpy as np
 from .codegen_csb_head import CodeGenCSBHead
 from ..adr import Op
-from ..driver.basic import AXI_DAT_WIDTH
+from ..device.hbm_accel import HBM
 from .. import ne
 
 
@@ -25,6 +25,7 @@ class CodeGenCFGHead(CodeGenCSBHead):
         return super().gen_source(), cfg_params
 
     def gen_cfg(self):
+        AXI_DAT_WIDTH = HBM.AXI_DAT_WIDTH
         byte_size = AXI_DAT_WIDTH
         task_cfg = np.zeros(AXI_DAT_WIDTH, dtype="uint32")
         for num, task in enumerate(self.task_cfg):
@@ -69,11 +70,10 @@ printf("cfg run time     = %%fs \\n",time_sec1);
         task_id = Op.Get(op_name).attrs["cfg_id"]
 
         state_max_depth = self.cfg_numb == 63
-        state_op_split = self.cfg_numb == 0 and len(self.func_cfg) != 0
         state_none_task_id = task_id is None
-        state_dynamic = sum([reg[3] for reg in node["csb_regs"]])
+        state_dynamic = sum([isinstance(reg[2], str) for reg in node["csb_regs"]])
 
-        if state_max_depth or state_none_task_id or state_op_split or state_dynamic:
+        if state_max_depth or state_none_task_id or state_dynamic:
             self.gen_cfg()
 
         if state_none_task_id or state_dynamic:
@@ -94,7 +94,7 @@ QueryPerformanceCounter(&start_run);
                         cfg_start = 1
                     self.func_body.append(f"{self.tab}CSB_Write(device, {reg[1]}, {reg[2]});")
                 elif reg[0] == 0:
-                    self.func_body.append(f"{self.tab}While(device, CSB_Read({reg[1]}) != {reg[2]}) " + "{}")
+                    self.func_body.append(f"{self.tab}While(CSB_Read(device, {reg[1]}) != {reg[2]}) " + "{}")
                     self.func_body.append("""#ifdef REGS_DEBUG
 QueryPerformanceCounter(&stop_run);
 time_sec0 = (unsigned long long)(stop_cfg.QuadPart - start_cfg.QuadPart) / (double)freq.QuadPart;
@@ -107,5 +107,5 @@ printf("%(op_name)s run time     = %%fs \\n",time_sec1);
             self.task_cfg.append([task_id, node["csb_regs"]])
 
     def gen_cpu(self, node):
-        self.cfg_numb = 0
+        self.gen_cfg()
         return super().gen_cpu(node)

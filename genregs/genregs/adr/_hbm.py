@@ -11,20 +11,22 @@ def CHECK_ERROR(judge, error_str):
 def MVMRel(args, attrs):
     if len(args) != attrs["skip"]+1:
         return False, []
+    device = args[0].device
     dshape, dtype = args[0].shape, args[0].dtype  # H, W, C
     wshape, wtype = args[1].shape, args[1].dtype  # Cin, Cout
     if dtype.mapped != DataEnum.ddr or dtype.dtype != DataEnum.fp16:
         return False, []
     if wtype.mapped != DataEnum.hbm or wtype.dtype != DataEnum.int4:
         return False, []
-    if dshape[2] != wshape[0]:
+    if dshape[-1] != wshape[0]:
         return False, []
     if len(args) > 2:
         for n in range(len(args)-2):
             if args[1] != args[2+n]:
                 return False, []
-    oshape = [dshape[0], dshape[1], wshape[1]]
-    return True, Tensor(oshape, dtype)
+    oshape = [i for i in dshape]
+    oshape[-1] = wshape[-1]
+    return True, Tensor(oshape, dtype, device)
 
 
 Op.Register("accel.hbm.mvm", MVMRel)
@@ -33,6 +35,7 @@ Op.Register("accel.hbm.mvm", MVMRel)
 def MVMBNRel(args, attrs):
     if len(args) != attrs["skip"]+2:
         return False, []
+    device = args[0].device
     dshape, dtype = args[0].shape, args[0].dtype  # H, W, C
     wshape, wtype = args[1].shape, args[1].dtype  # Cin, Cout
     bshape, btype = args[-1].shape, args[-1].dtype  # H, W, C
@@ -48,8 +51,9 @@ def MVMBNRel(args, attrs):
         return False, []
     if bshape[:-1] != [1 for i in range(len(bshape)-1)]:
         return False, []
-    oshape = [dshape[0], dshape[1], wshape[1]]
-    return True, Tensor(oshape, dtype)
+    oshape = [i for i in dshape]
+    oshape[-1] = wshape[1]
+    return True, Tensor(oshape, dtype, device)
 
 
 Op.Register("accel.hbm.mvm_bn", MVMBNRel)
@@ -58,6 +62,7 @@ Op.Register("accel.hbm.mvm_bn", MVMBNRel)
 def MVMBNResRel(args, attrs):
     if len(args) != attrs["skip"]+3:
         return False, []
+    device = args[0].device
     dshape, dtype = args[0].shape, args[0].dtype  # H, W, C
     wshape, wtype = args[1].shape, args[1].dtype  # Cin, Cout
     bshape, btype = args[-2].shape, args[-2].dtype  # H, W, C
@@ -87,9 +92,9 @@ def MVMBNResRel(args, attrs):
         oshape_str = "(" + ", ".join([str(n) for n in oshape]) + ")"
         return False, f"res add data{rshape_str} is not same with output data{oshape_str}"
     if attrs["arg_max"]:
-        return True, Tuple([Tensor(oshape, dtype), Tensor(oshape, dtype)])
+        return True, Tuple([Tensor(oshape, dtype, device), Tensor(oshape, dtype, device)])
     else:
-        return True, Tensor(oshape, dtype)
+        return True, Tensor(oshape, dtype, device)
 
 
 Op.Register("accel.hbm.mvm_bn_res", MVMBNResRel)
@@ -98,15 +103,16 @@ Op.Register("accel.hbm.mvm_bn_res", MVMBNResRel)
 def AddRel(args, attrs):
     if len(args) != 2:
         return False, []
+    device = args[0].device
     dshape, dtype = args[0].shape, args[0].dtype  # H, W, C
     wshape, wtype = args[1].shape, args[1].dtype
     if dtype.mapped != DataEnum.ddr or dtype.dtype != DataEnum.fp16:
         return False, []
     if wtype.mapped != DataEnum.ddr or wtype.dtype != DataEnum.fp16:
         return False, []
-    if dshape != wshape:
-        return False, []
-    return True, Tensor(dshape, dtype)
+    if dshape != wshape and dshape[-1] != wshape[-1]:
+        return False, "two data shapes not match"
+    return True, Tensor(dshape, dtype, device)
 
 
 Op.Register("accel.hbm.add", AddRel)
@@ -115,6 +121,7 @@ Op.Register("accel.hbm.add", AddRel)
 def MulRel(args, attrs):
     if len(args) != 2:
         return False, []
+    device = args[0].device
     dshape, dtype = args[0].shape, args[0].dtype  # H, W, C
     wshape, wtype = args[1].shape, args[1].dtype
     if dtype.mapped != DataEnum.ddr or dtype.dtype != DataEnum.fp16:
@@ -123,7 +130,7 @@ def MulRel(args, attrs):
         return False, []
     if dshape != wshape:
         return False, []
-    return True, Tensor(dshape, dtype)
+    return True, Tensor(dshape, dtype, device)
 
 
 Op.Register("accel.hbm.mul", MulRel)
@@ -132,6 +139,7 @@ Op.Register("accel.hbm.mul", MulRel)
 def LayerNormRel(args, attrs):
     if len(args) != 2:
         return False, []
+    device = args[0].device
     dshape, dtype = args[0].shape, args[0].dtype  # H, W, C
     wshape, wtype = args[1].shape, args[1].dtype
     if dtype.mapped != DataEnum.ddr or dtype.dtype != DataEnum.fp16:
@@ -142,7 +150,7 @@ def LayerNormRel(args, attrs):
         return False, "input channels not match"
     if wshape[:-1] != [1 for i in range(len(wshape)-1)]:
         return False, "weight first ndim should be 1"
-    return True, Tensor(dshape, dtype)
+    return True, Tensor(dshape, dtype, device)
 
 
 Op.Register("accel.hbm.layer_norm", LayerNormRel)
@@ -151,10 +159,11 @@ Op.Register("accel.hbm.layer_norm", LayerNormRel)
 def SoftmaxRel(args, attrs):
     if len(args) != 1:
         return False, []
+    device = args[0].device
     dshape, dtype = args[0].shape, args[0].dtype  # H, W, C
     if dtype.mapped != DataEnum.ddr or dtype.dtype != DataEnum.fp16:
         return False, []
-    return True, Tensor(dshape, dtype)
+    return True, Tensor(dshape, dtype, device)
 
 
 Op.Register("accel.hbm.softmax", SoftmaxRel)
@@ -163,6 +172,7 @@ Op.Register("accel.hbm.softmax", SoftmaxRel)
 def PosEmbRel(args, attrs):
     if len(args) != 2:
         return False, []
+    device = args[0].device
     dshape, dtype = args[0].shape, args[0].dtype  # H, W, C
     wshape, wtype = args[1].shape, args[1].dtype
     if dtype.mapped != DataEnum.ddr or dtype.dtype != DataEnum.fp16:
@@ -171,9 +181,7 @@ def PosEmbRel(args, attrs):
         return False, "weight data type is error"
     if dshape[-1] != wshape[-1]*2:
         return False, "input channel not match"
-    if wshape[0] != 1:
-        return False, "check weight first ndim"
-    return True, Tensor(dshape, dtype)
+    return True, Tensor(dshape, dtype, device)
 
 
 Op.Register("accel.hbm.pos_emb", PosEmbRel)
@@ -182,13 +190,14 @@ Op.Register("accel.hbm.pos_emb", PosEmbRel)
 def TransposeRel(args, attrs):
     if len(args) != 1:
         return False, []
+    device = args[0].device
     dshape, dtype = args[0].shape, args[0].dtype  # H, W, C
     if dtype.mapped != DataEnum.ddr or dtype.dtype != DataEnum.fp16:
         return False, "input data type is error"
     if dshape[:-2] != [1 for i in range(len(dshape)-2)]:
         return False, "the first ndim should be 1"
     oshape = [dshape[-1], dshape[-2]]
-    return True, Tensor(oshape, DataType(DataEnum.int4, DataEnum.hbm))
+    return True, Tensor(oshape, DataType(DataEnum.int4, DataEnum.hbm), device)
 
 
 Op.Register("accel.hbm.transpose", TransposeRel)
@@ -197,13 +206,14 @@ Op.Register("accel.hbm.transpose", TransposeRel)
 def Feature2WeightRel(args, attrs):
     if len(args) != 1:
         return False, []
+    device = args[0].device
     dshape, dtype = args[0].shape, args[0].dtype  # H, W, C
     if dtype.mapped != DataEnum.ddr or dtype.dtype != DataEnum.fp16:
         return False, "input data type is error"
     if dshape[:-2] != [1 for i in range(len(dshape)-2)]:
         return False, "the first ndim should be 1"
     oshape = [dshape[-2], dshape[-1]]
-    return True, Tensor(oshape, DataType(DataEnum.int4, DataEnum.hbm))
+    return True, Tensor(oshape, DataType(DataEnum.int4, DataEnum.hbm), device)
 
 
 Op.Register("accel.hbm.feature2weight", Feature2WeightRel)
@@ -212,6 +222,7 @@ Op.Register("accel.hbm.feature2weight", Feature2WeightRel)
 def ActivateRel(args, attrs):
     if len(args) != 2:
         return False, []
+    device = args[0].device
     dshape, dtype = args[0].shape, args[0].dtype  # H, W, C
     wshape, wtype = args[1].shape, args[1].dtype
     if dtype.mapped != DataEnum.ddr or dtype.dtype != DataEnum.fp16:
@@ -220,7 +231,7 @@ def ActivateRel(args, attrs):
         return False, "Activate weight should be DDR data"
     if reduce(lambda x, y: x * y, wshape) < 48:
         return False, "Maybe activate weight is too small"
-    return True, Tensor(dshape, dtype)
+    return True, Tensor(dshape, dtype, device)
 
 
 Op.Register("accel.hbm.activate", ActivateRel)

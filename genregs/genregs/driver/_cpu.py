@@ -1,6 +1,5 @@
 from ..adr import Op, Tensor
 from .. import ne
-from .basic import get_tensor_size, HWC2NHWT
 
 
 def to_string(inputs: dict) -> dict :

@@ -1145,6 +1145,9 @@ class Unsqueeze(OnnxOpConverter):
 
     @classmethod
     def _impl_v1(cls, inputs, attr, params):
+        if "axes" not in attr:
+            inputs[0] = _op.expand_dims(inputs[0], axis=inputs[1].data.asnumpy()[0], num_newaxis=1)
+            return inputs[0]
         for axes in attr["axes"]:
             inputs[0] = _op.expand_dims(inputs[0], axis=axes, num_newaxis=1)
         return inputs[0]
@@ -1166,6 +1169,8 @@ class Split(OnnxOpConverter):
         # When splits isnt specified divide evenly over axis.
         else:
             indices = attr["tvm_custom"]["num_outputs"]
+        if len(inputs) == 2:
+            indices = list(inputs[1].data.asnumpy())
         output = _op.split(inputs[0], indices, attr.get("axis", 0))
         # If the output of split is a single value, unpack if from the TupleWrapper
         if len(output) == 1:
@@ -2771,6 +2776,32 @@ class ATen(OnnxOpConverter):
         return cls._op_dispatch(operator, inputs, attr, params)
 
 
+class Attention(OnnxOpConverter):
+    """Operator converter for Range"""
+
+    @classmethod
+    def _impl_v1(cls, inputs, attr, params):
+        if len(inputs) != 3:
+            raise ValueError("Expect 3 input only")
+
+        return _op.accel.hbm.attention(
+            inputs[0], inputs[1], inputs[2]
+        )
+
+
+class RotaryPosEmb(OnnxOpConverter):
+    """Operator converter for Range"""
+
+    @classmethod
+    def _impl_v1(cls, inputs, attr, params):
+        if len(inputs) != 2:
+            raise ValueError("Expect 3 input only")
+
+        return _op.accel.hbm.rotary_pos_emb(
+            inputs[0], inputs[1]
+        )
+
+
 # compatible operators that do NOT require any conversion.
 _identity_list = []
 
@@ -2936,6 +2967,8 @@ def _get_convert_map(opset):
         "If": If.get_converter(opset),
         # Torch ATen Dispatcher.
         "ATen": ATen.get_converter(opset),
+        "RotaryPosEmb": RotaryPosEmb.get_converter(opset),
+        "Attention": Attention.get_converter(opset),
     }
 
 

@@ -366,12 +366,12 @@ void ChatGLM_Block_Ops_v1(
     // step 1 a -> b
     Reset(ddr_buffer_a, 1, token, 4096);
     Reset(ddr_buffer_b, 1, token, 4096);
-    FPGA_Run_LN(ddr_buffer_a, LN_k_bias, ddr_buffer_b, 1, 0);
+    FPGA_Run_LN(ddr_buffer_a, LN_k_bias, ddr_buffer_b, 0, 0);
 
     // step 2 b -> c
     Reset(ddr_buffer_b, 1, token, 4096);
     Reset(ddr_buffer_c, 1, token, 4608);
-    FPGA_RunHBM_MVM_BN(0, mode_mvm_bn, ddr_buffer_b, qkv_weight, qkv_bn_bias, ddr_buffer_c, 1, 0, 0, 0, 0, 28, 0);
+    FPGA_RunHBM_MVM_BN(0, mode_mvm_bn, ddr_buffer_b, qkv_weight, qkv_bn_bias, ddr_buffer_c, 1, 0, 0, 0, 0, 0, 28, 0);
 
     std::vector<struct Mapped_Feature*> qkv_split = Split(ddr_buffer_c, {4096, 128, 128, 128, 128});
 
@@ -391,10 +391,11 @@ void ChatGLM_Block_Ops_v1(
 
     // step 5 d -> hbm_trp0
     Reset(hbm_buffer_trp0, 128, 32);
-    FPGA_Run_Transpose(ddr_buffer_d, hbm_buffer_trp0, 0);
+    FPGA_Run_Transpose(ddr_buffer_d, hbm_buffer_trp0, 0, 0, 28, 0);
 
     // step 6 b[offset=0], hbm_trp0 -> e[offset=0]
-    FPGA_RunHBM_MVM_BN_Res_afterTRP(0, mode_mvm_bn_res_trp, b_split[0], hbm_buffer_trp0, rsqrt_bn, mask, e_split_0[0], 1, 0, 0, 0, 0, 28, 0);
+    Reset(b_split[0], 16, token, 128);
+    FPGA_RunHBM_MVM_BN_Res_afterTRP(0, mode_mvm_bn_res_trp, b_split[0], hbm_buffer_trp0, rsqrt_bn, mask, e_split_0[0], 1, 0, 0, 0, 0, 0, 28, 0);
 
     // step 7 c[4096+128:4096+128*2] -> d
     Reset(qkv_split[2], 1, token, 128);
@@ -403,10 +404,11 @@ void ChatGLM_Block_Ops_v1(
 
     // step 8 d -> hbm_trp1
     Reset(hbm_buffer_trp1, 128, 32);
-    FPGA_Run_Transpose(ddr_buffer_d, hbm_buffer_trp1, 0);
+    FPGA_Run_Transpose(ddr_buffer_d, hbm_buffer_trp1, 0, 0, 28, 0);
 
     // step 9 b[offset=tokenx128], hbm_trp1 -> e[offset=tokenx128]
-    FPGA_RunHBM_MVM_BN_Res_afterTRP(0, mode_mvm_bn_res_trp, b_split[1], hbm_buffer_trp1, rsqrt_bn, mask, e_split_0[1], 1, 0, 0, 0, 0, 28, 0);
+    Reset(b_split[1], 16, token, 128);
+    FPGA_RunHBM_MVM_BN_Res_afterTRP(0, mode_mvm_bn_res_trp, b_split[1], hbm_buffer_trp1, rsqrt_bn, mask, e_split_0[1], 1, 0, 0, 0, 0, 0, 28, 0);
 
     // step 10 e -> f
     Reset(ddr_buffer_e, 32, token, token);
@@ -420,45 +422,45 @@ void ChatGLM_Block_Ops_v1(
     // step 11 c[4096+128*2:4096+128*3] -> hbm_f2w0
     Reset(qkv_split[3], 1, token, 128);
     Reset(hbm_buffer_f2w0, token, 128);
-    FPGA_Run_Feature2Weight(qkv_split[3], hbm_buffer_f2w0, 0, 28, 0);
+    FPGA_Run_Feature2Weight(qkv_split[3], hbm_buffer_f2w0, 0, 0, 28, 0);
 
     // step 12 f[offset=0], hbm_f2w0 -> e[offset=0]
-    FPGA_RunHBM_MVM_afterF2W(0, mode_mvm_f2w, f_split[0], hbm_buffer_f2w0, e_split_1[0], 2, 0, 0, 0, 0, 28, 0);
+    FPGA_RunHBM_MVM_afterF2W(0, mode_mvm_f2w, f_split[0], hbm_buffer_f2w0, e_split_1[0], 2, 0, 0, 0, 0, 0, 28, 0);
 
     // step 13 c[4096+128*3:4096+128*4] -> hbm_f2w1
     Reset(qkv_split[4], 1, token, 128);
     Reset(hbm_buffer_f2w1, token, 128);
-    FPGA_Run_Feature2Weight(qkv_split[4], hbm_buffer_f2w1, 0, 28, 0);
+    FPGA_Run_Feature2Weight(qkv_split[4], hbm_buffer_f2w1, 0, 0, 28, 0);
 
     // step 14 f[offset=tokenx128], hbm_f2w1 -> e[offset=tokenx128]
-    FPGA_RunHBM_MVM_afterF2W(0, mode_mvm_f2w, f_split[1], hbm_buffer_f2w1, e_split_1[1], 2, 0, 0, 0, 0, 28, 0);
+    FPGA_RunHBM_MVM_afterF2W(0, mode_mvm_f2w, f_split[1], hbm_buffer_f2w1, e_split_1[1], 2, 0, 0, 0, 0, 0, 28, 0);
 
     // step 15 e, x, x, a, -> b
     Reset(ddr_buffer_e, 1, token, 4096);
     Reset(ddr_buffer_a, 1, token, 4096);
-    Reset(ddr_buffer_b, 1, token, 4096);
-    FPGA_RunHBM_MVM_BN_Res(0, mode_mvm_bn_res, ddr_buffer_e, atten_weight, atten_bn, ddr_buffer_a, ddr_buffer_b, 1, 0, 0, 0, 0, 28, 0);
+    Reset(ddr_buffer_b, 1, token, 4096); // WARNING!
+    FPGA_RunHBM_MVM_BN_Res(0, mode_mvm_bn_res, ddr_buffer_e, atten_weight, atten_bn, ddr_buffer_a, ddr_buffer_b, 1, 0, 0, 0, 0, 0, 28, 0);
 
     // step 16 b -> a
     Reset(ddr_buffer_b, 1, token, 4096);
     Reset(ddr_buffer_a, 1, token, 4096);
-    FPGA_Run_LN(ddr_buffer_b, post_atten_k_bias, ddr_buffer_a, 1, 0);
+    FPGA_Run_LN(ddr_buffer_b, post_atten_k_bias, ddr_buffer_a, 0, 0);
 
     // step 17 a, x, x -> g
     Reset(ddr_buffer_a, 1, token, 4096);
     Reset(ddr_buffer_g, 1, token, 13696);
-    FPGA_RunHBM_MVM_BN(0, mode_mvm_bn, ddr_buffer_a, dense_h_to_4h_0, dense_h_to_4h_bn_0, ddr_buffer_g, 1, 0, 0, 0, 0, 28, 0);
+    FPGA_RunHBM_MVM_BN(0, mode_mvm_bn, ddr_buffer_a, dense_h_to_4h_0, dense_h_to_4h_bn_0, ddr_buffer_g, 1, 0, 0, 0, 0, 0, 28, 0);
 
     // step 18 g -> h
-    Reset(ddr_buffer_g, 1, token, 13696);
-    Reset(ddr_buffer_h, 1, token, 13696);
+    Reset(ddr_buffer_g, token, 1, 13696);
+    Reset(ddr_buffer_h, token, 1, 13696);
     FPGA_Run_Activation((uint64_t)silu_act->payload, ddr_buffer_g, ddr_buffer_h, 0, 0);
 
     // step 19 a, x, x, h -> g
     Reset(ddr_buffer_a, 1, token, 4096);
     Reset(ddr_buffer_h, 1, token, 13696);
     Reset(ddr_buffer_g, 1, token, 13696);
-    FPGA_RunHBM_MVM_BN_Res(2, mode_mvm_bn_res, ddr_buffer_a, dense_h_to_4h_1, dense_h_to_4h_bn_1, ddr_buffer_h, ddr_buffer_g, 1, 0, 0, 0, 0, 28, 0);
+    FPGA_RunHBM_MVM_BN_Res(2, mode_mvm_bn_res, ddr_buffer_a, dense_h_to_4h_1, dense_h_to_4h_bn_1, ddr_buffer_h, ddr_buffer_g, 1, 0, 0, 0, 0, 0, 28, 0);
 
     // step 20 g, x, x, b -> a
     Reset(ddr_buffer_g, 1, token, 13696);
@@ -466,9 +468,9 @@ void ChatGLM_Block_Ops_v1(
     Reset(ddr_buffer_a, 1, token, 4096);
     if (end) {
         Reset(ddr_buffer_e, 1, token, 4096);
-        FPGA_RunHBM_MVM_BN_Res_ArgMax(0, mode_mvm_bn_res_aug, ddr_buffer_g, dense_4h_to_h, dense_4h_to_h_bn, ddr_buffer_b, ddr_buffer_e, ddr_buffer_a, 1, 0, 0, 0, 0, 28, 0);
+        FPGA_RunHBM_MVM_BN_Res_ArgMax(0, mode_mvm_bn_res_aug, ddr_buffer_g, dense_4h_to_h, dense_4h_to_h_bn, ddr_buffer_b, ddr_buffer_e, ddr_buffer_a, 1, 0, 0, 0, 0, 0, 28, 0);
     } else {
-        FPGA_RunHBM_MVM_BN_Res(0, mode_mvm_bn_res, ddr_buffer_g, dense_4h_to_h, dense_4h_to_h_bn, ddr_buffer_b, ddr_buffer_a, 1, 0, 0, 0, 0, 28, 0);
+        FPGA_RunHBM_MVM_BN_Res(0, mode_mvm_bn_res, ddr_buffer_g, dense_4h_to_h, dense_4h_to_h_bn, ddr_buffer_b, ddr_buffer_a, 1, 0, 0, 0, 0, 0, 28, 0);
     }
 }
 
@@ -596,8 +598,28 @@ int main() {
     // ACT_19x27392(19);
     // SCORES_32x19x19(19);
     // ChatGLM_Block(19, 28);
-    for (int i = 1; i <= 128; i++) {
-        ChatGLM_Block(i, 28, 128);
-    }
+    // for (int i = 1; i <= 128; i++) {
+    //     ChatGLM_Block(i, 28, 128);
+    // }
+    //
+
+    auto data_in = InputAddr(Malloc_Feature(1, 19, 4096, 0, 0, 16), "mvm_data_k");
+    auto q_weight = WeightAddr(Malloc_Weight(1, 1, 4096, 128*1, 0, 4), "k_weight");
+    auto q_bn_bias = WeightAddr(Malloc_Feature(1, 1, 2*128*1, 0, 0, 16), "k_bn_bias");
+    auto q_output = mvm_bn(data_in, q_weight, q_bn_bias, 1); // (token, 1, 128*36)
+    std::cout << q_output << std::endl;
+
+    /*
+     * /----------------\
+     * | Code Generator |
+     * \----------------/
+     */
+    CSB_Finish(); // 函数结束标志，生成 <name>0(HANDLE device) 函数
+    std::string name = "MVM_BN_4096x128";
+    std::ofstream source(name + ".h");
+    Addr_Save_Model(source, "");
+    //CSB_Save_Model(source, name);
+    CSB_Save_Model_Burst(source, name);
+    CSB_Clear(); // CSB记录清空，重新开始记录
     return 0;
 }

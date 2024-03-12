@@ -202,3 +202,16 @@ def add(
         scales,
         activate
     )
+
+def rotary_pos_emb(
+    data,
+    weight
+):
+    return _make.rotary_pos_emb(data, weight)
+
+def attention(
+    query,
+    key,
+    value
+):
+    return _make.attention(query, key, value)

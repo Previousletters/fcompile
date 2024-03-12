@@ -1,5 +1,4 @@
 from ..adr import Functor, VM, Tensor, Tuple, DataEnum
-from ..driver import get_tensor_size
 from .. import ne
 
 
@@ -82,6 +81,8 @@ class Storage:
                     addr = self.memo_[prefix][id].set_address(addr)
         else:
             for prefix in base_addr_map.keys():
+                if prefix not in self.memo_.keys():
+                    continue
                 addr = base_addr_map[prefix]
                 for id in self.memo_[prefix].keys():
                     addr = self.memo_[prefix][id].set_address(addr)
@@ -157,9 +158,9 @@ class GraphPlanMemory(Functor):
 
     def _malloc(self, tensor, auto_check=1):
         if tensor.dtype.mapped == DataEnum.ddr:
-            return self.storage.malloc(self.ddr_str, get_tensor_size(tensor), auto_check)
+            return self.storage.malloc(self.ddr_str, tensor.get_bytesize(), auto_check)
         elif tensor.dtype.mapped == DataEnum.hbm:
-            return self.storage.malloc(self.hbm_str, get_tensor_size(tensor), auto_check)
+            return self.storage.malloc(self.hbm_str, tensor.get_bytesize(), auto_check)
         else:
             print("unknown device, please check!")
             exit(-1)

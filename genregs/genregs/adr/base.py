@@ -5,8 +5,9 @@ class DataEnum:
     fp16 = "float16"
     int8 = "int8"
     int4 = "int4"
+    int2 = "int2"
 
-    type_bytes = {fp16: 2, int4: 0.5, int8: 1}
+    type_bytes = {fp16: 2, int2: 0.25, int4: 0.5, int8: 1}
 
 
 class DataType:
@@ -56,11 +57,18 @@ class Tuple(Base):
 
 class Tensor(Base):
 
-    def __init__(self, shape, dtype):
+    def __init__(self, shape, dtype, device):
         self.shape = shape
         self.dtype = dtype
+        self.device = device
+        self.bytesize = None
         self.storage_id = None
         self.offset = 0
+
+    def get_bytesize(self):
+        if self.bytesize is None:
+            self.bytesize = self.device.malloc_bytes(self.shape, self.dtype)
+        return self.bytesize
 
     def __str__(self):
         ret = "/* ret=(" + ", ".join([str(i) for i in self.shape]) + "), "
@@ -77,20 +85,22 @@ class Tensor(Base):
 
 class Var(Base):
 
-    def __init__(self, name, shape, dtype):
+    def __init__(self, name, shape, dtype, device):
         self.name = name
         self.shape = shape
         self.dtype = dtype
+        self.device = device
         self.checked_type = None
 
 
 class Constant(Base):
 
-    def __init__(self, name, data, shape=None, dtype=None):
+    def __init__(self, name, data, shape=None, dtype=None, device=None):
         self.name = name
         self.data = data
         self.shape = shape
         self.dtype = dtype
+        self.device = device
         self.checked_type = None
 
 
@@ -127,6 +137,9 @@ class Op:
 
     @classmethod
     def Get(cls, op_name):
+        if op_name not in cls.memo.keys():
+            msg = f"no found op \"{op_name}\", please register first"
+            raise RuntimeError(msg)
         return cls.memo[op_name]
 
 

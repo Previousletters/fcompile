@@ -1,3 +1,5 @@
+import numpy as np
+
 class Op:
 
     add = {"py": " + ", "cpp": " + "}
@@ -225,9 +227,7 @@ class Expr:
         '''
 
     def export(self, tag):
-        return "(" + self.args[0].export(tag) + \
-            self.op[tag] + \
-            self.args[1].export(tag) + ")"
+        return f"({self.args[0].export(tag)}{self.op[tag]}{self.args[1].export(tag)})"
 
     def __str__(self):
         return self.export(tag="py")
@@ -276,10 +276,10 @@ class Numb(Expr):
         return Numb(self.data)
 
     def export(self, tag):
-        if tag == "cpp":
-            return str(self.data)
-        else:
-            return str(self.data)
+        return self.data
+    
+    def __str__(self):
+        return str(self.data)
 
     def __gt__(self, data):
         if isinstance(data, str):
@@ -360,9 +360,7 @@ class If(Expr):
             return self.else_expr
 
     def export(self, tag):
-        return "(" + self.judge_expr.export(tag) + " ? " + \
-               self.then_expr.export(tag) + " : " + \
-               self.else_expr.export(tag) + ")"
+        return f"({self.judge_expr.export(tag)} ? {self.then_expr.export(tag)} : {self.else_expr.export(tag)})"
 
 
 if __name__ == "__main__":

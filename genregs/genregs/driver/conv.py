@@ -3,6 +3,20 @@ from ..ne import Var, If, For, Numb, expr_for_hook
 
 
 def FPGA_RunHBM_MVM(relu_en, mode, f_in, wt, f_bn, f_res, f_out, Skip_Factor, Out_to_BRAM, In_from_BRAM, out_base_addr, in_base_addr, log2_WT_base_addr_Bank_Step, Left_WT_Base_Addr):
+    Pixel_Data_Bytes = f_in[0].device.Pixel_Data_Bytes
+    base_Tin, Tout = f_in[0].device.base_Tin, f_in[0].device.Tout
+    T_quant_block = f_in[0].device.T_quant_block
+    WT_CH_Tgroup = f_in[0].device.WT_CH_Tgroup
+    HBM_AXI_DATA_WIDTH = f_in[0].device.HBM_AXI_DATA_WIDTH
+    MAX_WT_DW = f_in[0].device.MAX_WT_DW
+    HBM_Port = f_in[0].device.HBM_Port
+    DAT_BRAM_DEPTH = f_in[0].device.DAT_BRAM_DEPTH
+    WT_BRAM_DEPTH = f_in[0].device.WT_BRAM_DEPTH
+    AXI_BN_WIDTH = f_in[0].device.AXI_BN_WIDTH
+    BN_FIFO_DEP = f_in[0].device.BN_FIFO_DEP
+    BN_FIFO_NUM = f_in[0].device.BN_FIFO_NUM
+    MAX_BN_DW = f_in[0].device.MAX_BN_DW
+
     dshape, wshape, oshape = f_in[0].shape, wt[0].shape, f_out[0].shape
     daddrs, waddrs, baddrs, raddrs, oaddrs = f_in[1], wt[1], f_bn[1], f_res[1], f_out[1]
     dat_in_surface_stride = Pixel_Data_Bytes * dshape[0] * dshape[1]
@@ -15,10 +29,13 @@ def FPGA_RunHBM_MVM(relu_en, mode, f_in, wt, f_bn, f_res, f_out, Skip_Factor, Ou
 
     wt_dw = 4
     Tin, Tin_div_Tout = base_Tin, (base_Tin+Tout-1)//Tout
-    Hin, Win, CHout = dshape[0], dshape[1], oshape[2]
+    if len(dshape) == 2:
+        Hin, Win, CHin, CHout = 1, dshape[0], dshape[1], oshape[1]
+    elif len(dshape) == 3:
+        Hin, Win, CHin, CHout = dshape[0], dshape[1], dshape[2], oshape[2]
     Hout, Wout = Hin//Skip_Factor, Win
     CHout_div_Tout = (CHout+Tout-1)//Tout
-    CHin_div_Tout = (dshape[2]+Tout-1)//Tout
+    CHin_div_Tout = (CHin+Tout-1)//Tout
     CHout_Padding = CHout_div_Tout*Tout
     CHout_Padding_with_Tout = CHout_div_Tout*Tout
     CHin = CHin_div_Tout*Tout
@@ -95,6 +112,20 @@ def FPGA_RunHBM_MVM(relu_en, mode, f_in, wt, f_bn, f_res, f_out, Skip_Factor, Ou
 
 
 def FPGA_RunHBM_MVM_BN_Res_ArgMax(relu_en, mode, f_in, wt, f_bn, f_res, f_out, arg_out, Skip_Factor, Out_to_BRAM, In_from_BRAM, out_base_addr, in_base_addr, log2_WT_base_addr_Bank_Step, Left_WT_Base_Addr):
+    Pixel_Data_Bytes = f_in[0].device.Pixel_Data_Bytes
+    base_Tin, Tout = f_in[0].device.base_Tin, f_in[0].device.Tout
+    T_quant_block = f_in[0].device.T_quant_block
+    WT_CH_Tgroup = f_in[0].device.WT_CH_Tgroup
+    HBM_AXI_DATA_WIDTH = f_in[0].device.HBM_AXI_DATA_WIDTH
+    MAX_WT_DW = f_in[0].device.MAX_WT_DW
+    HBM_Port = f_in[0].device.HBM_Port
+    DAT_BRAM_DEPTH = f_in[0].device.DAT_BRAM_DEPTH
+    WT_BRAM_DEPTH = f_in[0].device.WT_BRAM_DEPTH
+    AXI_BN_WIDTH = f_in[0].device.AXI_BN_WIDTH
+    BN_FIFO_DEP = f_in[0].device.BN_FIFO_DEP
+    BN_FIFO_NUM = f_in[0].device.BN_FIFO_NUM
+    MAX_BN_DW = f_in[0].device.MAX_BN_DW
+
     dshape, wshape, oshape, ashape = f_in[0].shape, wt[0].shape, f_out[0].shape, arg_out[0].shape
     daddrs, waddrs, baddrs, raddrs, oaddrs, aaddrs = f_in[1], wt[1], f_bn[1], f_res[1], f_out[1], arg_out[1]
     dat_in_surface_stride = Pixel_Data_Bytes * dshape[0] * dshape[1]
@@ -188,6 +219,20 @@ def FPGA_RunHBM_MVM_BN_Res_ArgMax(relu_en, mode, f_in, wt, f_bn, f_res, f_out, a
 
 
 def FPGA_RunHBM_MVM_F2W(relu_en, mode, f_in, wt, f_out, Skip_Factor, Out_to_BRAM, In_from_BRAM, out_base_addr, in_base_addr, log2_WT_base_addr_Bank_Step, Left_WT_Base_Addr):
+    Pixel_Data_Bytes = f_in[0].device.Pixel_Data_Bytes
+    base_Tin, Tout = f_in[0].device.base_Tin, f_in[0].device.Tout
+    T_quant_block = f_in[0].device.T_quant_block
+    WT_CH_Tgroup = f_in[0].device.WT_CH_Tgroup
+    HBM_AXI_DATA_WIDTH = f_in[0].device.HBM_AXI_DATA_WIDTH
+    MAX_WT_DW = f_in[0].device.MAX_WT_DW
+    HBM_Port = f_in[0].device.HBM_Port
+    DAT_BRAM_DEPTH = f_in[0].device.DAT_BRAM_DEPTH
+    WT_BRAM_DEPTH = f_in[0].device.WT_BRAM_DEPTH
+    AXI_BN_WIDTH = f_in[0].device.AXI_BN_WIDTH
+    BN_FIFO_DEP = f_in[0].device.BN_FIFO_DEP
+    BN_FIFO_NUM = f_in[0].device.BN_FIFO_NUM
+    MAX_BN_DW = f_in[0].device.MAX_BN_DW
+
     dshape, wshape, oshape = f_in[0].shape, wt[0].shape, f_out[0].shape
     daddrs, waddrs, oaddrs = f_in[1], wt[1], f_out[1]
     dat_in_surface_stride = Pixel_Data_Bytes * dshape[0] * dshape[1]
@@ -278,6 +323,20 @@ def FPGA_RunHBM_MVM_F2W(relu_en, mode, f_in, wt, f_out, Skip_Factor, Out_to_BRAM
 
 
 def FPGA_RunHBM_MVM_BN_Res_afterTRP(relu_en, mode, f_in, wt, f_bn, f_res, f_out, Skip_Factor, Out_to_BRAM, In_from_BRAM, out_base_addr, in_base_addr, log2_WT_base_addr_Bank_Step, Left_WT_Base_Addr):
+    Pixel_Data_Bytes = f_in[0].device.Pixel_Data_Bytes
+    base_Tin, Tout = f_in[0].device.base_Tin, f_in[0].device.Tout
+    T_quant_block = f_in[0].device.T_quant_block
+    WT_CH_Tgroup = f_in[0].device.WT_CH_Tgroup
+    HBM_AXI_DATA_WIDTH = f_in[0].device.HBM_AXI_DATA_WIDTH
+    MAX_WT_DW = f_in[0].device.MAX_WT_DW
+    HBM_Port = f_in[0].device.HBM_Port
+    DAT_BRAM_DEPTH = f_in[0].device.DAT_BRAM_DEPTH
+    WT_BRAM_DEPTH = f_in[0].device.WT_BRAM_DEPTH
+    AXI_BN_WIDTH = f_in[0].device.AXI_BN_WIDTH
+    BN_FIFO_DEP = f_in[0].device.BN_FIFO_DEP
+    BN_FIFO_NUM = f_in[0].device.BN_FIFO_NUM
+    MAX_BN_DW = f_in[0].device.MAX_BN_DW
+
     dshape, wshape, bshape, rshape, oshape = f_in[0].shape, wt[0].shape, f_bn[0].shape, f_res[0].shape, f_out[0].shape
     daddrs, waddrs, baddrs, raddrs, oaddrs = f_in[1], wt[1], f_bn[1], f_res[1], f_out[1]
     dat_in_surface_stride = Pixel_Data_Bytes * dshape[0] * dshape[1]

@@ -7,10 +7,12 @@
 
 enum PathMode {
     mode_mvm = 0b00100011111,
-    mode_mvm_f2w = 0b00110011111,
+    mode_mvm_f2w = 0b00100011111,
+    mode_mvm_f2w_old = 0b00110011111,
     mode_mvm_bn = 0b01100011111,
     mode_mvm_bn_res = 0b11100011111,
-    mode_mvm_bn_res_trp = 0b11101011111,
+    mode_mvm_bn_res_trp = 0b11100011111,
+    mode_mvm_bn_res_trp_old = 0b11101011111,
     mode_mvm_bn_res_aug = 0b111100011111,
 };
 

@@ -1,11 +1,26 @@
 from .basic import *
-from ..ffi import FP32_to_FP20
+from ..clib import FP32_to_FP20
 from ..ne import Var, For, Numb, expr_for_hook
 
 Matrix_reg_bias = 192
 
 
 def FPGA_Run_Softmax(f_in, f_out, Out_and_In_Mode):
+    Pixel_Data_Bytes = f_in[0].device.Pixel_Data_Bytes
+    base_Tin, Tout = f_in[0].device.base_Tin, f_in[0].device.Tout
+    T_quant_block = f_in[0].device.T_quant_block
+    WT_CH_Tgroup = f_in[0].device.WT_CH_Tgroup
+    HBM_AXI_DATA_WIDTH = f_in[0].device.HBM_AXI_DATA_WIDTH
+    MAX_WT_DW = f_in[0].device.MAX_WT_DW
+    HBM_Port = f_in[0].device.HBM_Port
+    DAT_BRAM_DEPTH = f_in[0].device.DAT_BRAM_DEPTH
+    WT_BRAM_DEPTH = f_in[0].device.WT_BRAM_DEPTH
+    AXI_BN_WIDTH = f_in[0].device.AXI_BN_WIDTH
+    BN_FIFO_DEP = f_in[0].device.BN_FIFO_DEP
+    BN_FIFO_NUM = f_in[0].device.BN_FIFO_NUM
+    MAX_BN_DW = f_in[0].device.MAX_BN_DW
+    AXI_BURST_LEN_SOFTMAX = f_in[0].device.AXI_BURST_LEN_SOFTMAX
+
     dshape, oshape = f_in[0].shape, f_out[0].shape
     daddrs, oaddrs = f_in[1], f_out[1]
     width = ((dshape[1] + AXI_BURST_LEN_SOFTMAX - 1) // AXI_BURST_LEN_SOFTMAX) * AXI_BURST_LEN_SOFTMAX
@@ -42,6 +57,23 @@ def FPGA_Run_Softmax(f_in, f_out, Out_and_In_Mode):
 
 
 def FPGA_Run_LN(f_in, wt_and_bias, f_out, RMS_Norm, Out_and_In_Mode):
+    Pixel_Data_Bytes = f_in[0].device.Pixel_Data_Bytes
+    base_Tin, Tout = f_in[0].device.base_Tin, f_in[0].device.Tout
+    T_quant_block = f_in[0].device.T_quant_block
+    WT_CH_Tgroup = f_in[0].device.WT_CH_Tgroup
+    HBM_AXI_DATA_WIDTH = f_in[0].device.HBM_AXI_DATA_WIDTH
+    MAX_WT_DW = f_in[0].device.MAX_WT_DW
+    HBM_Port = f_in[0].device.HBM_Port
+    DAT_BRAM_DEPTH = f_in[0].device.DAT_BRAM_DEPTH
+    WT_BRAM_DEPTH = f_in[0].device.WT_BRAM_DEPTH
+    AXI_BN_WIDTH = f_in[0].device.AXI_BN_WIDTH
+    BN_FIFO_DEP = f_in[0].device.BN_FIFO_DEP
+    BN_FIFO_NUM = f_in[0].device.BN_FIFO_NUM
+    MAX_BN_DW = f_in[0].device.MAX_BN_DW
+    AXI_BURST_LEN_SOFTMAX = f_in[0].device.AXI_BURST_LEN_SOFTMAX
+    AXI_DAT_WIDTH = f_in[0].device.AXI_DAT_WIDTH
+    log2_AXI_BURST_LEN = f_in[0].device.log2_AXI_BURST_LEN
+
     dshape, wshape, oshape = f_in[0].shape, wt_and_bias[0].shape, f_out[0].shape
     daddrs, waddrs, oaddrs = f_in[1], wt_and_bias[1], f_out[1]
     chin_padding_with_tout = ((dshape[2] + Tout - 1) // Tout) * Tout
@@ -83,6 +115,23 @@ def FPGA_Run_LN(f_in, wt_and_bias, f_out, RMS_Norm, Out_and_In_Mode):
 
 
 def FPGA_Run_PosEmb(f_in, pos_in, f_out, Out_and_In_Mode):
+    Pixel_Data_Bytes = f_in[0].device.Pixel_Data_Bytes
+    base_Tin, Tout = f_in[0].device.base_Tin, f_in[0].device.Tout
+    T_quant_block = f_in[0].device.T_quant_block
+    WT_CH_Tgroup = f_in[0].device.WT_CH_Tgroup
+    HBM_AXI_DATA_WIDTH = f_in[0].device.HBM_AXI_DATA_WIDTH
+    MAX_WT_DW = f_in[0].device.MAX_WT_DW
+    HBM_Port = f_in[0].device.HBM_Port
+    DAT_BRAM_DEPTH = f_in[0].device.DAT_BRAM_DEPTH
+    WT_BRAM_DEPTH = f_in[0].device.WT_BRAM_DEPTH
+    AXI_BN_WIDTH = f_in[0].device.AXI_BN_WIDTH
+    BN_FIFO_DEP = f_in[0].device.BN_FIFO_DEP
+    BN_FIFO_NUM = f_in[0].device.BN_FIFO_NUM
+    MAX_BN_DW = f_in[0].device.MAX_BN_DW
+    AXI_BURST_LEN_SOFTMAX = f_in[0].device.AXI_BURST_LEN_SOFTMAX
+    AXI_DAT_WIDTH = f_in[0].device.AXI_DAT_WIDTH
+    log2_AXI_BURST_LEN = f_in[0].device.log2_AXI_BURST_LEN
+
     dshape, wshape, oshape = f_in[0].shape, pos_in[0].shape, f_out[0].shape
     daddrs, waddrs, oaddrs = f_in[1], pos_in[1], f_out[1]
     Pos_Num = dshape[1]
@@ -120,6 +169,24 @@ def FPGA_Run_PosEmb(f_in, pos_in, f_out, Out_and_In_Mode):
 
 
 def FPGA_Run_Feature2Weight(f_in, wt_out, Out_and_In_Mode, log2_WT_base_addr_Bank_Step, Left_WT_Base_Addr=0):
+    Pixel_Data_Bytes = f_in[0].device.Pixel_Data_Bytes
+    base_Tin, Tout = f_in[0].device.base_Tin, f_in[0].device.Tout
+    T_quant_block = f_in[0].device.T_quant_block
+    WT_CH_Tgroup = f_in[0].device.WT_CH_Tgroup
+    HBM_AXI_DATA_WIDTH = f_in[0].device.HBM_AXI_DATA_WIDTH
+    MAX_WT_DW = f_in[0].device.MAX_WT_DW
+    HBM_Port = f_in[0].device.HBM_Port
+    DAT_BRAM_DEPTH = f_in[0].device.DAT_BRAM_DEPTH
+    WT_BRAM_DEPTH = f_in[0].device.WT_BRAM_DEPTH
+    AXI_BN_WIDTH = f_in[0].device.AXI_BN_WIDTH
+    BN_FIFO_DEP = f_in[0].device.BN_FIFO_DEP
+    BN_FIFO_NUM = f_in[0].device.BN_FIFO_NUM
+    MAX_DAT_DW = f_in[0].device.MAX_DAT_DW
+    MAX_BN_DW = f_in[0].device.MAX_BN_DW
+    AXI_BURST_LEN_SOFTMAX = f_in[0].device.AXI_BURST_LEN_SOFTMAX
+    AXI_DAT_WIDTH = f_in[0].device.AXI_DAT_WIDTH
+    log2_AXI_BURST_LEN = f_in[0].device.log2_AXI_BURST_LEN
+
     dshape, oshape = f_in[0].shape, wt_out[0].shape
     daddrs, oaddrs = f_in[1], wt_out[1]
     width = ((dshape[1] + T_quant_block - 1) // T_quant_block) * T_quant_block
@@ -161,6 +228,24 @@ def FPGA_Run_Feature2Weight(f_in, wt_out, Out_and_In_Mode, log2_WT_base_addr_Ban
 
 
 def FPGA_Run_Transpose(f_in, wt_out, Out_and_In_Mode, log2_WT_base_addr_Bank_Step, Left_WT_Base_Addr):
+    Pixel_Data_Bytes = f_in[0].device.Pixel_Data_Bytes
+    base_Tin, Tout = f_in[0].device.base_Tin, f_in[0].device.Tout
+    T_quant_block = f_in[0].device.T_quant_block
+    WT_CH_Tgroup = f_in[0].device.WT_CH_Tgroup
+    HBM_AXI_DATA_WIDTH = f_in[0].device.HBM_AXI_DATA_WIDTH
+    MAX_WT_DW = f_in[0].device.MAX_WT_DW
+    HBM_Port = f_in[0].device.HBM_Port
+    DAT_BRAM_DEPTH = f_in[0].device.DAT_BRAM_DEPTH
+    WT_BRAM_DEPTH = f_in[0].device.WT_BRAM_DEPTH
+    AXI_BN_WIDTH = f_in[0].device.AXI_BN_WIDTH
+    BN_FIFO_DEP = f_in[0].device.BN_FIFO_DEP
+    BN_FIFO_NUM = f_in[0].device.BN_FIFO_NUM
+    MAX_DAT_DW = f_in[0].device.MAX_DAT_DW
+    MAX_BN_DW = f_in[0].device.MAX_BN_DW
+    AXI_BURST_LEN_SOFTMAX = f_in[0].device.AXI_BURST_LEN_SOFTMAX
+    AXI_DAT_WIDTH = f_in[0].device.AXI_DAT_WIDTH
+    log2_AXI_BURST_LEN = f_in[0].device.log2_AXI_BURST_LEN
+
     dshape, oshape = f_in[0].shape, wt_out[0].shape
     daddrs, oaddrs = f_in[1], wt_out[1]
     width = ((dshape[1] + Tout - 1) // Tout) * Tout
@@ -203,6 +288,24 @@ def FPGA_Run_Transpose(f_in, wt_out, Out_and_In_Mode, log2_WT_base_addr_Bank_Ste
 
 
 def FPGA_Run_Activation(act_sim, f_in, f_out, Out_and_In_Mode):
+    Pixel_Data_Bytes = f_in[0].device.Pixel_Data_Bytes
+    base_Tin, Tout = f_in[0].device.base_Tin, f_in[0].device.Tout
+    T_quant_block = f_in[0].device.T_quant_block
+    WT_CH_Tgroup = f_in[0].device.WT_CH_Tgroup
+    HBM_AXI_DATA_WIDTH = f_in[0].device.HBM_AXI_DATA_WIDTH
+    MAX_WT_DW = f_in[0].device.MAX_WT_DW
+    HBM_Port = f_in[0].device.HBM_Port
+    DAT_BRAM_DEPTH = f_in[0].device.DAT_BRAM_DEPTH
+    WT_BRAM_DEPTH = f_in[0].device.WT_BRAM_DEPTH
+    AXI_BN_WIDTH = f_in[0].device.AXI_BN_WIDTH
+    BN_FIFO_DEP = f_in[0].device.BN_FIFO_DEP
+    BN_FIFO_NUM = f_in[0].device.BN_FIFO_NUM
+    MAX_DAT_DW = f_in[0].device.MAX_DAT_DW
+    MAX_BN_DW = f_in[0].device.MAX_BN_DW
+    AXI_BURST_LEN_SOFTMAX = f_in[0].device.AXI_BURST_LEN_SOFTMAX
+    AXI_DAT_WIDTH = f_in[0].device.AXI_DAT_WIDTH
+    log2_AXI_BURST_LEN = f_in[0].device.log2_AXI_BURST_LEN
+
     dshape, oshape = f_in[0].shape, f_out[0].shape
     daddrs, waddrs, oaddrs = f_in[1], act_sim[1], f_out[1]
     width = dshape[1]

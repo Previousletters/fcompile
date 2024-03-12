@@ -2774,26 +2774,27 @@ bool SplitRel(const Array<Type>& types, int num_inputs, const Attrs& attrs,
     auto begin = IndexExpr(tir::make_zero(DataType::Int(32)));
     std::vector<Type> fields;
     for (unsigned int i = 0; i < indices.size(); ++i) {
-      ICHECK(reporter->Assert(Downcast<IndexExpr>(indices[i]) > begin))
-          << "indices_or_sections need to be a sorted ascending list";
+      // ICHECK(reporter->Assert(Downcast<IndexExpr>(indices[i]) > begin))
+      //    << "indices_or_sections need to be a sorted ascending list";
       std::vector<IndexExpr> oshape(data->shape.begin(), data->shape.end());
-      oshape[axis] = Downcast<IndexExpr>(indices[i]) - begin;
-      begin = Downcast<IndexExpr>(indices[i]);
+      // oshape[axis] = Downcast<IndexExpr>(indices[i]) - begin;
+      oshape[axis] = Downcast<IndexExpr>(indices[i]);
+      // begin = Downcast<IndexExpr>(indices[i]);
       auto vec_type = TensorType(oshape, data->dtype);
       fields.push_back(vec_type);
     }
-    if (!data->shape[axis].as<AnyNode>()) {
-      ICHECK(reporter->Assert(begin < data->shape[axis]))
-          << "The sum of sections must match the input.shape[axis]";
-    }
-    std::vector<IndexExpr> oshape(data->shape.begin(), data->shape.end());
-    if (data->shape[axis].as<AnyNode>()) {
-      oshape[axis] = Any();
-    } else {
-      oshape[axis] = data->shape[axis] - begin;
-    }
-    auto vec_type = TensorType(oshape, data->dtype);
-    fields.push_back(vec_type);
+    // if (!data->shape[axis].as<AnyNode>()) {
+    //   ICHECK(reporter->Assert(begin < data->shape[axis]))
+    //       << "The sum of sections must match the input.shape[axis]";
+    // }
+    // std::vector<IndexExpr> oshape(data->shape.begin(), data->shape.end());
+    // if (data->shape[axis].as<AnyNode>()) {
+    //   oshape[axis] = Any();
+    // } else {
+    //   oshape[axis] = data->shape[axis] - begin;
+    // }
+    // auto vec_type = TensorType(oshape, data->dtype);
+    // fields.push_back(vec_type);
     reporter->Assign(types[1], TupleType(Array<Type>(fields)));
   }
   return true;

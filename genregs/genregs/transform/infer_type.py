@@ -3,12 +3,24 @@ from ..adr import Functor, Call, VM, Tensor
 
 class InferType(Functor):
 
+    def __init__(self, device=None):
+        super(InferType, self).__init__()
+        self.device = device
+
     def visit_var(self, expr):
-        expr.checked_type = Tensor(expr.shape, expr.dtype)
+        device = expr.device
+        if self.device is not None:
+            device = self.device
+        expr.checked_type = Tensor(expr.shape, expr.dtype, device)
         return expr
 
     def visit_constant(self, expr):
-        expr.checked_type = Tensor(expr.shape, expr.dtype)
+        if expr.dtype is None:
+            return expr
+        device = expr.device
+        if self.device is not None:
+            device = self.device
+        expr.checked_type = Tensor(expr.shape, expr.dtype, device)
         return expr
 
     def visit_tupleitem(self, expr):
@@ -23,7 +35,8 @@ class InferType(Functor):
         func = expr.op.attrs["rel"]
         state, checked_type = func(new_type, expr.attrs)
         if state:
-            new_expr = Call(expr.op, new_args, expr.attrs)
+            # new_expr = Call(expr.op, new_args, expr.attrs)
+            new_expr = expr
             new_expr.checked_type = checked_type
             return new_expr
         else:
@@ -35,12 +48,13 @@ class InferType(Functor):
         func = expr.op.attrs["rel"]
         state, checked_type = func(new_type, expr.attrs)
         if state:
-            new_expr = VM(expr.op, new_expr, expr.attrs)
+            # new_expr = VM(expr.op, new_expr, expr.attrs)
+            new_expr = expr
             new_expr.checked_type = checked_type
             return new_expr
         else:
             raise RuntimeError("Check Error! " + expr.op.name)
 
 
-def infer_type(expr):
-    return InferType().visit(expr)
+def infer_type(expr, device=None):
+    return InferType(device).visit(expr)

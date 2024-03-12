@@ -144,9 +144,11 @@ void FPGA_RunHBM_MVM_afterF2W(int relu_en, int mode, struct Mapped_Feature* feat
 {
     ObjCheck(feature_in);
     ObjCheck(wt);
-    int dat_in_surface_stride = Pixel_Data_Bytes * feature_in->width * feature_in->height;
+    int dat_in_surface_stride = Pixel_Data_Bytes * feature_in->width;
+    // int dat_in_line_stride = Pixel_Data_Bytes * feature_in->width * (feature_in->channel / Tout) * 2;
     int dat_in_line_stride = Pixel_Data_Bytes * feature_in->width * Skip_Factor;
-    int dat_out_surface_stride = Pixel_Data_Bytes * feature_out->width * feature_out->height;
+    int dat_out_surface_stride = Pixel_Data_Bytes * feature_out->width;
+    // int dat_out_line_stride = Pixel_Data_Bytes * feature_out->width * (feature_out->channel / Tout) * 2;
     int dat_out_line_stride = Pixel_Data_Bytes * feature_out->width * Skip_Factor;
 
     int current_in_base_addr, current_out_base_addr;
@@ -875,10 +877,10 @@ void FPGA_RunHBM_MVM_BN_Res_afterTRP(int relu_en, int mode, struct Mapped_Featur
     ObjCheck(wt);
     ObjCheck(feature_bn);
     ObjCheck(feature_add);
-    int dat_in_surface_stride = Pixel_Data_Bytes * feature_in->width * feature_in->height;
-    int dat_in_line_stride = Pixel_Data_Bytes * feature_in->width * Skip_Factor;
-    int dat_out_surface_stride = Pixel_Data_Bytes * feature_out->width * feature_out->height;
-    int dat_out_line_stride = Pixel_Data_Bytes * feature_out->width * Skip_Factor;
+    int dat_in_surface_stride = Pixel_Data_Bytes * feature_in->width;
+    int dat_in_line_stride = Pixel_Data_Bytes * feature_in->width * (feature_in->channel / Tout) * 2;
+    int dat_out_surface_stride = Pixel_Data_Bytes * feature_out->width;
+    int dat_out_line_stride = Pixel_Data_Bytes * feature_out->width * (feature_in->channel / Tout) * 2; // WARNING!!!!!!!!!!!!!!!!!!
 
     int current_in_base_addr, current_out_base_addr;
     current_in_base_addr =(In_from_BRAM==1)?in_base_addr:((uint64_t)feature_in->payload);
