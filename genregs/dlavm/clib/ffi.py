@@ -143,7 +143,7 @@ def WT_TRANS(weight: np.ndarray, scale: np.ndarray, require_bytes) -> np.ndarray
     bascale = bytearray(scale)
     srptr = (ctypes.c_byte * len(bascale)).from_buffer(bascale)
     scale = ctypes.cast(srptr, ctypes.POINTER(ctypes.c_uint16))
-    tensor = _wt_trans(shape[0], shape[1], require_bytes, weight, scale)[0]
+    tensor = _wt_trans(shape[1]*8, shape[0], require_bytes, weight, scale)[0]
     require_numb = require_bytes // 4
     result = np.zeros((32, require_numb), dtype="int32")
     for i in range(32):

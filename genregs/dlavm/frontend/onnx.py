@@ -239,7 +239,7 @@ class QuantLinear(OnnxOpConverter):
     def _impl_hbm_v1(cls, inputs, attr, params):
         assert len(inputs) == 3, "QuantLinear op take 3 inputs, {} given".format(len(inputs))
         # When performing a batch matmul, we need to properly handle N-dim shapes.
-        weight_data = [inputs[1].data, inputs[2].data]
+        weight_data = [inputs[1].data.transpose(), inputs[2].data.transpose()]
         weight_shape = list(inputs[1].data.shape)
         weight_shape = [weight_shape[0]*8, weight_shape[1]]
         weight = adr.hbm.const_hbm(inputs[1].name, weight_data, shape=weight_shape)
@@ -335,7 +335,6 @@ class Shape(OnnxOpConverter):
     def _impl_hbm_v1(cls, inputs, attr, params):
         output = infer_type(inputs[0])
         shape = output.checked_type.shape
-        print(shape)
         return shape
 
 
@@ -466,6 +465,14 @@ class Sigmoid(OnnxOpConverter):
         return adr.onnx_sigmoid(inputs[0])
 
 
+class Silu(OnnxOpConverter):
+    """Operator converter for Shape."""
+
+    @classmethod
+    def _impl_hbm_v1(cls, inputs, attr, params):
+        return adr.hbm.silu(inputs[0])
+
+
 class Unsqueeze(OnnxOpConverter):
     """Operator converter for Shape."""
 
@@ -533,6 +540,7 @@ def _get_convert_map(opset, target):
         "Gather": Gather.get_converter(opset, target),
         "Slice": Slice.get_converter(opset, target),
         "Sigmoid": Sigmoid.get_converter(opset, target),
+        "Silu": Silu.get_converter(opset, target),
         "Unsqueeze": Unsqueeze.get_converter(opset, target),
         "Concat": Concat.get_converter(opset, target),
         "ArgMax": ArgMax.get_converter(opset, target),
@@ -707,7 +715,6 @@ class GraphProto:
             attr["tvm_custom"]["num_outputs"] = len(node_output)
 
             op = self._convert_operator(op_name, inputs, attr, opset, target)
-            print(op)
             outputs_num = len(node_output)
             assert (
                 len(node_output) == outputs_num

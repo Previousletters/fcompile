@@ -45,11 +45,13 @@ def MVMDriver(args, output, attrs):
         return FPGA_RunHBM_MVM(0, 0b00100011111, args[0], args[1], [None, None], [None, None], output, attrs["skip"], 0, 0, 0, 0, attrs["log2_step"], 0)
     elif attrs["skip"] == 2:
         regs = []
+        dshape, ddtype, daddrs = args[0][0].shape, args[0][0].dtype, args[0][1]
         oshape, odtype, oaddrs = output[0].shape, output[0].dtype, output[1]
         Tout = args[0][0].device.Tout
+        input_offset = [args[0][0], (daddrs & 0xffffffff) + dshape[1] * (dshape[2] + Tout - 1) // Tout * ddtype.get_bytes()]
         output_offset = [output[0], (oaddrs & 0xffffffff) + oshape[1] * (oshape[2] + Tout - 1) // Tout * odtype.get_bytes()]
         regs += FPGA_RunHBM_MVM_F2W(0, 0b00100011111, args[0], args[1], output, 2, 0, 0, 0, 0, attrs["log2_step"], 0)
-        regs += FPGA_RunHBM_MVM_F2W(0, 0b00100011111, args[0], args[2], output_offset, 2, 0, 0, 0, 0, attrs["log2_step"], 0)
+        regs += FPGA_RunHBM_MVM_F2W(0, 0b00100011111, input_offset, args[2], output_offset, 2, 0, 0, 0, 0, attrs["log2_step"], 0)
         return regs
     else:
         print("Error! Not support skip > 2")
@@ -120,11 +122,13 @@ def MVMBNResDriver(args, output, attrs):
         return FPGA_RunHBM_MVM(attrs["res_mode"], 0b11100011111, args[0], args[1], args[2], args[3], output, attrs["skip"], 0, 0, 0, 0, attrs["log2_step"], 0)
     elif attrs["skip"] == 2:
         regs = []
+        dshape, ddtype, daddrs = args[0][0].shape, args[0][0].dtype, args[0][1]
         oshape, odtype, oaddrs = output[0].shape, output[0].dtype, output[1]
         Tout = args[0][0].device.Tout
+        input_offset = [args[0][0], (daddrs & 0xffffffff) + dshape[1] * (dshape[2] + Tout - 1) // Tout * ddtype.get_bytes()]
         output_offset = [output[0], (oaddrs & 0xffffffff) + oshape[1] * (oshape[2] + Tout - 1) // Tout * odtype.get_bytes()]
         regs += FPGA_RunHBM_MVM_BN_Res_afterTRP(attrs["res_mode"], 0b11100011111, args[0], args[1], args[3], args[4], output, 2, 0, 0, 0, 0, attrs["log2_step"], 0)
-        regs += FPGA_RunHBM_MVM_BN_Res_afterTRP(attrs["res_mode"], 0b11100011111, args[0], args[2], args[3], args[4], output_offset, 2, 0, 0, 0, 0, attrs["log2_step"], 0)
+        regs += FPGA_RunHBM_MVM_BN_Res_afterTRP(attrs["res_mode"], 0b11100011111, input_offset, args[2], args[3], args[4], output_offset, 2, 0, 0, 0, 0, attrs["log2_step"], 0)
         return regs
     else:
         print("Error! Not support this attrs: ")

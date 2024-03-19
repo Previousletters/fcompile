@@ -539,7 +539,7 @@ class MyGML2(nn.Module):
                 query_layer, key_layer, value_layer = query_layer / ratio, key_layer / ratio, value_layer / ratio
 
             context_layer = torch.nn.functional.scaled_dot_product_attention(
-                query_layer, key_layer, value_layer, is_causal=True)
+                query_layer, key_layer, value_layer, is_causal=True
             out_txt(context_layer, blockname + f"chatglm_page2/Attention_output.txt", is_out=True)
 
             '''

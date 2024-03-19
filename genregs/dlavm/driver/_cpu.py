@@ -13,7 +13,7 @@ def to_string(inputs: dict) -> dict :
 
 
 def CacheDriver(args, output, attrs):
-    dshape, wshape, oshape = args[0][0].shape, args[1][0].shape, output[0].shape
+    dshape, wshape, oshape, device = args[0][0].shape, args[1][0].shape, output[0].shape, output[0].device
     ddtype, wdtype, odtype = args[0][0].dtype, args[1][0].dtype, output[0].dtype
     daddrs, waddrs, oaddrs = args[0][1], args[1][1], output[1]
     dshape_NHWT, wshape_NHWT, oshape_NHWT = HWC2NHWT(dshape), HWC2NHWT(wshape), HWC2NHWT(oshape)
@@ -36,7 +36,7 @@ def CacheDriver(args, output, attrs):
     memcpy.append(memcpy_format % to_string({
                                 "oaddrs": waddrs, 
                                 "daddrs": oaddrs, 
-                                "size": get_tensor_size(output[0])
+                                "size": (output[0])
                             }))
     return memcpy
 

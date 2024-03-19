@@ -82,6 +82,16 @@ class LayerNorm(torch.autograd.Function):
         return g.op("custom::LayerNorm", hidden_states, weight, **attrs)
 
 
+class Silu(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, data):
+        return F.silu(data)
+
+    @staticmethod
+    def symbolic(g, data):
+        return g.op("custom::Silu", data)
+
+
 class GLM2Block(torch.nn.Module):
 
     def __init__(self):
@@ -90,6 +100,7 @@ class GLM2Block(torch.nn.Module):
         self.post_atten_layernorm = RMSNorm(4096, dtype=torch.float16)
         self.pos_emb = RotaryPosEmb.apply
         self.atten = Attention.apply
+        self.silu = Silu.apply
         self.query_key_value = quant.QuantLinear(bits=4, groupsize=128, infeatures=4096, outfeatures=4608, bias=True)
         self.dense = quant.QuantLinear(bits=4, groupsize=128, infeatures=4096, outfeatures=4096, bias=False)
         self.dense_h_to_4h = quant.QuantLinear(bits=4, groupsize=128, infeatures=4096, outfeatures=27392, bias=False)
@@ -139,7 +150,7 @@ class GLM2Block(torch.nn.Module):
         
         intermediate_parallel = self.dense_h_to_4h(layernorm_output_att)
         imps = torch.chunk(intermediate_parallel, 2, dim=-1)
-        Ele_output = F.silu(imps[0])
+        Ele_output = self.silu(imps[0])
         intermediate_parallel = Ele_output * imps[1]
         mlp_output = self.dense_4h_to_h(intermediate_parallel)
         residual = layernorm_input

@@ -45,7 +45,7 @@ def MVMBNRel(args, attrs):
         return False, []
     if btype.mapped != DataEnum.ddr or btype.dtype != DataEnum.fp16:
         return False, []
-    if dshape[2] != wshape[0]:
+    if dshape[-1] != wshape[0]:
         return False, []
     if bshape[-1] != wshape[1]*2:
         return False, []
@@ -75,7 +75,7 @@ def MVMBNResRel(args, attrs):
         return False, "bn check error: " + str(args[-2])
     if rtype.mapped != DataEnum.ddr or rtype.dtype != DataEnum.fp16:
         return False, "res check error: " + str(args[-1])
-    if dshape[2] != wshape[0]:
+    if dshape[-1] != wshape[0]:
         return False, f"input channel check error: {dshape[2]} and {wshape[0]}" 
     if bshape[-1] != wshape[1]*2:
         return False, f"bn channel check error: {bshape[-1]} and {wshape[1]}"

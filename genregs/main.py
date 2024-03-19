@@ -1,7 +1,8 @@
-from genregs import adr
-from genregs import ne
-from genregs import backend
-from genregs.transform import infer_type, offline_process
+from dlavm import adr
+from dlavm import ne
+from dlavm import backend
+from dlavm.transform import infer_type, offline_process, fused_ops
+from dlavm import transform
 import sys  # 导入sys模块
 
 
@@ -10,6 +11,10 @@ def chatglm_block(data, pos_weight, mask, silu_weight, token, index, arg_max):
     ln_k_bias = adr.hbm.const_ddr(prefix + "ln_k_bias", None, [4096*2])
     qkv_weight = adr.hbm.const_hbm(prefix + "qkv_weight", None, [4096, 128*36])
     qkv_bn = adr.hbm.const_ddr(prefix + "qkv_bn_bias", None, [2*128*36])
+    # k0_cache = adr.hbm.const_ddr(prefix + "k0_cache", None, [1, token-1, 128])
+    # k1_cache = adr.hbm.const_ddr(prefix + "k1_cache", None, [1, token-1, 128])
+    # v0_cache = adr.hbm.const_ddr(prefix + "v0_cache", None, [1, token-1, 128])
+    # v1_cache = adr.hbm.const_ddr(prefix + "v1_cache", None, [1, token-1, 128])
     rsqrt = adr.hbm.const_ddr(prefix + "rsqrt", None, [token*2])
     atten_weight = adr.hbm.const_hbm(prefix + "atten_weight", None, [4096, 4096])
     atten_bias = adr.hbm.const_ddr(prefix + "atten_bn", None, [4096*2])
@@ -28,12 +33,16 @@ def chatglm_block(data, pos_weight, mask, silu_weight, token, index, arg_max):
     q_data = adr.hbm.pos_emb(q_data, pos_weight)
     k_data0 = adr.hbm.pos_emb(qkv_data[1], pos_weight)
     k_data1 = adr.hbm.pos_emb(qkv_data[2], pos_weight)
+    # k_data0 = adr.cpu.cache(k_data0, k0_cache)
+    # k_data1 = adr.cpu.cache(k_data1, k1_cache)
     k_data0 = adr.hbm.transpose(k_data0)
     k_data1 = adr.hbm.transpose(k_data1)
     scores = adr.hbm.mvm_bn_res(q_data, k_data0, k_data1, rsqrt, mask, skip=2)
     scores = adr.hbm.softmax(scores)
     v_data0 = qkv_data[3]
     v_data1 = qkv_data[4]
+    # v_data0 = adr.cpu.cache(qkv_data[3], v0_cache)
+    # v_data1 = adr.cpu.cache(qkv_data[4], v1_cache)
     v_data0 = adr.hbm.feature2weight(v_data0)
     v_data1 = adr.hbm.feature2weight(v_data1)
     atten_out = adr.hbm.mvm(scores, v_data0, v_data1, skip=2)
@@ -60,7 +69,7 @@ def chatglm_without_kvcache():
     output = data[1]
 
     output = infer_type(output)
-    from genregs.driver import config
+    from dlavm.driver import config
     # config.tb_sim_path = "/home/previous/accel/hbm0227/driver/HBM_sv"
     expr, source, storage, _ = backend.csb_head(output, "chatglm", 0x200000000, 0x0)
     with open("./test/source.h", "w") as f:
@@ -70,7 +79,7 @@ def chatglm_without_kvcache():
     
 
 def check_testbench():
-    from genregs.driver import config
+    from dlavm.driver import config
     config.tb_sim_path = "/home/previous/accel/hbm0201/driver/HBM_sv"
     data = adr.hbm.var_ddr("data", [1, 1, 4096])
     weight = adr.hbm.const_hbm("weight", None, [4096, 128*36])
@@ -102,7 +111,7 @@ def mp_booth():
 
 
 import onnx
-from genregs import frontend
+from dlavm import frontend
 
 def onnx_test():
     mod = onnx.load("./test/glm2_block_test.onnx")
@@ -119,17 +128,18 @@ def onnx_test():
 
 def test():
     token = 19
-    data = adr.hbm.var_ddr("data", [2, token, 128])
-    pos_weight = adr.hbm.const_ddr("pos_emb", None, [1, 128, 64])
-    output = adr.hbm.pos_emb(data, pos_weight)
+    data = adr.hbm.var_ddr("data", [1, token, 4096])
+    weight = adr.hbm.const_hbm("weight", None, [4096, 128])
+    bn = adr.hbm.const_ddr("bn", None, [2*128])
+    output = adr.hbm.mvm_bn(data, weight, bn)
 
     output = infer_type(output)
-    from genregs.driver import config
+    from dlavm.driver import config
     config.tb_sim_path = "/home/previous/accel/hbm0227/driver/HBM_sv"
-    expr, source, storage, mod_0, _ = backend.cfg_head(output, "chatglm", 0x200000000, 0x0)
-    # _, _, _, mod_1 = backend.testbench_test_head(output, "chatglm", 0x200000000, 0x0)
-    # print(mod_0 == mod_1)
-    with open("./test/pos_.h", "w") as f:
+    expr, source, storage, mod_0 = backend.csb_test_head(output, "chatglm", 0x200000000, 0x0)
+    _, _, _, mod_1 = backend.testbench_test_head(output, "chatglm", 0x200000000, 0x0)
+    print(mod_0 == mod_1)
+    with open("./test/MVMBN_4096x128.h", "w") as f:
         f.write(source)
     print(expr)
     print(storage)
@@ -137,11 +147,17 @@ def test():
 
 def load_onnx_block():
     mod = onnx.load("./test/glm2_block.onnx")
+    # sys.setrecursionlimit(1000)
     expr = frontend.from_onnx(mod)
     print(expr)
 
-    output = infer_type(expr)
-    output = offline_process(expr)
+    graph_opt = transform.Sequential([
+        transform.FusedOps(), # fused mvm with bias
+        transform.EliminateReshape(),
+        transform.FusedOps(), # fused mvm or mvm_bn with res
+        transform.OfflineProcess(),
+    ])
+    output = graph_opt(expr)
     print(output)
     expr, source, storage, mod1 = backend.csb_head(output, "test", 0x200000000, 0x0)
     with open("./test/test.h", "w") as f:

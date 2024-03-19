@@ -113,3 +113,9 @@ def activate(data, weight, out_and_in_mode=0):
         "out_and_in_mode": out_and_in_mode,
     }
     return Call(Op.Get("accel.hbm.activate"), [data, weight], attrs)
+
+
+def silu(data, out_and_in_mode=0):
+    import numpy as np
+    silu_weight = const_ddr("global::silu_weight", np.zeros([32*3], dtype="uint8"), [32*3], DataEnum.int8)
+    return activate(data, silu_weight, out_and_in_mode=out_and_in_mode)

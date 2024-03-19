@@ -44,7 +44,7 @@ HBM_DLL int** WT_TRANS(int chin, int chout, int ch_size, int *wt, uint16_t *wt_F
             {
                 for(int m=0;m<WT_CHin_Padding_with_Tin*WT_DW/32;m++)
                 {
-                    int tmp = wt[(chin*(i*Tout+j*HBM_Port+k))+m];
+                    int tmp = wt[((chin / 8)*(i*Tout+j*HBM_Port+k))+m];
                     /*
                     for(int p=0; p<8; p++)
                     {
