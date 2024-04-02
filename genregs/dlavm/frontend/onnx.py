@@ -327,6 +327,18 @@ class RotaryPosEmb(OnnxOpConverter):
             weight = adr.hbm.const_ddr(inputs[1].name, weight_data, shape=weight_shape)
         return adr.hbm.pos_emb(inputs[0], weight)
 
+    @classmethod
+    def _impl_hbm_v2(cls, inputs, attr, params):
+        if isinstance(inputs[1], adr.Var):
+            weight = adr.onnx_transpose(inputs[1], [1, 0])
+        else:
+            weight_shape = list(inputs[1].data.shape)
+            weight_data = inputs[1].data
+            weight = adr.hbm.const_ddr(inputs[1].name, weight_data, shape=weight_shape)
+        data = adr.onnx_transpose(inputs[0], [1, 2, 0, 3])
+        output = adr.hbm.pos_emb(data, weight)
+        return adr.onnx_transpose(output, [2, 0, 1, 3])
+
 
 class Shape(OnnxOpConverter):
     """Operator converter for Shape."""

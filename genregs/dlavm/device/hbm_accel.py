@@ -1,9 +1,10 @@
 from functools import reduce
 from ..adr.base import DataType, DataEnum
 from .. import ne
+from .base_accel import Accel
 
 
-class HBM:
+class HBM(Accel):
     name = "hbm"
     Tb = 1
     HBM_Port = 32
@@ -64,3 +65,12 @@ class HBM:
         else:
             raise RuntimeError(f"HBM accelerator has no this storage: {dtype.mapped}")
 
+
+class HBM0321(HBM):
+    name = "hbm_0321"
+
+    DAT_BRAM_DEPTH = (1<<22)//HBM.base_Tin//HBM.MAX_DAT_DW//HBM.DAT_BRAM_NUM
+    WT_BRAM_DEPTH = (1<<23)//HBM.HBM_AXI_DATA_WIDTH//HBM.WT_BRAM_NUM
+    AXI_BURST_LEN_SOFTMAX = 2
+    BN_FIFO_DEP = HBM.SINGLE_BN_FIFO_DEP * 1
+    MAXTOKEN = 128

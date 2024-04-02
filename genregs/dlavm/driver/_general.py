@@ -2,7 +2,7 @@ from ..adr import Op, Tuple, Tensor
 
 
 def SplitDriver(args, output, attrs):
-    offset = 0
+    offset = args[0].offset
     new_tensors = []
     for t in output.tensors:
         t.offset = offset
@@ -15,7 +15,17 @@ Op.Get("accel.split").attrs["driver"] = SplitDriver
 
 
 def ReshapeDriver(args, output, attrs):
+    output.offset = args[0].offset
     return output
 
 
 Op.Get("accel.reshape").attrs["driver"] = ReshapeDriver
+
+
+def ReallocDriver(args, output, attrs):
+    output.offset = args[0].offset
+    return output
+
+
+Op.Get("accel.realloc").attrs["driver"] = ReallocDriver
+

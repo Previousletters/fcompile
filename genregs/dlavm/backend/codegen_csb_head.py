@@ -176,8 +176,8 @@ QueryPerformanceFrequency(&freq);
                         self.dynamic_var.append(source)
 
     def gen_accel(self, node):
-        op_name = node["op_name"]
-        self.func_body.append(f"// {op_name} accel operator node")
+        op_name, ddr_id, offset = node["op_name"], node["storage"][0]["id"], node["storage"][0]["offset"]
+        self.func_body.append(f"// {op_name} accel operator node, storage data in {ddr_id} with {offset} offset")
         cfg_start = 1
         for reg in node["csb_regs"]:
             if reg[0] == 1:
@@ -194,7 +194,7 @@ QueryPerformanceCounter(&start_run);
                     cfg_start = 1
                 self.func_body.append(f"{self.tab}CSB_Write(device, {reg[1]}, {reg[2]});")
             elif reg[0] == 0:
-                self.func_body.append(f"{self.tab}While(CSB_Read(device, {reg[1]}) != {reg[2]}) " + "{}")
+                self.func_body.append(f"{self.tab}while(CSB_Read(device, {reg[1]}) != {reg[2]}) " + "{}")
                 self.func_body.append("""#ifdef REGS_DEBUG
 QueryPerformanceCounter(&stop_run);
 time_sec0 = (unsigned long long)(stop_cfg.QuadPart - start_cfg.QuadPart) / (double)freq.QuadPart;

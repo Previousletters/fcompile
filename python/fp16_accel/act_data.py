@@ -32,8 +32,8 @@ def get_act_data(name, func, x_min, x_max, hfile_path='approx_pwlf_act.h', pyfil
     if not os.path.exists(save_path):
         os.makedirs(save_path)
     start = time.perf_counter()
-    points_num = 100 #拟合所需要的点数
-    segCnt = 16 #分段个数
+    points_num = 200 #拟合所需要的点数
+    segCnt = 14 #分段个数
 
     # x and y
     x_array = np.linspace(x_min, x_max, points_num)
@@ -96,7 +96,7 @@ def get_act_data(name, func, x_min, x_max, hfile_path='approx_pwlf_act.h', pyfil
         print(f"// activation: {func.__name__}, x_min: {x_min}, x_max: {x_max}", file=file0)
         print(f'unsigned short {name}_wt[16] = ' + '{0x' + ', 0x'.join(slopes_fp16.tolist()) + '};', file=file0)
         print(f'unsigned short {name}_bias[16] = ' + '{0x' + ', 0x'.join(b_fp16.tolist()) + '};', file=file0)
-        print(f'unsigned short {name}_x_region[16] = ' + '{0x' + ', 0x'.join(bp_fp16.tolist()[1:]) + '};', file=file0)
+        print(f'unsigned short {name}_x_region[16] = ' + '{0x' + ', 0x'.join(bp_fp16.tolist()) + '};', file=file0)
     with open(pyfile_path, 'a') as file0:
         print(f"# activation: {func.__name__}, x_min: {x_min}, x_max: {x_max}", file=file0)
         print(f'{name}_wt = ', slopes.tolist(), file=file0)
@@ -119,11 +119,11 @@ if __name__ == "__main__":
     save_path = "saved"
     func_args = [
 #       [   str_act_name,   activation,     x_min,  x_max, hfile_path='approx_pwlf_act.h', pyfile_path='approx_pwlf_act.py']
-        [          "exp",       np.exp,        -4,      4],
-        [         "gelu",         gelu,        -4,      4],
-        [         "tanh",      np.tanh,        -4,      4],
-        [      "sigmoid",      sigmoid,        -4,      4],
-        [        "swish",        swish,        -4,      4],
+        #[          "exp",       np.exp,        -4,      4],
+        #[         "gelu",         gelu,        -4,      4],
+        #[         "tanh",      np.tanh,        -4,      4],
+        #[      "sigmoid",      sigmoid,        -4,      4],
+        [         "silu",        swish,        -12,      10],
     ]
 
     for args in func_args:

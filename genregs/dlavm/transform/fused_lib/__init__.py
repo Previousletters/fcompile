@@ -1,2 +1,2 @@
 from .register import FusedStrategy
-from . import hbm
+from . import hbm, general

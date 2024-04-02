@@ -1,3 +1,4 @@
+import dlavm
 from dlavm import adr
 from dlavm import ne
 from dlavm import backend
@@ -68,7 +69,7 @@ def chatglm_without_kvcache():
         data = chatglm_block(data, pos_weight, mask, silu_weight, token, n, n==block_size-1)
     output = data[1]
 
-    output = infer_type(output)
+    output = infer_type(output, dlavm.device.HBM0321)
     from dlavm.driver import config
     # config.tb_sim_path = "/home/previous/accel/hbm0227/driver/HBM_sv"
     expr, source, storage, _ = backend.csb_head(output, "chatglm", 0x200000000, 0x0)
@@ -128,6 +129,24 @@ def onnx_test():
 
 def test():
     token = 19
+    data = adr.hbm.var_ddr("data", [2, token, 128])
+    pos_weight = adr.hbm.const_ddr("pos_emb", None, [1, 128, 64])
+    output = adr.hbm.pos_emb(data, pos_weight)
+
+    output = infer_type(output)
+    from dlavm.driver import config
+    config.tb_sim_path = "/home/previous/accel/hbm0227/driver/HBM_sv"
+    expr, source, storage, mod_0 = backend.csb_test_head(output, "chatglm", 0x200000000, 0x0)
+    _, _, _, mod_1 = backend.testbench_test_head(output, "chatglm", 0x200000000, 0x0)
+    print(mod_0 == mod_1)
+    with open("./test/POS_EMB_2x19x128.h", "w") as f:
+        f.write(source)
+    print(expr)
+    print(storage)
+
+
+def test_mvm():
+    token = 19
     data = adr.hbm.var_ddr("data", [1, token, 4096])
     weight = adr.hbm.const_hbm("weight", None, [4096, 128])
     bn = adr.hbm.const_ddr("bn", None, [2*128])
@@ -145,6 +164,7 @@ def test():
     print(storage)
 
 
+
 def load_onnx_block():
     mod = onnx.load("./test/glm2_block.onnx")
     # sys.setrecursionlimit(1000)
@@ -154,7 +174,7 @@ def load_onnx_block():
     graph_opt = transform.Sequential([
         transform.FusedOps(), # fused mvm with bias
         transform.EliminateReshape(),
-        transform.FusedOps(), # fused mvm or mvm_bn with res
+        transform.FusedOps(opt_level=2), # fused mvm or mvm_bn with res
         transform.OfflineProcess(),
     ])
     output = graph_opt(expr)
@@ -166,9 +186,9 @@ def load_onnx_block():
 
 
 if __name__ == "__main__":
-    load_onnx_block()
+    # load_onnx_block()
     # mp_booth()
-    # chatglm_without_kvcache()
+    chatglm_without_kvcache()
     # check_testbench()
     # onnx_test()
     # test()

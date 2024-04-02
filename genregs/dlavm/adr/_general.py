@@ -19,14 +19,21 @@ def ReshapeRel(args, attrs):
     def mul(x, y):
         return x * y
     new_shape = attrs["new_shape"]
-    if reduce(mul, new_shape) < 0:
-        for i in range(len(new_shape)):
-            if new_shape[i] == -1:
-                new_shape[i] = reduce(mul, dshape) // (-1*reduce(mul, new_shape))
-    new_shape = [i for i in new_shape]
-    if reduce(mul, new_shape) == reduce(mul, dshape):
-        return True, Tensor(new_shape, dtype, device)
-    return False, []
+    if attrs["force"]:
+        bytesize = args[0].get_bytesize()
+        new_bytesize = device.malloc_bytes(new_shape, dtype)
+        if new_bytesize <= bytesize:
+            return True, Tensor(new_shape, dtype, device)
+        return False, f"force reshape needs enable byte size, needs {new_bytesize} but got {bytesize}"
+    else:
+        if reduce(mul, new_shape) < 0:
+            for i in range(len(new_shape)):
+                if new_shape[i] == -1:
+                    new_shape[i] = reduce(mul, dshape) // (-1*reduce(mul, new_shape))
+        new_shape = [i for i in new_shape]
+        if reduce(mul, new_shape) == reduce(mul, dshape):
+            return True, Tensor(new_shape, dtype, device)
+        return False, "new_shape mismatch"
 
 
 Op.Register("accel.reshape", ReshapeRel)
@@ -40,7 +47,13 @@ def SplitRel(args, attrs):
     if dtype.mapped != DataEnum.ddr or dtype.dtype != DataEnum.fp16:
         return False, []
     if attrs["axis"] == 0:
-        return True, Tuple([Tensor(dshape, dtype, device), Tensor(dshape, dtype, device)])
+        CHECK_ERROR(sum(attrs["new_chs"]) != dshape[0], "Check attrs of split Error")
+        new_chs = attrs["new_chs"]
+        otensors = []
+        tmp_shape = [i for i in dshape[1:]]
+        for new_ch in new_chs:
+            otensors.append(Tensor([new_ch] + tmp_shape, dtype, device))
+        return True, Tuple(otensors)
     if attrs["axis"] == 2 or attrs["axis"] == -1:
         CHECK_ERROR(sum(attrs["new_chs"]) != dshape[2], "Check attrs of split Error")
         new_chs = attrs["new_chs"]
@@ -54,3 +67,18 @@ def SplitRel(args, attrs):
 
 
 Op.Register("accel.split", SplitRel)
+
+
+def ReallocRel(args, attrs):
+    if len(args) != 1:
+        return False, []
+    device = args[0].device
+    dshape, dtype = args[0].shape, args[0].dtype  # H, W, C
+    if dtype.mapped != DataEnum.ddr or dtype.dtype != DataEnum.fp16:
+        return False, "accel.realloc doesn't support this type"
+    new_bytesize = args[0].device.malloc_bytes(attrs["new_shape"], dtype)
+    args[0].bytesize = new_bytesize
+    return True, args[0]
+
+
+Op.Register("accel.realloc", ReallocRel)

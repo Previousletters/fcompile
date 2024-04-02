@@ -120,8 +120,8 @@ class GraphCSBHead(Functor):
         return expr.checked_type
 
     def visit_vm(self, expr):
-        _ = [self.visit(arg) for arg in expr.args]
-        new_checked_type = expr.op.attrs["driver"](None, expr.checked_type, expr.attrs)
+        tensors = [self.visit(arg) for arg in expr.args]
+        new_checked_type = expr.op.attrs["driver"](tensors, expr.checked_type, expr.attrs)
         expr.checked_type = new_checked_type
         self.nodes.append({
             "node": "virtual_op",

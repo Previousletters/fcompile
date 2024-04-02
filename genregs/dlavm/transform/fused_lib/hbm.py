@@ -99,5 +99,6 @@ FusedStrategy.Register("accel.hbm.add",
         ],
         hbm_mvm_res
     ),
+    opt_level=2,
     reverse=True
 )

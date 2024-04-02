@@ -1,4 +1,4 @@
-from ...adr import Call
+from ...adr import Call, VM
 
 
 class ConvertCall:
@@ -9,7 +9,7 @@ class ConvertCall:
         self.process = process
 
     def CheckFused(self, expr):
-        if not isinstance(expr, Call):
+        if not isinstance(expr, (Call, VM)):
             return False, expr
         if expr.op.name != self.op_name:
             return False, expr

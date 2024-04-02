@@ -182,10 +182,10 @@ class GraphPlanMemory(Functor):
             new_args.append(self.visit(arg))
         if isinstance(expr.checked_type, Tuple):
             for i in range(len(expr.checked_type.tensors)):
-                storage_id = self._malloc(expr.checked_type.tensors[i])
+                storage_id = self._malloc(expr.checked_type.tensors[i], expr.autofree)
                 expr.checked_type.tensors[i].storage_id = storage_id
         elif isinstance(expr.checked_type, Tensor):
-            storage_id = self._malloc(expr.checked_type)
+            storage_id = self._malloc(expr.checked_type, expr.autofree)
             expr.checked_type.storage_id = storage_id
         else:
             print("infer_type first!")
@@ -217,3 +217,7 @@ class GraphPlanMemory(Functor):
         self._link_storage(new_args[0], expr)
         expr.args = new_args
         return expr
+
+
+def graph_plan_memory(expr, ddr_addr, hbm_addr):
+    return GraphPlanMemory().main(expr, ddr_addr, hbm_addr)

@@ -1,0 +1,84 @@
+# vsim -c -L work testbench_HBM_MVM_bn_res -do "run -all; quit" 
+# Start time: 00:40:24 on Apr 03,2024
+# ** Note: (vsim-3813) Design is being optimized due to module recompilation...
+# 
+# //  ModelSim SE-64 10.4 Dec  3 2014 
+# //
+# //  Copyright 1991-2014 Mentor Graphics Corporation
+# //  All Rights Reserved.
+# //
+# //  THIS WORK CONTAINS TRADE SECRET AND PROPRIETARY INFORMATION
+# //  WHICH IS THE PROPERTY OF MENTOR GRAPHICS CORPORATION OR ITS
+# //  LICENSORS AND IS SUBJECT TO LICENSE TERMS.
+# //  THIS DOCUMENT CONTAINS TRADE SECRETS AND COMMERCIAL OR FINANCIAL
+# //  INFORMATION THAT ARE PRIVILEGED, CONFIDENTIAL, AND EXEMPT FROM
+# //  DISCLOSURE UNDER THE FREEDOM OF INFORMATION ACT, 5 U.S.C. SECTION 552.
+# //  FURTHERMORE, THIS INFORMATION IS PROHIBITED FROM DISCLOSURE UNDER
+# //  THE TRADE SECRETS ACT, 18 U.S.C. SECTION 1905.
+# //
+# Loading sv_std.std
+# Loading work.testbench_HBM_MVM_bn_res(fast)
+# run -all
+# Run software Finish
+# Map weight to HBM Finish
+# 
+# Total DAT_BRAM_NUM=1
+# 
+# Total  WT_BRAM_NUM=32
+# DAT_BRAM_DEPTH=2048, DAT_BRAM_WIDTH=       2048, min_dat_depth=2033
+#  (WT_BRAM_DEPTH*2)=1024, WT_BRAM_WIDTH =        256, min_wt_depth=214
+#  WT_SCALE_BUF_DEPTH=256,  WT_SCALE_BUF_WIDTH=512
+# 
+# Wout=19, Hout=1, Chin=13696
+# CHout_Extend=      4096,    CHin_Padding_with_Tout=     13696
+# CHin_div_Tout=428, CHout_div_Tout=128
+# WT_CHin_div_Tin=107, WT_CHin_Padding_with_Tin=13696
+# Pure_WT_SIZE_IN_BYTES=28049408
+# WT_Scale_SIZE_IN_BYTES=917504
+# WT_SIZE_IN_BYTES=28966912
+# WT_NUM_DIV_TIN=438272
+# min_wt_depth=214
+# total_bytes_if_reuse_wt=28049408,total_bytes_if_reuse_dat=520448
+# 
+# BN_FIFO_bits=65536,BN_FIFO_chout_num=2048
+# 
+# CH_out=4096,out_ch_slice=128,out_ch_slice_last=128,CHout_Split_Times_minus1=31
+# best_method=1
+# csb_rtl.append([1, 2, 13696])
+# csb_rtl.append([1, 3, 19])
+# csb_rtl.append([1, 4, 1])
+# csb_rtl.append([1, 5, 19])
+# csb_rtl.append([1, 6, 1])
+# csb_rtl.append([1, 7, 128])
+# csb_rtl.append([1, 8, 128])
+# csb_rtl.append([1, 9, 19])
+# csb_rtl.append([1, 10, 2656256])
+# csb_rtl.append([1, 11, 2382336])
+# csb_rtl.append([1, 12, 56576])
+# csb_rtl.append([1, 13, 0])
+# csb_rtl.append([1, 14, 31])
+# csb_rtl.append([1, 15, 28])
+# csb_rtl.append([1, 16, 0])
+# csb_rtl.append([1, 17, 0])
+# csb_rtl.append([1, 18, 0])
+# csb_rtl.append([1, 19, 0])
+# csb_rtl.append([1, 20, 0])
+# csb_rtl.append([1, 21, 1])
+# csb_rtl.append([1, 22, 1])
+# csb_rtl.append([1, 23, 1])
+# csb_rtl.append([1, 24, 1])
+# csb_rtl.append([1, 25, 0])
+# csb_rtl.append([1, 26, 4895840])
+# csb_rtl.append([1, 27, 3704832])
+# csb_rtl.append([1, 28, 0])
+# csb_rtl.append([1, 29, 1216])
+# csb_rtl.append([1, 30, 1216])
+# csb_rtl.append([1, 31, 1216])
+# csb_rtl.append([1, 32, 1216])
+# csb_rtl.append([1, 33, 1823])
+# csb_rtl.append([0, 1, 1])
+# Run hardware Finish
+# ** Note: $finish    : testbench_HBM_MVM_bn_res.sv(176)
+#    Time: 40 ns  Iteration: 0  Instance: /testbench_HBM_MVM_bn_res
+# End time: 00:40:27 on Apr 03,2024, Elapsed time: 0:00:03
+# Errors: 0, Warnings: 0

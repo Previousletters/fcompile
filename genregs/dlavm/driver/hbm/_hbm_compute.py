@@ -1,27 +1,8 @@
-from ..adr import Op, Tensor, Constant
+from ...adr import Op, Tensor, Constant
+from ..basic import TestbenchSIM
 from .conv import *
 from .matrix import *
-from ..clib import WT_TRANS, BN_TRANS
-import subprocess
-
-
-def TestbenchSIM(tb_name: str, define: dict) -> list:
-    from .config import template_rtl, tb_sim_path
-    csb_rtl = []
-    cmd_rtl = list(template_rtl) + [tb_sim_path]
-    define_cfg = [f"+define+{k}={v}" for k, v in define.items()]
-    cmd_rtl.append("TOP_MODULE=" + tb_name)
-    cmd_rtl.append("SIM_DEFINE=\"" + "".join(define_cfg) + "\"")
-    p_rtl = subprocess.Popen(cmd_rtl, stdout=subprocess.PIPE)
-    out_rtl, rtl_err = p_rtl.communicate()
-    saved_out_rtl = out_rtl.decode("utf-8")
-    out_rtl = out_rtl.decode("utf-8").replace("# ", "").split("\n")
-    for out in out_rtl:
-        if "csb_rtl" in out:
-            eval(out)
-    if len(csb_rtl) == 0:
-        raise RuntimeError(saved_out_rtl)
-    return csb_rtl
+from ...clib import WT_TRANS, BN_TRANS
 
 
 def MVMTestbench(args, output, attrs):
@@ -58,17 +39,8 @@ def MVMDriver(args, output, attrs):
         exit(-1)
 
 
-def MVMProcess(args, attrs):
-    if attrs["skip"] == 1:
-        data, weight = args
-        if isinstance(weight, Constant):
-            require_bytes = weight.checked_type.get_bytesize()
-            weight.data = WT_TRANS(weight.data[0], weight.data[1], require_bytes)
-
-
 Op.Get("accel.hbm.mvm").attrs["cfg_id"] = 0b00001000
 Op.Get("accel.hbm.mvm").attrs["driver"] = MVMDriver
-Op.Get("accel.hbm.mvm").attrs["process"] = MVMProcess
 Op.Get("accel.hbm.mvm").attrs["testbench"] = MVMTestbench
 
 
@@ -85,32 +57,31 @@ def MVMBNTestbench(args, output, attrs):
         dtensor, wtensor, btensor = args[0], args[1], args[2]
         dshape, wshape, bshape = dtensor[0].shape, wtensor[0].shape, btensor[0].shape
         daddrs, waddrs, baddrs, oaddrs = dtensor[1], wtensor[1], btensor[1], output[1]
-        define = {
-            "log2_WT_base_addr_Bank_Step": attrs["log2_step"], 
-            "Hin": dshape[0], "Win": dshape[1], "Height": dshape[0]*dshape[1],
-            "Width_in": wshape[0], "Width_out": wshape[1],
-            "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
-            "HBM00_WT_BASE_ADDR":  waddrs & 0xffffffff,
-            "BN_BASE_ADDR":  baddrs & 0xffffffff,
-            "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
-        }
+        if attrs["padding"]:
+            define = {
+                "log2_WT_base_addr_Bank_Step": attrs["log2_step"], "Token": dshape[1],
+                "Head": dshape[0], "Wout": dtensor[0].device.MAXTOKEN,
+                "Width_in": wshape[0], "Width_out": wshape[1],
+                "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
+                "HBM00_WT_BASE_ADDR":  waddrs & 0xffffffff,
+                "BN_BASE_ADDR":  baddrs & 0xffffffff,
+                "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
+            }
+        else:
+            define = {
+                "log2_WT_base_addr_Bank_Step": attrs["log2_step"], "Token": dshape[1],
+                "Head": dshape[0], 
+                "Width_in": wshape[0], "Width_out": wshape[1],
+                "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
+                "HBM00_WT_BASE_ADDR":  waddrs & 0xffffffff,
+                "BN_BASE_ADDR":  baddrs & 0xffffffff,
+                "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
+            }
         return TestbenchSIM("testbench_HBM_MVM_bn", define)
-
-
-def MVMBNProcess(args, attrs):
-    if attrs["skip"] == 1:
-        _, weight, bn = args
-        if isinstance(weight, Constant):
-            require_bytes = weight.checked_type.get_bytesize()
-            weight.data = WT_TRANS(weight.data[0], weight.data[1], require_bytes)
-        if isinstance(bn, Constant):
-            require_bytes = bn.checked_type.get_bytesize()
-            bn.data = BN_TRANS(bn.data[0], bn.data[1], require_bytes)
 
 
 Op.Get("accel.hbm.mvm_bn").attrs["cfg_id"] = 0b01001000
 Op.Get("accel.hbm.mvm_bn").attrs["driver"] = MVMBNDriver
-Op.Get("accel.hbm.mvm_bn").attrs["process"] = MVMBNProcess
 Op.Get("accel.hbm.mvm_bn").attrs["testbench"] = MVMBNTestbench
 
 
@@ -137,14 +108,14 @@ def MVMBNResDriver(args, output, attrs):
 
 
 def MVMBNResTestbench(args, output, attrs):
-    if attrs["skip"] == 1:
+    if attrs["skip"] == 1 and attrs["arg_max"] == 0:
         dtensor, wtensor, btensor, rtensor = args[0], args[1], args[2], args[3]
         dshape, wshape, bshape, rshape = dtensor[0].shape, wtensor[0].shape, btensor[0].shape, rtensor[0].shape
         daddrs, waddrs, baddrs, raddrs, oaddrs = dtensor[1], wtensor[1], btensor[1], rtensor[1], output[1]
         define = {
             "log2_WT_base_addr_Bank_Step": attrs["log2_step"], 
-            "Hin": dshape[0], "Win": dshape[1], "Height": dshape[0]*dshape[1],
-            "Width_in": wshape[0], "Width_out": wshape[1],
+            "Head": dshape[0], "Token": dshape[1],
+            "Width_in": wshape[0], "Width_out": wshape[1], "EW_MODE": attrs["mul_mode"],
             "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
             "HBM00_WT_BASE_ADDR":  waddrs & 0xffffffff,
             "BN_BASE_ADDR":  baddrs & 0xffffffff,
@@ -152,11 +123,125 @@ def MVMBNResTestbench(args, output, attrs):
             "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
         }
         return TestbenchSIM("testbench_HBM_MVM_bn_res", define)
+    elif attrs["skip"] == 1 and attrs["arg_max"] == 1:
+        dtensor, wtensor, btensor, rtensor = args[0], args[1], args[2], args[3]
+        dshape, wshape, bshape, rshape = dtensor[0].shape, wtensor[0].shape, btensor[0].shape, rtensor[0].shape
+        daddrs, waddrs, baddrs, raddrs, oaddrs = dtensor[1], wtensor[1], btensor[1], rtensor[1], output[1]
+        define = {
+            "log2_WT_base_addr_Bank_Step": attrs["log2_step"], 
+            "Head": dshape[0], "Token": dshape[1],
+            "Width_in": wshape[0], "Width_out": wshape[1], "EW_MODE": attrs["mul_mode"],
+            "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
+            "HBM00_WT_BASE_ADDR":  waddrs & 0xffffffff,
+            "BN_BASE_ADDR":  baddrs & 0xffffffff,
+            "Res_Add_BASE_ADDR":  raddrs & 0xffffffff,
+            "DAT_OUT_BASE_ADDR": oaddrs[0] & 0xffffffff,
+            "AUGMAX_OUT_ADDR": oaddrs[1] & 0xffffffff,
+        }
+        return TestbenchSIM("testbench_HBM_MVM_bn_res_Argmax", define)
 
 
 Op.Get("accel.hbm.mvm_bn_res").attrs["cfg_id"] = 0b11001000
 Op.Get("accel.hbm.mvm_bn_res").attrs["driver"] = MVMBNResDriver
 Op.Get("accel.hbm.mvm_bn_res").attrs["testbench"] = MVMBNResTestbench
+
+
+def MVMafterTRPTestbench(args, output, attrs):
+    dtensor, wtensor = args[0], args[1]
+    dshape, wshape = dtensor[0].shape, wtensor[0].shape
+    daddrs, waddrs, oaddrs = dtensor[1], wtensor[1], output[1]
+    if attrs["kvcache"]:
+        define = {
+            "KV_cache_mode": attrs["kvcache"], 
+            "Feature_Head": dshape[0],
+            "Weight_Head": wshape[0],
+            "Token": wshape[1],
+            "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
+            "WT_BASE_ADDR":  waddrs & 0xffffffff,
+            "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
+        }
+    elif attrs["padding"]:
+        max_token = dtensor[0].device.MAXTOKEN
+        define = {
+            "KV_cache_mode": attrs["kvcache"], 
+            "Feature_Head": dshape[0],
+            "Weight_Head": wshape[0],
+            "Token": wshape[1],
+            "Win": max_token, "Wout": max_token, "CHout": max_token,
+            "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
+            "WT_BASE_ADDR":  waddrs & 0xffffffff,
+            "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
+        }
+    else:
+        define = {
+            "KV_cache_mode": attrs["kvcache"], 
+            "Feature_Head": dshape[0],
+            "Weight_Head": wshape[0],
+            "Token": wshape[1],
+            "Win": dshape[1], "Wout": dshape[1], "CHout": dshape[1],
+            "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
+            "WT_BASE_ADDR":  waddrs & 0xffffffff,
+            "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
+        }
+    return TestbenchSIM("testbench_HBM_MVM_afterTRP", define)
+
+
+def MVMafterTRPDriver(args, output, attrs):
+    msg = "Not support accel.hbm.mvm_afterTRP, please wait!"
+    raise RuntimeError(msg)
+
+
+Op.Get("accel.hbm.mvm_afterTRP").attrs["driver"] = MVMafterTRPDriver
+Op.Get("accel.hbm.mvm_afterTRP").attrs["testbench"] = MVMafterTRPTestbench
+
+
+def MVMafterF2WTestbench(args, output, attrs):
+    dtensor, wtensor = args[0], args[1]
+    dshape, wshape = dtensor[0].shape, wtensor[0].shape
+    daddrs, waddrs, oaddrs = dtensor[1], wtensor[1], output[1]
+    if attrs["kvcache"]:
+        define = {
+            "KV_cache_mode": attrs["kvcache"], 
+            "Feature_Head": dshape[0],
+            "Weight_Head": wshape[0],
+            "Token": wshape[1],
+            "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
+            "WT_BASE_ADDR":  waddrs & 0xffffffff,
+            "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
+        }
+    elif attrs["padding"]:
+        max_token = dtensor[0].device.MAXTOKEN
+        define = {
+            "KV_cache_mode": attrs["kvcache"], 
+            "Feature_Head": dshape[0],
+            "Weight_Head": wshape[0],
+            "Token": wshape[1],
+            "Win": max_token, "Wout": wshape[1], "CHout": max_token,
+            "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
+            "WT_BASE_ADDR":  waddrs & 0xffffffff,
+            "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
+        }
+    else:
+        define = {
+            "KV_cache_mode": attrs["kvcache"], 
+            "Feature_Head": dshape[0],
+            "Weight_Head": wshape[0],
+            "Token": wshape[1],
+            "Win": dshape[1], "Wout": wshape[1], "CHout": wshape[1],
+            "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
+            "WT_BASE_ADDR":  waddrs & 0xffffffff,
+            "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
+        }
+    return TestbenchSIM("testbench_HBM_MVM_afterF2W", define)
+
+
+def MVMafterF2WDriver(args, output, attrs):
+    msg = "Not support accel.hbm.mvm_afterF2W, please wait!"
+    raise RuntimeError(msg)
+
+
+Op.Get("accel.hbm.mvm_afterF2W").attrs["driver"] = MVMafterF2WDriver
+Op.Get("accel.hbm.mvm_afterF2W").attrs["testbench"] = MVMafterF2WTestbench
 
 
 def AddDriver(args, output, attrs):
@@ -174,11 +259,24 @@ def SoftmaxTestbench(args, output, attrs):
     dtensor = args[0]
     dshape = dtensor[0].shape
     daddrs, oaddrs = dtensor[1], output[1]
-    define = {
-        "Head": dshape[0], "Token": dshape[1], "Width_in": dshape[2],
-        "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
-        "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
-    }
+    if attrs["padding"]:
+        max_token = dtensor[0].device.MAXTOKEN
+        define = {
+            "KV_cache_mode": attrs["kvcache"],
+            "Feature_Head": dshape[0],
+            "Token": dshape[1],
+            "Win": max_token, "Wout": max_token, "CHout": max_token,
+            "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
+            "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
+        }
+    else:
+        define = {
+            "KV_cache_mode": attrs["kvcache"],
+            "Feature_Head": dshape[0],
+            "Token": dshape[1],
+            "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
+            "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
+        }
     return TestbenchSIM("testbench_SOFTMAX", define)
 
 
@@ -196,7 +294,7 @@ def LayerNormTestbench(args, output, attrs):
     dshape, bshape = dtensor[0].shape, btensor[0].shape
     daddrs, baddrs, oaddrs = dtensor[1], btensor[1], output[1]
     define = {
-        "Hin": dshape[0], "Win": dshape[1], "Token": dshape[0]*dshape[1], "Width_in": dshape[2],
+        "Token": dshape[0]*dshape[1], "Width_in": dshape[2],
         "RMS_Norm": attrs["rms"],
         "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
         "LN_WT_BASE_ADDR":  baddrs & 0xffffffff,
@@ -205,20 +303,13 @@ def LayerNormTestbench(args, output, attrs):
     return TestbenchSIM("testbench_LN", define)
 
 
-def LayerNormProcess(args, attrs):
-    _, bn = args
-    if isinstance(bn, Constant):
-        require_bytes = bn.checked_type.get_bytesize()
-        bn.data = BN_TRANS(bn.data[0], bn.data[1], require_bytes)
-
-
 Op.Get("accel.hbm.layer_norm").attrs["cfg_id"] = 0b00000111
 Op.Get("accel.hbm.layer_norm").attrs["driver"] = LayerNormDriver
-Op.Get("accel.hbm.layer_norm").attrs["process"] = LayerNormProcess
 Op.Get("accel.hbm.layer_norm").attrs["testbench"] = LayerNormTestbench
 
 
 def PosEmbDriver(args, output, attrs):
+    '''
     dtensor, ptensor = args[0], args[1]
     dshape, oshape = dtensor[0].shape, output[0].shape
     daddrs, paddrs, oaddrs = dtensor[1], ptensor[1], output[1]
@@ -232,9 +323,12 @@ def PosEmbDriver(args, output, attrs):
         doffset += dshape[1] * ((dshape[2] + Tout - 1) // Tout) * Tout * dtensor[0].dtype.get_bytes()
         ooffset += oshape[1] * ((oshape[2] + Tout - 1) // Tout) * Tout * output[0].dtype.get_bytes()
     return regs
+    '''
+    return FPGA_Run_PosEmb(args[0], args[1], output, 0)
 
 
 def PosEmbTestbench(args, output, attrs):
+    '''
     dtensor, ptensor = args[0], args[1]
     dshape, oshape = dtensor[0].shape, output[0].shape
     daddrs, paddrs, oaddrs = dtensor[1], ptensor[1], output[1]
@@ -251,6 +345,35 @@ def PosEmbTestbench(args, output, attrs):
         doffset += dshape[1] * ((dshape[2] + Tout - 1) // Tout) * Tout * dtensor[0].dtype.get_bytes()
         ooffset += oshape[1] * ((oshape[2] + Tout - 1) // Tout) * Tout * output[0].dtype.get_bytes()
     return regs
+    '''
+    dtensor, ptensor = args[0], args[1]
+    dshape, oshape = dtensor[0].shape, output[0].shape
+    daddrs, paddrs, oaddrs = dtensor[1], ptensor[1], output[1]
+    if attrs["kvcache"]:
+        define = {
+            "Feature_Head": dshape[0], "Token": dshape[1], "KV_cache_mode": attrs["kvcache"],
+            "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
+            "POS_IN_BASE_ADDR":  paddrs & 0xffffffff,
+            "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
+        }
+    elif attrs["padding"]:
+        max_token = dtensor[0].device.MAXTOKEN
+        define = {
+            "Feature_Head": dshape[0], "Token": dshape[1], "KV_cache_mode": attrs["kvcache"],
+            "Win": max_token, "Wout": max_token,
+            "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
+            "POS_IN_BASE_ADDR":  paddrs & 0xffffffff,
+            "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
+        }
+    else:
+        define = {
+            "Feature_Head": dshape[0], "Token": dshape[1], "KV_cache_mode": attrs["kvcache"],
+            "Win": dshape[1], "Wout": dshape[1],
+            "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
+            "POS_IN_BASE_ADDR":  paddrs & 0xffffffff,
+            "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
+        }
+    return TestbenchSIM("testbench_EMB", define)
 
 
 Op.Get("accel.hbm.pos_emb").attrs["cfg_id"] = 0b00000100
@@ -267,7 +390,7 @@ def TransposeTestbench(args, output, attrs):
     dshape = dtensor[0].shape
     daddrs, oaddrs = dtensor[1], output[1]
     define = {
-        "log2_WT_base_addr_Bank_Step": attrs["log2_step"], 
+        "log2_WT_base_addr_Bank_Step": attrs["log2_step"],
         "Token": dshape[-2], "Width_in": dshape[-1],
         "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
         "HBM00_WT_BASE_ADDR": oaddrs & 0xffffffff,
@@ -311,7 +434,7 @@ def ActivateTestbench(args, output, attrs):
     dshape, bshape = dtensor[0].shape, btensor[0].shape
     daddrs, baddrs, oaddrs = dtensor[1], btensor[1], output[1]
     define = {
-        "Hin": dshape[0], "Win": dshape[1], "Height": dshape[0]*dshape[1], "Width_in": dshape[2],
+        "Height": dshape[1], "Width_in": dshape[2],
         "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
         "WT_BASE_ADDR":  baddrs & 0xffffffff,
         "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,

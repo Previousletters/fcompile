@@ -136,7 +136,40 @@ def check_tanh():
     return t_out, f_out, 0.1  # torch_result, fcompile_verilog_result, threshold
 
 
-check_rms_norm()
-check_softmax()
-check_exp()
-check_tanh()
+@result_diff_check(diff_fp16)
+def check_silu():
+    from silu import wt, bias, x_region
+    data = np.zeros((128, 32)) - 0.15954589
+    data[0, 1] = 22
+
+    def sigmoid(x):
+        return 1 / (1 + np.exp(-x))
+
+    def swish(x):
+        return x * sigmoid(x)
+
+    result = swish(data)
+    t_out = result.reshape(1, 1, 128, 32).astype("float16")
+
+    widths, scales = [16, 16], [0, 0]
+    dvar = relay.var("data", shape=(1, 1, 128, 32), dtype="float16")
+    wvar = relay.var("weight", shape=(48,), dtype="float16")
+    fout = relay.accel.hbm.activation(dvar, wvar, widths=widths, scales=scales)
+    func = relay.Function([dvar, wvar], fout)
+    mod = IRModule.from_expr(func)
+    mod = transform.InferType()(mod)
+    print(mod)
+    f_mod = FModule(RelayFIR().convert(mod), tin=128, tout=32)
+    print(f_mod)
+    inputs = {
+        "data": data.reshape(1, 1, 128, 32).astype("float16"),
+        "weight": np.array(wt + bias + x_region).astype("float16")
+    }
+    f_out = rtl_simulate(f_mod, inputs)
+    return t_out, f_out, 0.1  # torch_result, fcompile_verilog_result, threshold
+
+
+#check_rms_norm()
+#check_softmax()
+check_silu()
+#check_tanh()

@@ -35,12 +35,13 @@ def mvm(*args, skip=1, log2_step=28):
         exit(-1)
 
 
-def mvm_bn(data, weight, wt_and_bias, skip=1, log2_step=28):
+def mvm_bn(data, weight, wt_and_bias, padding=0, skip=1, log2_step=28, autofree=True):
     attrs = {
         "skip": skip,
+        "padding": padding,
         "log2_step": log2_step
     }
-    return Call(Op.Get("accel.hbm.mvm_bn"), [data, weight, wt_and_bias], attrs)
+    return Call(Op.Get("accel.hbm.mvm_bn"), [data, weight, wt_and_bias], attrs, autofree=autofree)
 
 
 def mvm_bn_res(*args, skip=1, res_mul=0, arg_max=0, relu=0, log2_step=28):
@@ -48,6 +49,7 @@ def mvm_bn_res(*args, skip=1, res_mul=0, arg_max=0, relu=0, log2_step=28):
         attrs = {
             "skip": skip,
             "res_mode": (res_mul << 1) | relu,
+            "mul_mode": res_mul,
             "log2_step": log2_step,
             "arg_max": arg_max,
         }
@@ -56,6 +58,7 @@ def mvm_bn_res(*args, skip=1, res_mul=0, arg_max=0, relu=0, log2_step=28):
         attrs = {
             "skip": skip,
             "res_mode": (res_mul << 1) | relu,
+            "mul_mode": res_mul,
             "arg_max": arg_max,
             "log2_step": log2_step
         }
@@ -63,6 +66,22 @@ def mvm_bn_res(*args, skip=1, res_mul=0, arg_max=0, relu=0, log2_step=28):
     else:
         print("Error! make mvm_bn_res")
         exit(-1)
+
+
+def mvm_afterTRP(data, weight, padding=1, kvcache=0):
+    attrs = {
+        "kvcache": kvcache,
+        "padding": padding,
+    }
+    return Call(Op.Get("accel.hbm.mvm_afterTRP"), [data, weight], attrs, autofree=False)
+
+
+def mvm_afterF2W(data, weight, padding=1, kvcache=0):
+    attrs = {
+        "kvcache": kvcache,
+        "padding": padding,
+    }
+    return Call(Op.Get("accel.hbm.mvm_afterF2W"), [data, weight], attrs)
 
 
 def add(data0, data1):
@@ -80,16 +99,21 @@ def layer_norm(data, weight, rms=0):
     return Call(Op.Get("accel.hbm.layer_norm"), [data, weight], attrs)
 
 
-def softmax(data):
-    attrs = {}
-    return Call(Op.Get("accel.hbm.softmax"), [data], attrs)
-
-
-def pos_emb(data, weight, out_and_in_mode=0):
+def softmax(data, padding=1, kvcache=0):
     attrs = {
+        "kvcache": kvcache,
+        "padding": padding,
+    }
+    return Call(Op.Get("accel.hbm.softmax"), [data], attrs, autofree=False)
+
+
+def pos_emb(data, weight, padding=1, kvcache=0, out_and_in_mode=0):
+    attrs = {
+        "kvcache": kvcache,
+        "padding": padding,
         "out_and_in_mode": out_and_in_mode,
     }
-    return Call(Op.Get("accel.hbm.pos_emb"), [data, weight], attrs)
+    return Call(Op.Get("accel.hbm.pos_emb"), [data, weight], attrs, autofree=False)
 
 
 def transpose(data, out_and_in_mode=0, log2_step=28):

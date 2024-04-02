@@ -26,6 +26,29 @@ class DataType:
         return self.dtype == __value.dtype and self.mapped == __value.mapped
 
 
+class Attrs:
+    
+    default = {}
+
+    def __init__(self, attrs):
+        self._attrs = attrs
+
+    def __str__(self) -> str:
+        str_out = ""
+        for k, v in self._attrs:
+            if k in self.default and self.default[k] != v:
+                str_out += f"{k}={v} "
+        return str_out[:-1]
+
+    def __getitem__(self, key):
+        if key not in self._attrs:
+            return self.default[key]
+        return self._attrs[key]
+
+    def __len__(self):
+        return len(self._attrs)
+
+
 class Base:
 
     def __init__(self, args):
@@ -73,6 +96,8 @@ class Tensor(Base):
     def __str__(self):
         ret = "/* ret=(" + ", ".join([str(i) for i in self.shape]) + "), "
         ret += "dtype=" + str(self.dtype)
+        if self.device is not None:
+            ret += ", device=" + self.device.name
         if self.storage_id is not None:
             ret += ", id=" + self.storage_id + ", offset=" + str(self.offset)
         ret += " */"
@@ -106,11 +131,12 @@ class Constant(Base):
 
 class Call(Base):
 
-    def __init__(self, op, args, attrs):
+    def __init__(self, op, args, attrs, autofree=True):
         self.op = op
         self.args = args
         self.attrs = attrs
         self.checked_type = None
+        self.autofree = autofree
 
 
 class VM(Base):

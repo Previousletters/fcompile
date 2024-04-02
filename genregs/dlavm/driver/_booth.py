@@ -1,6 +1,5 @@
 from ..adr import Op, Tensor
 from .booth.conv import *
-from .matrix import *
 import subprocess
 
 

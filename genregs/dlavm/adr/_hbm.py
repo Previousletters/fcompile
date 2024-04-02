@@ -32,6 +32,44 @@ def MVMRel(args, attrs):
 Op.Register("accel.hbm.mvm", MVMRel)
 
 
+def MVMafterTRPRel(args, attrs):
+    if len(args) != 2:
+        return False, []
+    device = args[0].device
+    dshape, dtype = args[0].shape, args[0].dtype  # FH, H, W, C
+    wshape, wtype = args[1].shape, args[1].dtype  # WH, O, C
+    if dtype.mapped != DataEnum.ddr or dtype.dtype != DataEnum.fp16:
+        return False, []
+    if wtype.mapped != DataEnum.ddr or wtype.dtype != DataEnum.fp16:
+        return False, []
+    if dshape[-1] != wshape[-1] or dshape[-2] != wshape[-2]:
+        return False, []
+    oshape = [i for i in dshape]
+    return True, Tensor(oshape, dtype, device)
+
+
+Op.Register("accel.hbm.mvm_afterTRP", MVMafterTRPRel)
+
+
+def MVMafterF2WRel(args, attrs):
+    if len(args) != 2:
+        return False, []
+    device = args[0].device
+    dshape, dtype = args[0].shape, args[0].dtype  # FH, H, W, C
+    wshape, wtype = args[1].shape, args[1].dtype  # WH, O, C
+    if dtype.mapped != DataEnum.ddr or dtype.dtype != DataEnum.fp16:
+        return False, "accel.hbm.mvm_afterF2W gets wrong data type"
+    if wtype.mapped != DataEnum.ddr or wtype.dtype != DataEnum.fp16:
+        return False, "accel.hbm.mvm_afterF2W gets wrong weight type"
+    if dshape[-1] != wshape[-1]:
+        return False, "accel.hbm.mvm_afterF2W needs same chout"
+    oshape = [i for i in dshape]
+    return True, Tensor(oshape, dtype, device)
+
+
+Op.Register("accel.hbm.mvm_afterF2W", MVMafterF2WRel)
+
+
 def MVMBNRel(args, attrs):
     if len(args) != attrs["skip"]+2:
         return False, []
