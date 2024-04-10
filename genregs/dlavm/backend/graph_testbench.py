@@ -2,6 +2,7 @@ from .graph_csb_head import GraphCSBHead
 from .codegen_csb_head import CodeGenCSBHead
 from .codegen_cfg_head import CodeGenCFGHead
 from .codegen_test_head import CodeGenTestHead
+from .codegen_test_head_ops import CodeGenTestHeadOps
 
 
 class GraphTestbench(GraphCSBHead):
@@ -48,4 +49,10 @@ def testbench_cfg(expr, mod_name, ddr_init_addr, hbm_init_addr):
 def testbench_test_head(expr, mod_name, ddr_init_addr, hbm_init_addr):
     expr, mod, storage = GraphTestbench().build(expr, ddr_init_addr, hbm_init_addr)
     source = CodeGenTestHead().build(mod_name, mod, storage)
+    return expr, source, storage, mod
+
+
+def testbench_test_head_ops(expr, mod_name, ddr_init_addr, hbm_init_addr):
+    expr, mod, storage = GraphTestbench().build(expr, ddr_init_addr, hbm_init_addr)
+    source = CodeGenTestHeadOps().build(mod_name, mod, storage)
     return expr, source, storage, mod

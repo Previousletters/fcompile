@@ -186,9 +186,9 @@ def load_onnx_block():
 
 
 if __name__ == "__main__":
-    # load_onnx_block()
+    load_onnx_block()
     # mp_booth()
-    chatglm_without_kvcache()
+    # chatglm_without_kvcache()
     # check_testbench()
     # onnx_test()
     # test()

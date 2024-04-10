@@ -7,6 +7,7 @@ class Op:
     mul = {"py": " * ", "cpp": " * "}
     div = {"py": " / ", "cpp": " / "}
     mod = {"py": " % ", "cpp": " % "}
+    equ = {"py": " == ", "cpp": " == "}
     fdiv = {"py": " // ", "cpp": " / "}
     lshift = {"py": " << ", "cpp": " << "}
     rshift = {"py": " >> ", "cpp": " >> "}
@@ -192,6 +193,8 @@ class Expr:
 
     def __eq__(self, new_expr):
         vars0 = self.get_vars()
+        if isinstance(new_expr, int):
+            new_expr = Numb(new_expr)
         vars1 = new_expr.get_vars()
         if vars0 != vars1:
             return False

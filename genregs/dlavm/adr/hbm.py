@@ -17,17 +17,19 @@ def const_hbm(name, data, shape=None, dtype=DataEnum.int4, device=HBM):
     return Constant(name, data, shape, dtype, device)
 
 
-def mvm(*args, skip=1, log2_step=28):
+def mvm(*args, skip=1, log2_step=28, **kwattrs):
     if skip == 1:
         attrs = {
             "skip": skip,
-            "log2_step": log2_step
+            "log2_step": log2_step,
+            **kwattrs
         }
         return Call(Op.Get("accel.hbm.mvm"), args[:2], attrs)
     elif skip == 2:
         attrs = {
             "skip": skip,
-            "log2_step": log2_step
+            "log2_step": log2_step,
+            **kwattrs
         }
         return Call(Op.Get("accel.hbm.mvm"), args[:3], attrs)
     else:
@@ -35,16 +37,17 @@ def mvm(*args, skip=1, log2_step=28):
         exit(-1)
 
 
-def mvm_bn(data, weight, wt_and_bias, padding=0, skip=1, log2_step=28, autofree=True):
+def mvm_bn(data, weight, wt_and_bias, padding=0, skip=1, log2_step=28, **kwattrs):
     attrs = {
         "skip": skip,
         "padding": padding,
-        "log2_step": log2_step
+        "log2_step": log2_step,
+        **kwattrs
     }
-    return Call(Op.Get("accel.hbm.mvm_bn"), [data, weight, wt_and_bias], attrs, autofree=autofree)
+    return Call(Op.Get("accel.hbm.mvm_bn"), [data, weight, wt_and_bias], attrs)
 
 
-def mvm_bn_res(*args, skip=1, res_mul=0, arg_max=0, relu=0, log2_step=28):
+def mvm_bn_res(*args, skip=1, res_mul=0, arg_max=0, relu=0, log2_step=28, **kwattrs):
     if skip == 1:
         attrs = {
             "skip": skip,
@@ -52,6 +55,7 @@ def mvm_bn_res(*args, skip=1, res_mul=0, arg_max=0, relu=0, log2_step=28):
             "mul_mode": res_mul,
             "log2_step": log2_step,
             "arg_max": arg_max,
+            **kwattrs
         }
         return Call(Op.Get("accel.hbm.mvm_bn_res"), args[:4], attrs)
     elif skip == 2:
@@ -60,7 +64,8 @@ def mvm_bn_res(*args, skip=1, res_mul=0, arg_max=0, relu=0, log2_step=28):
             "res_mode": (res_mul << 1) | relu,
             "mul_mode": res_mul,
             "arg_max": arg_max,
-            "log2_step": log2_step
+            "log2_step": log2_step,
+            **kwattrs
         }
         return Call(Op.Get("accel.hbm.mvm_bn_res"), args[:5], attrs)
     else:
@@ -68,18 +73,20 @@ def mvm_bn_res(*args, skip=1, res_mul=0, arg_max=0, relu=0, log2_step=28):
         exit(-1)
 
 
-def mvm_afterTRP(data, weight, padding=1, kvcache=0):
+def mvm_afterTRP(data, weight, padding=1, kvcache=1, **kwattrs):
     attrs = {
         "kvcache": kvcache,
         "padding": padding,
+        **kwattrs
     }
     return Call(Op.Get("accel.hbm.mvm_afterTRP"), [data, weight], attrs, autofree=False)
 
 
-def mvm_afterF2W(data, weight, padding=1, kvcache=0):
+def mvm_afterF2W(data, weight, padding=1, kvcache=1, **kwattrs):
     attrs = {
         "kvcache": kvcache,
         "padding": padding,
+        **kwattrs
     }
     return Call(Op.Get("accel.hbm.mvm_afterF2W"), [data, weight], attrs)
 
@@ -94,24 +101,29 @@ def mul(data0, data1):
     return Call(Op.Get("accel.hbm.mul"), [data0, data1], attrs)
 
 
-def layer_norm(data, weight, rms=0):
-    attrs = {"rms": rms}
+def layer_norm(data, weight, rms=0, **kwattrs):
+    attrs = {
+        "rms": rms,
+        **kwattrs
+    }
     return Call(Op.Get("accel.hbm.layer_norm"), [data, weight], attrs)
 
 
-def softmax(data, padding=1, kvcache=0):
+def softmax(data, padding=1, kvcache=1, **kwattrs):
     attrs = {
         "kvcache": kvcache,
         "padding": padding,
+        **kwattrs
     }
     return Call(Op.Get("accel.hbm.softmax"), [data], attrs, autofree=False)
 
 
-def pos_emb(data, weight, padding=1, kvcache=0, out_and_in_mode=0):
+def pos_emb(data, weight, padding=1, kvcache=1, out_and_in_mode=0, **kwattrs):
     attrs = {
         "kvcache": kvcache,
         "padding": padding,
         "out_and_in_mode": out_and_in_mode,
+        **kwattrs
     }
     return Call(Op.Get("accel.hbm.pos_emb"), [data, weight], attrs, autofree=False)
 
@@ -132,9 +144,10 @@ def feature2weight(data, out_and_in_mode=0, log2_step=28):
     return Call(Op.Get("accel.hbm.feature2weight"), [data], attrs)
 
 
-def activate(data, weight, out_and_in_mode=0):
+def activate(data, weight, out_and_in_mode=0, **kwattrs):
     attrs = {
         "out_and_in_mode": out_and_in_mode,
+        **kwattrs
     }
     return Call(Op.Get("accel.hbm.activate"), [data, weight], attrs)
 

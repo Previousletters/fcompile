@@ -10,6 +10,8 @@ class StorageNode:
         self.byte_size = byte_size
 
     def get_address(self, offset):
+        if offset == -1:
+            return self.address + self.byte_size
         return self.address + offset
 
     def set_address(self, address=None):
@@ -34,10 +36,10 @@ class Storage:
         self.memo_ = {}
         self.free_ = []
 
-    def malloc(self, prefix, data_byte, auto_check=1):
+    def malloc(self, prefix, data_byte):
         if prefix not in self.memo_.keys():
             self.memo_[prefix] = {}
-        if auto_check:
+        if prefix == "runtime":
             min_id, min_diff, found = None, None, 0
             for id in self.free_:
                 if id not in self.memo_[prefix].keys():
@@ -71,7 +73,8 @@ class Storage:
         return id
 
     def free(self, id):
-        self.free_.append(id)
+        if "runtime" in id:
+            self.free_.append(id)
 
     def set_address(self, base_addr_map=None):
         if base_addr_map is None:
@@ -80,12 +83,15 @@ class Storage:
                 for id in self.memo_[prefix].keys():
                     addr = self.memo_[prefix][id].set_address(addr)
         else:
-            for prefix in base_addr_map.keys():
+            saved_prefix_addr = {}
+            for prefix, addr in base_addr_map.items():
                 if prefix not in self.memo_.keys():
                     continue
-                addr = base_addr_map[prefix]
+                if isinstance(addr, str):
+                    addr = saved_prefix_addr[addr]
                 for id in self.memo_[prefix].keys():
                     addr = self.memo_[prefix][id].set_address(addr)
+                saved_prefix_addr[prefix] = addr
 
     def get_address(self, id, offset):
         for memo_ in self.memo_.values():
@@ -118,16 +124,13 @@ class Storage:
 
 class GraphPlanMemory(Functor):
 
-    ddr_str = "ddr"
-    hbm_str = "hbm"
-
-    def main(self, expr, ddr_addr, hbm_addr):
+    def main(self, expr, init_addr):
         info = Functor()
         info.visit(expr)
         self.info_memo = info.memo
         self.storage = Storage()
         expr = self.visit(expr)
-        self.storage.set_address({self.ddr_str: ddr_addr, self.hbm_str: hbm_addr})
+        self.storage.set_address(init_addr)
         return expr, self.storage
 
     def _link_storage(self, arg, expr):
@@ -156,22 +159,22 @@ class GraphPlanMemory(Functor):
         else:
             self.info_memo[arg][1] -= 1
 
-    def _malloc(self, tensor, auto_check=1):
+    def _malloc(self, tensor, prefix):
         if tensor.dtype.mapped == DataEnum.ddr:
-            return self.storage.malloc(self.ddr_str, tensor.get_bytesize(), auto_check)
+            return self.storage.malloc(prefix, tensor.get_bytesize())
         elif tensor.dtype.mapped == DataEnum.hbm:
-            return self.storage.malloc(self.hbm_str, tensor.get_bytesize(), auto_check)
+            return self.storage.malloc(prefix, tensor.get_bytesize())
         else:
             print("unknown device, please check!")
             exit(-1)
 
     def visit_var(self, expr):
-        storage_id = self._malloc(expr.checked_type, 0)
+        storage_id = self._malloc(expr.checked_type, expr.prefix)
         expr.checked_type.storage_id = storage_id
         return expr
 
     def visit_constant(self, expr):
-        storage_id = self._malloc(expr.checked_type, 0)
+        storage_id = self._malloc(expr.checked_type, expr.prefix)
         expr.checked_type.storage_id = storage_id
         self.info_memo[expr][1] = 0
         return expr
@@ -182,10 +185,10 @@ class GraphPlanMemory(Functor):
             new_args.append(self.visit(arg))
         if isinstance(expr.checked_type, Tuple):
             for i in range(len(expr.checked_type.tensors)):
-                storage_id = self._malloc(expr.checked_type.tensors[i], expr.autofree)
+                storage_id = self._malloc(expr.checked_type.tensors[i], expr.prefix)
                 expr.checked_type.tensors[i].storage_id = storage_id
         elif isinstance(expr.checked_type, Tensor):
-            storage_id = self._malloc(expr.checked_type, expr.autofree)
+            storage_id = self._malloc(expr.checked_type, expr.prefix)
             expr.checked_type.storage_id = storage_id
         else:
             print("infer_type first!")

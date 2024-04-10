@@ -4,6 +4,7 @@ from .graph_plan_memory import GraphPlanMemory
 from .codegen_csb_head import CodeGenCSBHead
 from .codegen_cfg_head import CodeGenCFGHead
 from .codegen_test_head import CodeGenTestHead
+from .codegen_test_head_ops import CodeGenTestHeadOps
 
 
 class GraphCSBHead(Functor):
@@ -146,4 +147,9 @@ def cfg_head(expr, mod_name, ddr_init_addr, hbm_init_addr):
 def csb_test_head(expr, mod_name, ddr_init_addr, hbm_init_addr):
     expr, mod, storage = GraphCSBHead().build(expr, ddr_init_addr, hbm_init_addr)
     source = CodeGenTestHead().build(mod_name, mod, storage)
+    return expr, source, storage, mod
+
+def csb_test_head_ops(expr, mod_name, ddr_init_addr, hbm_init_addr):
+    expr, mod, storage = GraphCSBHead().build(expr, ddr_init_addr, hbm_init_addr)
+    source = CodeGenTestHeadOps().build(mod_name, mod, storage)
     return expr, source, storage, mod

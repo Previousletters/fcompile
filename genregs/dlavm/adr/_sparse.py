@@ -12,18 +12,14 @@ def Conv2DRel(args, attrs):
     device = args[0].device
     dshape, dtype = args[0].shape, args[0].dtype  # H, W, C
     wshape, wtype = args[1].shape, args[1].dtype  # O, I, H, W
-    if dtype.mapped != DataEnum.ddr or dtype.dtype != DataEnum.int8:
-        return False, []
+    if dtype.mapped != DataEnum.ddr:
+        return False, "feature data mapped is error, only ddr support"
     if wtype.mapped != DataEnum.ddr:
-        return False, []
-    if dshape[2] != wshape[1]:
-        return False, []
-    if attrs["l0_dw"] == 2:
+        return False, "weight data mapped is error, only ddr support"
+    if dshape[-1] != wshape[1]:
+        return False, "feature shape and weight shape (OIHW) are not match"
+    if 2 in attrs["widths"]:
         CHECK_ERROR(wtype.dtype != DataEnum.int2, "Weight Bit Width not Match!")
-    elif attrs["l1_dw"] == 4:
-        CHECK_ERROR(wtype.dtype != DataEnum.int4, "Weight Bit Width not Match!")
-    elif attrs["l1_dw"] == 8:
-        CHECK_ERROR(wtype.dtype != DataEnum.int8, "Weight Bit Width not Match!")
     Sy, Sx = attrs["stride"]
     Py, Px = attrs["padding"]
     Ky, Kx = wshape[2], wshape[3]

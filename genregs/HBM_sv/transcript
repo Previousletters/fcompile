@@ -1,5 +1,5 @@
 # vsim -c -L work testbench_HBM_MVM_bn_res -do "run -all; quit" 
-# Start time: 00:40:24 on Apr 03,2024
+# Start time: 17:09:47 on Apr 09,2024
 # ** Note: (vsim-3813) Design is being optimized due to module recompilation...
 # 
 # //  ModelSim SE-64 10.4 Dec  3 2014 
@@ -40,8 +40,12 @@
 # min_wt_depth=214
 # total_bytes_if_reuse_wt=28049408,total_bytes_if_reuse_dat=520448
 # 
+# out_ch_slice:        128
 # BN_FIFO_bits=65536,BN_FIFO_chout_num=2048
 # 
+# out_ch_slice:        128
+# out_ch_slice:        128
+# out_ch_slice:        128
 # CH_out=4096,out_ch_slice=128,out_ch_slice_last=128,CHout_Split_Times_minus1=31
 # best_method=1
 # csb_rtl.append([1, 2, 13696])
@@ -52,12 +56,12 @@
 # csb_rtl.append([1, 7, 128])
 # csb_rtl.append([1, 8, 128])
 # csb_rtl.append([1, 9, 19])
-# csb_rtl.append([1, 10, 2656256])
-# csb_rtl.append([1, 11, 2382336])
+# csb_rtl.append([1, 10, 16777216])
+# csb_rtl.append([1, 11, 0])
 # csb_rtl.append([1, 12, 56576])
-# csb_rtl.append([1, 13, 0])
+# csb_rtl.append([1, 13, 134217728])
 # csb_rtl.append([1, 14, 31])
-# csb_rtl.append([1, 15, 28])
+# csb_rtl.append([1, 15, 8])
 # csb_rtl.append([1, 16, 0])
 # csb_rtl.append([1, 17, 0])
 # csb_rtl.append([1, 18, 0])
@@ -68,8 +72,8 @@
 # csb_rtl.append([1, 23, 1])
 # csb_rtl.append([1, 24, 1])
 # csb_rtl.append([1, 25, 0])
-# csb_rtl.append([1, 26, 4895840])
-# csb_rtl.append([1, 27, 3704832])
+# csb_rtl.append([1, 26, 67108864])
+# csb_rtl.append([1, 27, 100663296])
 # csb_rtl.append([1, 28, 0])
 # csb_rtl.append([1, 29, 1216])
 # csb_rtl.append([1, 30, 1216])
@@ -80,5 +84,5 @@
 # Run hardware Finish
 # ** Note: $finish    : testbench_HBM_MVM_bn_res.sv(176)
 #    Time: 40 ns  Iteration: 0  Instance: /testbench_HBM_MVM_bn_res
-# End time: 00:40:27 on Apr 03,2024, Elapsed time: 0:00:03
+# End time: 17:09:50 on Apr 09,2024, Elapsed time: 0:00:03
 # Errors: 0, Warnings: 0

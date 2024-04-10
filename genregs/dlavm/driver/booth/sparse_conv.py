@@ -32,7 +32,7 @@ def RunConvSingleTime(CHin, Hin, Win, CHout,
         CH_in_res_Tin_res_16_div_Tout_minus1 = Tin_L0 // device.Tout - 1
     else:
         CH_in_res_Tin_res_16_div_Tout_minus1 = (((CHin % (Tin_L0 * device.Max_Sparsity)) % Tin_L0) + device.Tout - 1) // device.Tout - 1
-    
+
     Tin_factor = device.MAX_DAT_DW // L0_DW
     sparsity = Sparsity
 
@@ -86,24 +86,37 @@ def RunConvSingleTime(CHin, Hin, Win, CHout,
     return regs
 
 
-def RunConv(CHin, Hin, Win, CHout, Kx, Ky, Sx, Sy, pad_x, pad_y, relu_en, L0_DW, L1_DW,
-            feature_in_base, feature_in_surface_stride, feature_in_line_stride, feature_in_scale,
-            wt_base_addr, wt_size_in_bytes, wt_num_div_Tin, wt_scale, conv_out_scale,
-            feature_out_base, feature_out_surface_stride, feature_out_line_stride, feature_out_scale):
-    pass
 def RunConv(fin, wt, fout, attrs):
     device = fin[0].device
     dshape, wshape, oshape = fin[0].shape, wt[0].shape, fout[0].shape
-    daddrs, waddrs, oaddrs = fin[1], wt[1], fout[1]
-    pad_y, pad_x, Sy, Sx = attrs["pad"][0], attrs["pad"][1], attrs["strides"][0], attrs["strides"][1]
+    daddrs, waddrs, oaddrs = fin[1] & 0xfffffff, wt[1] & 0xfffffff, fout[1] & 0xfffffff
+    pad_y, pad_x, Sy, Sx = attrs["padding"][0], attrs["padding"][1], attrs["stride"][0], attrs["stride"][1]
     Hin, Win, _ = dshape
     Ky, Kx, CHin, CHout = wshape
     out_width = ((Win + 2 * pad_x - Kx) // Sx + 1)
     out_height = ((Hin + 2 * pad_y - Ky) // Sy + 1)
     overlap = Ky - Sy
+    DAT_DW_L0, DAT_DW_L1 = attrs["widths"]
+    feature_in_scale, wt_scale, feature_out_scale = attrs["scales"]
+    relu_en = attrs["relu_en"]
+    conv_out_scale = feature_out_scale
+    Sparsity, Sparsity_num = attrs["sparsity"]
+    Max_Sparsity, base_Tin, Tout, MAX_DAT_DW = device.Max_Sparsity, device.base_Tin, device.Tout, device.MAX_DAT_DW
+    BRAM_DEPTH, BRAM_NUM = device.BRAM_DEPTH, device.BRAM_NUM
+    Tin_L0 = base_Tin*(MAX_DAT_DW//DAT_DW_L0)
+    slice_of_CHin_L0 = ((CHin+Tin_L0*Max_Sparsity-1)//(Tin_L0*Max_Sparsity))
     dat_num_per_row = Win * slice_of_CHin_L0
     dat_banks_min = (dat_num_per_row * Ky + BRAM_DEPTH - 1) // BRAM_DEPTH
     wt_banks_min = (Kx * Ky * Tout * slice_of_CHin_L0 + BRAM_DEPTH - 1) // BRAM_DEPTH
+    WT_DW_L0 = DAT_DW_L0
+    slice_of_CHout_L0 = ((CHout+Tout-1)//Tout)
+    slice_of_CHin_L0_no_minus1 = ((CHin+Tin_L0*Max_Sparsity)//(Tin_L0*Max_Sparsity))
+    CH_in_res_Tin_div_Tin16_L0 = (((CHin%(Tin_L0*Max_Sparsity))+Tin_L0-1)//Tin_L0)
+    print(slice_of_CHin_L0_no_minus1, CH_in_res_Tin_div_Tin16_L0)
+    wt_size_in_bytes = ((Tin_L0*WT_DW_L0)>>3)*Kx*Ky*CHout*((CHin+Tin_L0-1)//Tin_L0)
+    if Sparsity in [2, 4, 8]:
+        wt_size_in_bytes = (((Tin_L0*WT_DW_L0)>>3)*slice_of_CHout_L0*((slice_of_CHin_L0_no_minus1-1)*Sparsity+(CH_in_res_Tin_div_Tin16_L0+Sparsity_num-1)//Sparsity_num*2)*Ky*Kx*Tout)
+    wt_num_div_Tin = (Kx*Ky*CHout*((CHin+Tin_L0*Max_Sparsity-1)//(Tin_L0*Max_Sparsity)))
 
     if (dat_banks_min + wt_banks_min) > BRAM_NUM:
         print("Resource limitation exceeded")
@@ -180,6 +193,13 @@ def RunConv(fin, wt, fout, attrs):
 
     in_height_last = Hin - in_height_first + overlap - (Hout_Split_Times - 2) * (in_height_middle - overlap)
 
+    L0_DW, L1_DW = DAT_DW_L0, DAT_DW_L1
+    regs = []
+    feature_in_base, wt_base_addr, feature_out_base = daddrs, waddrs, oaddrs
+    feature_in_surface_stride = device.Pixel_Data_Bytes * dshape[-1] * dshape[-2]
+    feature_in_line_stride = device.Pixel_Data_Bytes * dshape[-1]
+    feature_out_surface_stride = device.Pixel_Data_Bytes * oshape[-1] * oshape[-2]
+    feature_out_line_stride = device.Pixel_Data_Bytes * oshape[-1]
     if best_method == 0:
         for n in range(CHout_Split_Times):
             for k in range(Hout_Split_Times):
@@ -207,12 +227,12 @@ def RunConv(fin, wt, fout, attrs):
                     in_height_single = in_height_middle
                     out_height_single = out_height_middle
 
-                RunConvSingleTime(CH_in_single, in_height_single, Win, CH_out_single,
-                                    Kx, Ky, Sx, Sy, pad_x, pad_y_single, relu_en, L0_DW, L1_DW,
-                                    feature_in_base + feature_in_line_stride * line_offset_in, feature_in_surface_stride, feature_in_line_stride, feature_in_scale,
-                                    wt_base_addr + wt_size_in_bytes // CHout * out_ch_slice * n, wt_size_in_bytes // CHout * CH_out_single * 8 // (WT_DW_L0 * Tout), wt_num_div_Tin // CHout * CH_out_single, wt_scale, conv_out_scale,
-                                    feature_out_base + feature_out_line_stride * line_offset_out + feature_out_surface_stride * n * (out_ch_slice // Tout), feature_out_surface_stride, feature_out_line_stride, feature_out_scale,
-                                    out_width, out_height_single, best_dat_banks, 0, dma_wt_reuse_single)
+                regs += RunConvSingleTime(CH_in_single, in_height_single, Win, CH_out_single,
+                                Kx, Ky, Sx, Sy, pad_x, pad_y_single, relu_en, L0_DW, L1_DW,
+                                feature_in_base + feature_in_line_stride * line_offset_in, feature_in_surface_stride, feature_in_line_stride, feature_in_scale,
+                                wt_base_addr + wt_size_in_bytes // CHout * out_ch_slice * n, wt_size_in_bytes // CHout * CH_out_single * 8 // (WT_DW_L0 * Tout), wt_num_div_Tin // CHout * CH_out_single, wt_scale, conv_out_scale,
+                                feature_out_base + feature_out_line_stride * line_offset_out + feature_out_surface_stride * n * (out_ch_slice // Tout), feature_out_surface_stride, feature_out_line_stride, feature_out_scale,
+                                out_width, out_height_single, best_dat_banks, 0, dma_wt_reuse_single, device, Sparsity, Sparsity_num)
 
     else:
         for k in range(Hout_Split_Times):
@@ -233,10 +253,11 @@ def RunConv(fin, wt, fout, attrs):
                     else:
                         in_height_single, out_height_single = in_height_middle, out_height_middle
 
-                RunConvSingleTime(CH_in_single, in_height_single, Win, CH_out_single,
+                regs += RunConvSingleTime(CH_in_single, in_height_single, Win, CH_out_single,
                                     Kx, Ky, Sx, Sy, pad_x, pad_y_single, relu_en, L0_DW, L1_DW,
                                     feature_in_base + feature_in_line_stride * line_offset_in, feature_in_surface_stride, feature_in_line_stride, feature_in_scale,
                                     wt_base_addr + wt_size_in_bytes // CHout * out_ch_slice * n, wt_size_in_bytes // CHout * CH_out_single * 8 // (WT_DW_L0 * Tout), wt_num_div_Tin // CHout * CH_out_single, wt_scale, conv_out_scale,
                                     feature_out_base + feature_out_line_stride * line_offset_out + feature_out_surface_stride * n * (out_ch_slice // Tout), feature_out_surface_stride, feature_out_line_stride, feature_out_scale,
-                                    out_width, out_height_single, best_dat_banks, dma_dat_reuse_single, 0)
+                                    out_width, out_height_single, best_dat_banks, dma_dat_reuse_single, 0, device, Sparsity, Sparsity_num)
        
+    return regs

@@ -27,7 +27,7 @@ class DataType:
 
 
 class Attrs:
-    
+
     default = {}
 
     def __init__(self, attrs):
@@ -51,8 +51,9 @@ class Attrs:
 
 class Base:
 
-    def __init__(self, args):
+    def __init__(self, args, prefix="runtime"):
         self.args = args
+        self.prefix = prefix
 
     def __str__(self):
         return PrintExpr.print(self)
@@ -131,12 +132,12 @@ class Constant(Base):
 
 class Call(Base):
 
-    def __init__(self, op, args, attrs, autofree=True):
+    def __init__(self, op, args, attrs, prefix="runtime"):
         self.op = op
         self.args = args
         self.attrs = attrs
         self.checked_type = None
-        self.autofree = autofree
+        self.prefix = prefix
 
 
 class VM(Base):

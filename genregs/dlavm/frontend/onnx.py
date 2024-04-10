@@ -644,6 +644,9 @@ class GraphProto:
         params : dict
             A dict of name: tvm.nd.array pairs, used as pretrained weights
         """
+        var_ddr =  {
+            "hbm": adr.hbm.var_ddr,
+        }
         self.opset = opset
         # parse network inputs to relay, aka parameters
         for init_tensor in graph.initializer:
@@ -654,7 +657,7 @@ class GraphProto:
                 self._nodes[init_tensor.name] = adr.Constant(init_tensor.name, array)
             else:
                 self._params[init_tensor.name] = array
-                self._nodes[init_tensor.name] = adr.hbm.var_ddr(
+                self._nodes[init_tensor.name] = var_ddr[target](
                     init_tensor.name,
                     shape=self._params[init_tensor.name].shape,
                 )
@@ -666,7 +669,7 @@ class GraphProto:
                 # i is a param instead of input
                 self._num_param += 1
                 self._params[i_name] = self._params.pop(i_name)
-                self._nodes[i_name] = adr.hbm.var_ddr(
+                self._nodes[i_name] = var_ddr[target](
                     i_name, shape=self._params[i_name].shape
                 )
             elif i_name in self._nodes:
@@ -687,7 +690,7 @@ class GraphProto:
                     dtype = self._dtype[i_name] if i_name in self._dtype else d_type
                 else:
                     dtype = d_type
-                self._nodes[i_name] = adr.hbm.var_ddr(i_name, shape=i_shape)
+                self._nodes[i_name] = var_ddr[target](i_name, shape=i_shape)
             self._inputs[i_name] = self._nodes[i_name]
         assert (
             len(self._shape) == 0

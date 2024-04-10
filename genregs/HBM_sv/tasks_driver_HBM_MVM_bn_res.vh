@@ -125,6 +125,7 @@ begin
         best_method = 1;
 
     out_ch_slice=((`WT_BRAM_DEPTH*2)/min_wt_depth)*Tout;
+    $display("out_ch_slice: %d", out_ch_slice);
 
     /////////////////////////////////////////////////////////
     BN_FIFO_bits=`AXI_BN_WIDTH*`BN_FIFO_DEP*`BN_FIFO_NUM;
@@ -133,6 +134,7 @@ begin
         out_ch_slice=BN_FIFO_chout_num;
     $display("BN_FIFO_bits=%0d,BN_FIFO_chout_num=%0d\n",BN_FIFO_bits,BN_FIFO_chout_num);
     /////////////////////////////////////////////////////////
+    $display("out_ch_slice: %d", out_ch_slice);
     
     if(out_ch_slice>=CHout_Padding)
         begin
@@ -141,11 +143,13 @@ begin
         end
     else
         CHout_Split_Times=(CHout_Padding+out_ch_slice-1)/out_ch_slice;
+    $display("out_ch_slice: %d", out_ch_slice);
 
     if(CHout%out_ch_slice==0)
         out_ch_slice_last=out_ch_slice;
     else
         out_ch_slice_last=CHout_Padding%out_ch_slice;
+    $display("out_ch_slice: %d", out_ch_slice);
         
     CHout_Split_Times_minus1=CHout_Split_Times-1;
     

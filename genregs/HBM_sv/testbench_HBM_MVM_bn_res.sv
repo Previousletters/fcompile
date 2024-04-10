@@ -1,8 +1,8 @@
 `include "TOP_defines.vh"
-`define Token   37
+`define Token   19
 `define Height   `Token
-`define Width_in  (256)//4//
-`define Width_out (1024)//3//
+`define Width_in  (13696)//4//
+`define Width_out (4096)//3//
 
 `define Skip_Factor 1
 `define Head 1

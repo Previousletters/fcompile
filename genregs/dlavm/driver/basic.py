@@ -16,7 +16,7 @@ def CSB_Write(regs, addr, data):
     if data is None:
         regs.append([1, addr, 0])
     elif isinstance(data, ne.Expr):
-        regs.append([1, addr, data.simplify().export("cpp")])
+        regs.append([1, addr, data.simplify()])
     else:
         regs.append([1, addr, data & 0xffffffff])
 
@@ -25,7 +25,7 @@ def CSB_Read(regs, addr, data):
     if data is None:
         regs.append([0, addr, 0])
     elif isinstance(data, ne.Expr):
-        regs.append([0, addr, data.simplify().export("cpp")])
+        regs.append([0, addr, data.simplify()])
     else:
         regs.append([0, addr, data & 0xffffffff])
 

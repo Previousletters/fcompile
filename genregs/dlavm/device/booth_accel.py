@@ -17,6 +17,15 @@ class BoothSparse(Accel):
     base_Tin = 32
     base_log2Tin = 5
     BRAM_NUM = 2
-    BRAM_DEPTH = 1<<24
+    BRAM_DEPTH = 1 << 24
+    Pixel_Data_Bytes = ((Tout*MAX_DAT_DW) >> 3)
 
-
+    @classmethod
+    def malloc_bytes(cls, shape, dtype):
+        shape = [i.simplify(1).data if isinstance(i, ne.Expr) else i for i in shape]
+        if dtype.mapped == DataEnum.ddr:
+            new_shape = [i for i in shape]
+            new_shape[-1] = (new_shape[-1] + cls.Tout - 1) // cls.Tout
+            new_shape = [cls.Tout] + new_shape
+            data_numb = reduce(lambda x, y: x*y, new_shape)
+            return data_numb * dtype.get_bytes()

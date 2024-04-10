@@ -12,7 +12,7 @@ def bias2bn(const: Constant):
 
 def hbm_mvm_bn(add, mvm, bn):
     data, weight = mvm[0]
-    new_expr = Call(Op.Get("accel.hbm.mvm_bn"), [data, weight, bn], mvm[1])
+    new_expr = Call(Op.Get("accel.hbm.mvm_bn"), [data, weight, bn], {"padding": 0, **mvm[1]})
     new_expr.checked_type = add.checked_type
     return new_expr
 
