@@ -4,17 +4,23 @@ from ..device import HBM
 
 def var_ddr(name, shape, dtype=DataEnum.fp16, device=HBM):
     dtype = DataType(dtype, DataEnum.ddr)
-    return Var(name, shape, dtype, device)
+    expr = Var(name, shape, dtype, device)
+    expr.prefix = "runtime"
+    return expr
 
 
 def const_ddr(name, data, shape=None, dtype=DataEnum.fp16, device=HBM):
     dtype = DataType(dtype, DataEnum.ddr)
-    return Constant(name, data, shape, dtype, device)
+    expr = Constant(name, data, shape, dtype, device)
+    expr.prefix = "weight"
+    return expr
 
 
 def const_hbm(name, data, shape=None, dtype=DataEnum.int4, device=HBM):
     dtype = DataType(dtype, DataEnum.hbm)
-    return Constant(name, data, shape, dtype, device)
+    expr = Constant(name, data, shape, dtype, device)
+    expr.prefix = "hbm"
+    return expr
 
 
 def mvm(*args, skip=1, log2_step=28, **kwattrs):
@@ -79,7 +85,7 @@ def mvm_afterTRP(data, weight, padding=1, kvcache=1, **kwattrs):
         "padding": padding,
         **kwattrs
     }
-    return Call(Op.Get("accel.hbm.mvm_afterTRP"), [data, weight], attrs, autofree=False)
+    return Call(Op.Get("accel.hbm.mvm_afterTRP"), [data, weight], attrs)
 
 
 def mvm_afterF2W(data, weight, padding=1, kvcache=1, **kwattrs):
@@ -115,7 +121,7 @@ def softmax(data, padding=1, kvcache=1, **kwattrs):
         "padding": padding,
         **kwattrs
     }
-    return Call(Op.Get("accel.hbm.softmax"), [data], attrs, autofree=False)
+    return Call(Op.Get("accel.hbm.softmax"), [data], attrs)
 
 
 def pos_emb(data, weight, padding=1, kvcache=1, out_and_in_mode=0, **kwattrs):
@@ -125,7 +131,7 @@ def pos_emb(data, weight, padding=1, kvcache=1, out_and_in_mode=0, **kwattrs):
         "out_and_in_mode": out_and_in_mode,
         **kwattrs
     }
-    return Call(Op.Get("accel.hbm.pos_emb"), [data, weight], attrs, autofree=False)
+    return Call(Op.Get("accel.hbm.pos_emb"), [data, weight], attrs)
 
 
 def transpose(data, out_and_in_mode=0, log2_step=28):

@@ -28,7 +28,7 @@ def chatglm_block_dynamic(data, pos_weight, silu_weight, token, index, arg_max, 
 
     ln_out = adr.hbm.layer_norm(data, ln_k_bias, rms=1, kvcache=kvcache)
 
-    qkv_data = adr.hbm.mvm_bn(ln_out, qkv_weight, qkv_bn, padding=1, autofree=False, kvcache=kvcache)
+    qkv_data = adr.hbm.mvm_bn(ln_out, qkv_weight, qkv_bn, padding=1, kvcache=kvcache)
     qkv_data = adr.reshape(qkv_data, [36, token, 128])
     qkv_data = adr.split(qkv_data, 0, [34, 2])
     qk_data = qkv_data[0]
@@ -106,7 +106,8 @@ def chatglm_block(data, pos_weight, silu_weight, token, index, arg_max, kvcache)
     ln_out = adr.hbm.layer_norm(data, ln_k_bias, rms=1, kvcache=kvcache)
     ln_out = adr.realloc(ln_out, [1, 128, 4096])
 
-    qkv_data = adr.hbm.mvm_bn(ln_out, qkv_weight, qkv_bn, padding=1, autofree=False, kvcache=kvcache)
+    qkv_data = adr.hbm.mvm_bn(ln_out, qkv_weight, qkv_bn, padding=1, kvcache=kvcache)
+    qkv_data.prefix = "cache"
     qkv_data = adr.realloc(qkv_data, [1, 128, 36*128])
     qkv_data = adr.reshape(qkv_data, [36, 128, 128], force=1)
     qkv_data = adr.split(qkv_data, 0, [34, 2])
@@ -114,15 +115,18 @@ def chatglm_block(data, pos_weight, silu_weight, token, index, arg_max, kvcache)
     v_data = adr.reshape(qkv_data[1], [2, token, 128], force=1)
 
     qk_data = adr.hbm.pos_emb(qk_data, pos_weight, kvcache=kvcache)
+    qk_data.prefix = "cache"
     qk_data = adr.realloc(qk_data, [34, 128, 128])
     qk_data = adr.reshape(qk_data, [34, 128, 128], force=1)
     qk_data = adr.split(qk_data, 0, [32, 2])
     q_data = adr.reshape(qk_data[0], [32, token, 128], force=1)
     k_data = adr.reshape(qk_data[1], [2, token, 128], force=1)
     atten_out = adr.hbm.mvm_afterTRP(q_data, k_data, kvcache=kvcache)
+    atten_out.prefix = "cache"
     atten_out = adr.realloc(atten_out, [32, 128, 128])
     atten_out = adr.reshape(atten_out, [32, token, 128], force=1)
     atten_out = adr.hbm.softmax(atten_out, kvcache=kvcache)
+    atten_out.prefix = "cache"
     atten_out = adr.realloc(atten_out, [32, 128, 128])
     atten_out = adr.reshape(atten_out, [32, token, 128], force=1)
     atten_out = adr.hbm.mvm_afterF2W(atten_out, v_data, kvcache=kvcache)
@@ -165,7 +169,9 @@ def chatglm_main(kvcache, debug, addr, token=19):
     #token = ne.Var("token", 19)
     data = adr.hbm.var_ddr("data", [1, token, 4096])
     pos_weight = adr.hbm.const_ddr("pos_emb", None, [1, 128*2, 64])
+    pos_weight.prefix = "global"
     silu_weight = adr.hbm.const_ddr("silu_act", None, [32*128], adr.DataEnum.fp16)
+    silu_weight.prefix = "global"
     block_size = 1
     for n in range(block_size):
         data = adr.realloc(data, [1, 128, 4096])
@@ -175,14 +181,14 @@ def chatglm_main(kvcache, debug, addr, token=19):
     output = infer_type(output, dlavm.device.HBM0321)
     print(output)
     if addr:
-        expr, storage = backend.graph_plan_memory(output, 0x200000000, 0x0)
+        expr, storage = backend.graph_plan_memory(output, {"global": 0x200000000, "weight": "global", "cache": "weight", "runtime": "cache", "hbm": 0x0})
         print(expr)
         print(storage)
     else:
         from dlavm.driver import config
         config.tb_sim_path = "~/accel/hbm0321/HBM_sv"
         config.tb_debug = 0
-        expr, source, storage, _ = backend.csb_test_head_ops(output, name, 0x200000000, 0x0)
+        expr, source, storage, _ = backend.csb_test_head_ops(output, name, {"global": 0x200000000, "weight": "global", "cache": "weight", "runtime": "cache", "hbm": 0x0})
         save_path = os.path.join("test", name + ".h")
         with open(save_path, "w") as f:
             f.write(source)

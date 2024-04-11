@@ -9,8 +9,8 @@ from .codegen_test_head_ops import CodeGenTestHeadOps
 
 class GraphCSBHead(Functor):
 
-    def build(self, expr, ddr_addr, hbm_addr):
-        expr, self.storage = GraphPlanMemory().main(expr, ddr_addr, hbm_addr)
+    def build(self, expr, init_addr):
+        expr, self.storage = GraphPlanMemory().main(expr, init_addr)
         self.nodes = []
         outputs = self.visit(expr)
         self._node_output(outputs)
@@ -132,24 +132,24 @@ class GraphCSBHead(Functor):
         return new_checked_type
 
 
-def csb_head(expr, mod_name, ddr_init_addr, hbm_init_addr):
-    expr, mod, storage = GraphCSBHead().build(expr, ddr_init_addr, hbm_init_addr)
+def csb_head(expr, mod_name, init_addr):
+    expr, mod, storage = GraphCSBHead().build(expr, init_addr)
     source = CodeGenCSBHead().build(mod_name, mod, storage)
     return expr, source, storage, mod
 
 
-def cfg_head(expr, mod_name, ddr_init_addr, hbm_init_addr):
-    expr, mod, storage = GraphCSBHead().build(expr, ddr_init_addr, hbm_init_addr)
+def cfg_head(expr, mod_name, init_addr):
+    expr, mod, storage = GraphCSBHead().build(expr, init_addr)
     source, params = CodeGenCFGHead().build(mod_name, mod, storage)
     return expr, source, storage, mod, params
 
 
-def csb_test_head(expr, mod_name, ddr_init_addr, hbm_init_addr):
-    expr, mod, storage = GraphCSBHead().build(expr, ddr_init_addr, hbm_init_addr)
+def csb_test_head(expr, mod_name, init_addr):
+    expr, mod, storage = GraphCSBHead().build(expr, init_addr)
     source = CodeGenTestHead().build(mod_name, mod, storage)
     return expr, source, storage, mod
 
-def csb_test_head_ops(expr, mod_name, ddr_init_addr, hbm_init_addr):
-    expr, mod, storage = GraphCSBHead().build(expr, ddr_init_addr, hbm_init_addr)
+def csb_test_head_ops(expr, mod_name, init_addr):
+    expr, mod, storage = GraphCSBHead().build(expr, init_addr)
     source = CodeGenTestHeadOps().build(mod_name, mod, storage)
     return expr, source, storage, mod

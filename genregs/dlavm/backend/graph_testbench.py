@@ -34,25 +34,25 @@ class GraphTestbench(GraphCSBHead):
         return expr.checked_type
 
 
-def testbench(expr, mod_name, ddr_init_addr, hbm_init_addr):
-    expr, mod, storage = GraphTestbench().build(expr, ddr_init_addr, hbm_init_addr)
+def testbench(expr, mod_name, init_addr):
+    expr, mod, storage = GraphTestbench().build(expr, init_addr)
     source = CodeGenCSBHead().build(mod_name, mod, storage)
     return expr, source, storage, mod
 
 
-def testbench_cfg(expr, mod_name, ddr_init_addr, hbm_init_addr):
-    expr, mod, storage = GraphTestbench().build(expr, ddr_init_addr, hbm_init_addr)
+def testbench_cfg(expr, mod_name, init_addr):
+    expr, mod, storage = GraphTestbench().build(expr, init_addr)
     source, params = CodeGenCFGHead().build(mod_name, mod, storage)
     return expr, source, storage, mod, params
 
 
-def testbench_test_head(expr, mod_name, ddr_init_addr, hbm_init_addr):
-    expr, mod, storage = GraphTestbench().build(expr, ddr_init_addr, hbm_init_addr)
+def testbench_test_head(expr, mod_name, init_addr):
+    expr, mod, storage = GraphTestbench().build(expr, init_addr)
     source = CodeGenTestHead().build(mod_name, mod, storage)
     return expr, source, storage, mod
 
 
-def testbench_test_head_ops(expr, mod_name, ddr_init_addr, hbm_init_addr):
-    expr, mod, storage = GraphTestbench().build(expr, ddr_init_addr, hbm_init_addr)
+def testbench_test_head_ops(expr, mod_name, init_addr):
+    expr, mod, storage = GraphTestbench().build(expr, init_addr)
     source = CodeGenTestHeadOps().build(mod_name, mod, storage)
     return expr, source, storage, mod

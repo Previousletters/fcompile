@@ -165,8 +165,9 @@ QueryPerformanceFrequency(&freq);
             self.func_const_hbm.append(f"{self.tab}{self.tab}return (void*)(&{id}[{offset}]);")
             self.enum_nodes[3].append(enum_name)
         else:
-            print("match error!")
-            exit(-1)
+            self.func_const_ddr.append(f"{self.tab}case {self.mod_name}Node::{enum_name}:")
+            self.func_const_ddr.append(f"{self.tab}{self.tab}return (void*)(&{id}[{offset}]);")
+            self.enum_nodes[2].append(enum_name)
         for n in node["shape"]:
             if isinstance(n, ne.Expr):
                 vars = n.get_vars()

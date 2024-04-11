@@ -50,8 +50,8 @@ class CodeGenTestHeadOps(CodeGenTestHead):
             self.func_const_hbm.append("uint64_t %s = 0x%09x;" % (enum_name, address))
             self.enum_nodes[3].append(enum_name)
         else:
-            print("match error!")
-            exit(-1)
+            self.func_const_ddr.append("uint64_t %s = 0x%09x;" % (enum_name, address))
+            self.enum_nodes[2].append(enum_name)
         for n in node["shape"]:
             if isinstance(n, ne.Expr):
                 vars = n.get_vars()

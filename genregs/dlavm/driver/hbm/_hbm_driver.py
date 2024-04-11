@@ -83,7 +83,7 @@ def MVMBNResDriver(args, output, attrs):
     elif attrs["skip"] == 1 and attrs["arg_max"] == 1:
         dtensor, wtensor, btensor, rtensor = args[0], args[1], args[2], args[3]
         dshape, wshape, bshape, rshape = dtensor[0].shape, wtensor[0].shape, btensor[0].shape, rtensor[0].shape
-        daddrs, waddrs, baddrs, raddrs, oaddrs = dtensor[1], wtensor[1], btensor[1], rtensor[1], output[1]
+        daddrs, waddrs, baddrs, raddrs, oaddrs, aaddrs = dtensor[1], wtensor[1], btensor[1], rtensor[1], output[0][1], output[1][1]
         define = {
             "log2_WT_base_addr_Bank_Step": attrs["log2_step"], 
             "Head": dshape[0], "Token": dshape[1],
@@ -92,8 +92,8 @@ def MVMBNResDriver(args, output, attrs):
             "HBM00_WT_BASE_ADDR":  waddrs & 0xffffffff,
             "BN_BASE_ADDR":  baddrs & 0xffffffff,
             "Res_Add_BASE_ADDR":  raddrs & 0xffffffff,
-            "DAT_OUT_BASE_ADDR": oaddrs[0] & 0xffffffff,
-            "AUGMAX_OUT_ADDR": oaddrs[1] & 0xffffffff,
+            "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
+            "AUGMAX_OUT_ADDR": aaddrs & 0xffffffff,
             "device": args[0][0].device,
             **attrs
         }

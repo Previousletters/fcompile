@@ -84,6 +84,7 @@ class Storage:
                     addr = self.memo_[prefix][id].set_address(addr)
         else:
             saved_prefix_addr = {}
+            self.sort_keys = base_addr_map.keys()
             for prefix, addr in base_addr_map.items():
                 if prefix not in self.memo_.keys():
                     continue
@@ -103,7 +104,8 @@ class Storage:
 
     def gen_source(self):
         source = ""
-        for prefix, memo in self.memo_.items():
+        for prefix in self.sort_keys:
+            memo = self.memo_[prefix]
             source += f"// {prefix} storage define\n"
             for id, storage in memo.items():
                 addr_hex = "0x%09x" % (storage.address)
@@ -112,14 +114,23 @@ class Storage:
         return source[:-1]
 
     def __str__(self):
-        ret = "***************************************\n"
-        ret += "*{0:^8}|{1:^15}|{2:^12}*\n".format("ID", "Address", "Size")
-        for prefix, memo in self.memo_.items():
-            ret += "*-------------------------------------*\n"
-            for id, storage in memo.items():
-                ret += "*{0:^8}".format(id) + str(storage) + "\n"
-        ret += "***************************************"
-        return ret
+        ret = "*******************************************\n"
+        ret += "*{0:^12}|{1:^15}|{2:^12}*\n".format("Storage ID", "Address", "Size")
+        if hasattr(self, "sort_keys"):
+            for prefix in self.sort_keys:
+                memo = self.memo_[prefix]
+                ret += "*-----------------------------------------*\n"
+                for id, storage in memo.items():
+                    ret += "*{0:^12}".format(id) + str(storage) + "\n"
+            ret += "*******************************************"
+            return ret
+        else:
+            for prefix, memo in self.memo_.items():
+                ret += "*-----------------------------------------*\n"
+                for id, storage in memo.items():
+                    ret += "*{0:^12}".format(id) + str(storage) + "\n"
+            ret += "*******************************************"
+            return ret
 
 
 class GraphPlanMemory(Functor):
@@ -222,5 +233,5 @@ class GraphPlanMemory(Functor):
         return expr
 
 
-def graph_plan_memory(expr, ddr_addr, hbm_addr):
-    return GraphPlanMemory().main(expr, ddr_addr, hbm_addr)
+def graph_plan_memory(expr, init_addr):
+    return GraphPlanMemory().main(expr, init_addr)
