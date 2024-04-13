@@ -10,14 +10,14 @@ class BoothSparse(Accel):
 
     MAX_DW2 = 16
     Max_Sparsity = 8
-    Tout = 32
+    Tout = 4
     log2_Max_Sparsity = 3
     PE_NUM_Per_Block = 4
     MAX_DAT_DW = 8
-    base_Tin = 32
-    base_log2Tin = 5
+    base_Tin = 16
+    base_log2Tin = 4
     BRAM_NUM = 2
-    BRAM_DEPTH = 1 << 24
+    BRAM_DEPTH = (1 << 23)//base_Tin//MAX_DAT_DW//BRAM_NUM//Max_Sparsity
     Pixel_Data_Bytes = ((Tout*MAX_DAT_DW) >> 3)
 
     @classmethod

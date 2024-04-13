@@ -62,7 +62,7 @@ class WrapQuanSparseLinear(t.autograd.Function):
     @staticmethod
     def symbolic(g, x, weight, quan_w_fn, quan_a_fn):
         mask = t.where(quan_w_fn.mask, 1, 0)
-        return g.op("custom::QuanSparseConv2d", x, weight, mask_t=mask, sparsity_f=quan_w_fn.sparsity, bit_i=quan_w_fn.bit, scales_i=[-int(quan_w_fn.final_scale), -int(quan_a_fn.final_scale)])
+        return g.op("custom::QuanSparseLinear", x, weight, mask_t=mask, sparsity_f=quan_w_fn.sparsity, bit_i=quan_w_fn.bit, scales_i=[-int(quan_w_fn.final_scale), -int(quan_a_fn.final_scale)])
 
 
 class QuanSparseConv2d(t.nn.Conv2d):

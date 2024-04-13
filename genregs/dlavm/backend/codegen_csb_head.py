@@ -187,12 +187,6 @@ QueryPerformanceFrequency(&freq);
 QueryPerformanceCounter(&start_cfg);
 #endif""")
                     cfg_start = 0
-                elif reg[1] in [33, 214]:
-                    self.func_body.append("""#ifdef REGS_DEBUG
-QueryPerformanceCounter(&stop_cfg);
-QueryPerformanceCounter(&start_run);
-#endif""")
-                    cfg_start = 1
                 data = reg[2]
                 if isinstance(reg[2], ne.Expr):
                     for var in reg[2].get_vars():
@@ -202,6 +196,11 @@ QueryPerformanceCounter(&start_run);
                     data = reg[2].export("cpp")
                 self.func_body.append(f"{self.tab}CSB_Write(device, {reg[1]}, {data});")
             elif reg[0] == 0:
+                cfg_start = 1
+                self.func_body.append("""#ifdef REGS_DEBUG
+QueryPerformanceCounter(&stop_cfg);
+QueryPerformanceCounter(&start_run);
+#endif""")
                 self.func_body.append(f"{self.tab}while(CSB_Read(device, {reg[1]}) != {reg[2]}) " + "{}")
                 self.func_body.append("""#ifdef REGS_DEBUG
 QueryPerformanceCounter(&stop_run);

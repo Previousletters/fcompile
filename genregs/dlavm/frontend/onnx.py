@@ -506,6 +506,26 @@ class Unsqueeze(OnnxOpConverter):
         else:
             print(type(inputs[0]))
 
+    @classmethod
+    def _impl_sparse_v1(cls, inputs, attr, params):
+        if isinstance(inputs[0], (list, np.ndarray)):
+            data = np.array(inputs[0])
+            axes = [inputs[1]]
+            return np.expand_dims(data, axes)[0]
+        elif isinstance(inputs[0], adr.Base):
+            output = infer_type(inputs[0])
+            shape = [i for i in output.checked_type.shape]
+            if isinstance(inputs[1], int):
+                shape.insert(inputs[1], 1)
+            else:
+                for i in inputs[1]:
+                    shape.insert(i, 1)
+            return adr.reshape(inputs[0], shape)
+        else:
+            print(type(inputs[0]))
+
+
+
 
 class Concat(OnnxOpConverter):
     """Operator converter for Shape."""
@@ -825,7 +845,7 @@ class GraphProto:
         return outputs
 
 
-def from_onnx(model, shape=None, dtype="float16", opset=None, freeze_params=True):
+def from_onnx(model, shape=None, dtype="float16", opset=None, freeze_params=True, target="hbm"):
     """Convert a ONNX model into an equivalent Relay Function.
 
     ONNX graphs are represented as Python Protobuf objects.
@@ -893,5 +913,5 @@ def from_onnx(model, shape=None, dtype="float16", opset=None, freeze_params=True
             opset = 1
     # Use the graph proto as a scope so that ops can access other nodes if needed.
     with g:
-        mod = g.from_onnx(graph, opset)
+        mod = g.from_onnx(graph, opset, target)
     return mod

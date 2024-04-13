@@ -111,23 +111,25 @@ class Tensor(Base):
 
 class Var(Base):
 
-    def __init__(self, name, shape, dtype, device):
+    def __init__(self, name, shape, dtype, device, prefix="runtime"):
         self.name = name
         self.shape = shape
         self.dtype = dtype
         self.device = device
         self.checked_type = None
+        self.prefix = prefix
 
 
 class Constant(Base):
 
-    def __init__(self, name, data, shape=None, dtype=None, device=None):
+    def __init__(self, name, data, shape=None, dtype=None, device=None, prefix="weight"):
         self.name = name
         self.data = data
         self.shape = shape
         self.dtype = dtype
         self.device = device
         self.checked_type = None
+        self.prefix = prefix
 
 
 class Call(Base):

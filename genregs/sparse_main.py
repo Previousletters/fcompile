@@ -9,8 +9,10 @@ def model():
     output = adr.sparse.conv2d(data, weight, [1, 1], [0, 0], [8, 8], [4, 4], [8, 8, 8], 0)
     output = transform.infer_type(output)
     print(output)
-    expr, source, storage, _ = backend.csb_test_head(output, "main_test", 0x40000000, 0x00)
+    expr, source, storage, _ = backend.csb_test_head(output, "main_test", {"weight": 0x40000000, "runtime": "weight"})
     print(expr)
+    with open("source.h", "w") as f:
+        f.write(source)
     print(source)
     print(storage)
 
