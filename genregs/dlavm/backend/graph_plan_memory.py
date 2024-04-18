@@ -135,7 +135,8 @@ class Storage:
 
 class GraphPlanMemory(Functor):
 
-    def main(self, expr, init_addr):
+    def main(self, expr, init_addr, debug=0):
+        self.debug = debug
         info = Functor()
         info.visit(expr)
         self.info_memo = info.memo
@@ -198,9 +199,13 @@ class GraphPlanMemory(Functor):
             for i in range(len(expr.checked_type.tensors)):
                 storage_id = self._malloc(expr.checked_type.tensors[i], expr.prefix)
                 expr.checked_type.tensors[i].storage_id = storage_id
+            if self.debug:
+                print(expr.op.name, [i.checked_type.storage_id for i in new_args], "->", [i.storage_id for i in expr.checked_type.tensors])
         elif isinstance(expr.checked_type, Tensor):
             storage_id = self._malloc(expr.checked_type, expr.prefix)
             expr.checked_type.storage_id = storage_id
+            if self.debug:
+                print(expr.op.name, [i.checked_type.storage_id for i in new_args], "->", expr.checked_type.storage_id)
         else:
             print("infer_type first!")
             exit(-1)

@@ -15,7 +15,7 @@ class CodeGenTestHeadOps(CodeGenTestHead):
         enum_name = node["name"]
         id, offset = node["storage"][0]["id"], node["storage"][0]["offset"]
         address = self.storage.get_address(id, offset)
-        self.func_input.append("uint64_t %s = 0x%09x;" % (enum_name, address))
+        self.func_input.append("uint64_t %s = 0x%09x; // %d" % (enum_name, address, address & 0xffffffff))
         if enum_name in self.enum_nodes[0] + self.enum_nodes[2] + self.enum_nodes[3]:
             print("*WARNING* : Var或Const节点中存在同名元素，请检查")
             exit(-1)
@@ -33,7 +33,7 @@ class CodeGenTestHeadOps(CodeGenTestHead):
         enum_name = node["name"]
         id, offset = node["storage"][0]["id"], node["storage"][0]["offset"]
         address = self.storage.get_address(id, offset)
-        self.func_output.append("uint64_t %s = 0x%09x;" % (enum_name, address))
+        self.func_output.append("uint64_t %s = 0x%09x; // %d" % (enum_name, address, address & 0xffffffff))
         self.enum_nodes[1].append(enum_name)
 
     def gen_const(self, node):
@@ -44,13 +44,13 @@ class CodeGenTestHeadOps(CodeGenTestHead):
             print("*WARNING* : Var或Const节点中存在同名元素，请检查")
             exit(-1)
         if id[:3] == "ddr":
-            self.func_const_ddr.append("uint64_t %s = 0x%09x;" % (enum_name, address))
+            self.func_const_ddr.append("uint64_t %s = 0x%09x; // %d" % (enum_name, address, address & 0xffffffff))
             self.enum_nodes[2].append(enum_name)
         elif id[:3] == "hbm":
-            self.func_const_hbm.append("uint64_t %s = 0x%09x;" % (enum_name, address))
+            self.func_const_hbm.append("uint64_t %s = 0x%09x; // %d" % (enum_name, address, address & 0xffffffff))
             self.enum_nodes[3].append(enum_name)
         else:
-            self.func_const_ddr.append("uint64_t %s = 0x%09x;" % (enum_name, address))
+            self.func_const_ddr.append("uint64_t %s = 0x%09x; // %d" % (enum_name, address, address & 0xffffffff))
             self.enum_nodes[2].append(enum_name)
         for n in node["shape"]:
             if isinstance(n, ne.Expr):
