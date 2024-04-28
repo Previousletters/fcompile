@@ -46,6 +46,9 @@ def run_model_kvcache_show(client, input_ids, token, kvcache):
     attrs = np.array([token, kvcache], dtype="uint16").tobytes()
     attrs += input_ids.numpy().astype("uint16").tobytes()
     client.sendall(bytes(encode_command("rkvs", attrs), 'utf-8') + attrs)
+
+
+def get_next_ids(client):
     strClientData = client.recv(1024)
     ids = np.frombuffer(strClientData, dtype="uint16")
     ids_len = ids[0]
@@ -96,9 +99,11 @@ def main_kvcache_show(tokenizer, client):
         prompt = "[Round {}]\n\n问：{}\n\n答：".format(1, query)
         inputs = tokenizer([prompt], return_tensors="pt")
         print("FPGA: ", end="")
+        run_model_kvcache_show(client, inputs["input_ids"], inputs["input_ids"].shape[1], 0)
         while True:
-            state, ids_len, ids = run_model_kvcache_show(client, inputs["input_ids"], inputs["input_ids"].shape[1], 0)
+            state, ids_len, ids = get_next_ids(client)
             if state == 0:
+                print("")
                 break
             generated_text = tokenizer.decode(ids)
             print(generated_text, end="")
@@ -111,4 +116,5 @@ if __name__ == "__main__":
     client = socket.socket()
     client.connect(("10.20.72.156", 8123))
     print('连接到 FPGA ChatGLM2')
-    main_kvcache(tokenizer, client)
+    # main_kvcache(tokenizer, client)
+    main_kvcache_show(tokenizer, client)
