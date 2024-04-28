@@ -91,7 +91,10 @@ def MVMBNRel(args, attrs):
         return False, []
     oshape = [i for i in dshape]
     oshape[-1] = wshape[1]
-    return True, Tensor(oshape, dtype, device)
+    if attrs.get("arg_max", 0):
+        return True, Tuple([Tensor(oshape, dtype, device), Tensor(oshape, dtype, device)])
+    else:
+        return True, Tensor(oshape, dtype, device)
 
 
 Op.Register("accel.hbm.mvm_bn", MVMBNRel)

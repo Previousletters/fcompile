@@ -1,12 +1,13 @@
 #include <iostream>
 #include "lib.h"
-#include "chatglm_dynamic_control_0418_1636.h"
-#include "chatglm_without_kvcache_block_28_0416_1618.h"
+//#include "chatglm_dynamic_control_0418_1636.h"
+#include "chatglm_with_kvcache_28_0422_2029.h"
+#include "chatglm_dynamic_control_0422_2029.h"
 
 int main(void) {
     HANDLE device0, device1;
-    chatglm_dynamic_control_0418_1636(device0, 19, 0);
-    chatglm_without_kvcache_block_28_0416_1618(device1);
+    chatglm_dynamic_control_0422_2029(device0, 20, 1);
+    chatglm_with_kvcache_28_0422_2029(device1);
     if (device0.size() != device1.size()) {
         return 1;
     } else {

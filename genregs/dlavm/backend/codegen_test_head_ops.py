@@ -64,9 +64,10 @@ class CodeGenTestHeadOps(CodeGenTestHead):
         self.step_id += 1
         op_name, ddr_id, offset = node["op_name"], node["storage"][0]["id"], node["storage"][0]["offset"]
         func_op_name = f"step{self.step_id}"
-        self.func_inits.append(f"void {func_op_name} (HANDLE device) " + "{")
-        self.func_inits.append(f"// {op_name} accel operator node, storage data in {ddr_id} with {offset} offset")
-        self.func_inits.append("""#ifdef REGS_DEBUG
+        tp_func_inits = []
+        tp_func_inits.append(f"void {func_op_name} (HANDLE device) " + "{")
+        tp_func_inits.append(f"// {op_name} accel operator node, storage data in {ddr_id} with {offset} offset")
+        tp_func_inits.append("""#ifdef REGS_DEBUG
 LARGE_INTEGER start_run;
 LARGE_INTEGER stop_run;
 LARGE_INTEGER freq;
@@ -75,19 +76,34 @@ QueryPerformanceFrequency(&freq);
 QueryPerformanceCounter(&start_run);
 for (int i = 0; i < 1000; i=i+1) {
 #endif""")
+        tp_dynamic_var = ["device"]
         for reg in node["csb_regs"]:
             if reg[0] == 1:
-                self.func_inits.append(f"{self.tab}CSB_Write(device, {reg[1]}, {reg[2]});")
+                data = reg[2]
+                if isinstance(reg[2], ne.Expr):
+                    for var in reg[2].get_vars():
+                        source = f"int {var[0]}"
+                        if source not in self.dynamic_var:
+                            self.dynamic_var.append(source)
+                        if var[0] not in tp_dynamic_var:
+                            tp_dynamic_var.append(var[0])
+                    data = reg[2].export("cpp")
+                tp_func_inits.append(f"{self.tab}CSB_Write(device, {reg[1]}, {data});")
             elif reg[0] == 0:
-                self.func_inits.append(f"{self.tab}while(CSB_Read(device, {reg[1]}) != {reg[2]}) " + "{}")
-        self.func_inits.append("""#ifdef REGS_DEBUG
+                tp_func_inits.append(f"#ifdef PRINT_STEP\nprintf(\"{func_op_name}!\\n\");\n#endif")
+                tp_func_inits.append(f"{self.tab}while(CSB_Read(device, {reg[1]}) != {reg[2]}) " + "{}")
+        tp_func_inits.append("""#ifdef REGS_DEBUG
 }
 QueryPerformanceCounter(&stop_run);
 time_sec0 = (unsigned long long)(stop_run.QuadPart - start_run.QuadPart) / (double)freq.QuadPart;
 printf("%(op_name)s run time     = %%fs(1000 times), %%fs(1 times) \\n",time_sec0, time_sec0/1000);
 #endif""" % {"op_name": op_name})
-        self.func_inits.append("}\n")
-        self.func_body.append(f"{self.tab}{func_op_name}(device);")
+        tp_dynamic_str_0 = ", ".join(["HANDLE " + tp_dynamic_var[i] if i == 0 else "int " + tp_dynamic_var[i] for i in range(len(tp_dynamic_var))])
+        tp_dynamic_str_1 = ", ".join(tp_dynamic_var)
+        tp_func_inits.append("}\n")
+        tp_func_inits[0] = f"void {func_op_name} ({tp_dynamic_str_0}) " + "{"
+        self.func_inits += tp_func_inits
+        self.func_body.append(f"{self.tab}{func_op_name}({tp_dynamic_str_1});")
 
     def to_string(self):
         super().to_string()

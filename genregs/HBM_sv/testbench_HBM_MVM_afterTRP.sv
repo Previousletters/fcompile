@@ -1,6 +1,6 @@
 `include "TOP_defines.vh"
-`define KV_cache_mode 0
-`define Token 19
+`define KV_cache_mode 1
+`define Token 20
 `define Feature_Head 32
 `define Weight_Head 2
 
@@ -31,7 +31,10 @@
 
 `define RELU_EN 0
 
-`define DAT_IN_BASE_ADDR 32'h000_0000
+`define DAT_IN_BASE_ADDR  32'd11307008
+`define WT_BASE_ADDR      32'd12355584
+`define DAT_OUT_BASE_ADDR 32'd12421120//(`KV_cache_mode==1?`DAT_IN_BASE_ADDR:32'h800_0000) //
+
 `define DAT_IN_BATCH_STRIDE (`Pixel_Data_Bytes*`Win*`Hin*`CHin_div_Tout)
 `define DAT_IN_SURFACE_STRIDE (`Pixel_Data_Bytes*`Win*`Hin)
 `define DAT_IN_HEAD_STRIDE (`Pixel_Data_Bytes*`Win*`Hin*`CHin_div_Tout)
@@ -42,9 +45,7 @@
 `define WT_CHin_Padding_with_Tin (`WT_CHin_div_Tin*`Tin)
 `define WT_CHin_div_Tblock ((`WT_CHin_Padding_with_Tin+`T_quant_block-1)/`T_quant_block)
 
-`define WT_BASE_ADDR 32'h200_0000
 
-`define DAT_OUT_BASE_ADDR 32'h800_0000//(`KV_cache_mode==1?`DAT_IN_BASE_ADDR:32'h800_0000) //
 `define DAT_OUT_BATCH_STRIDE (`Pixel_Data_Bytes*`Wout*`Hout*`CHout_div_Tout)
 `define DAT_OUT_SURFACE_STRIDE (`Pixel_Data_Bytes*`Wout*`Hout)
 `define DAT_OUT_LINE_STRIDE (`Pixel_Data_Bytes*`Wout)

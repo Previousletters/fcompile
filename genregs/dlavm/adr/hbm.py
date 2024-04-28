@@ -97,17 +97,17 @@ def mvm_afterF2W(data, weight, padding=1, kvcache=1, **kwattrs):
     return Call(Op.Get("accel.hbm.mvm_afterF2W"), [data, weight], attrs)
 
 
-def add(data0, data1):
-    attrs = {}
+def add(data0, data1, **kwattrs):
+    attrs = {**kwattrs}
     return Call(Op.Get("accel.hbm.add"), [data0, data1], attrs)
 
 
-def mul(data0, data1):
-    attrs = {}
+def mul(data0, data1, **kwattrs):
+    attrs = {**kwattrs}
     return Call(Op.Get("accel.hbm.mul"), [data0, data1], attrs)
 
 
-def layer_norm(data, weight, rms=0, **kwattrs):
+def layer_norm(data, weight, rms=1, **kwattrs):
     attrs = {
         "rms": rms,
         **kwattrs

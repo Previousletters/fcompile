@@ -46,18 +46,23 @@ def chatglm_block_dynamic(data, pos_weight, silu_weight, token, index, arg_max, 
     atten_out = adr.reshape(atten_out, [1, token, 4096])
 
     res_out = adr.hbm.mvm_bn_res(atten_out, atten_weight, atten_bias, data, kvcache=kvcache)
-    post_atten = adr.hbm.layer_norm(res_out, post_k_bias, rms=0, kvcache=kvcache)
+    '''
+    # --------------------------------------------
+    res_out = adr.hbm.mvm_bn(atten_out, atten_weight, atten_bias, kvcache=kvcache, kvcache_offset=kvcache)
+    res_out = adr.hbm.add(res_out, data, kvcache=kvcache)
+    # --------------------------------------------
+    '''
+    post_atten = adr.hbm.layer_norm(res_out, post_k_bias, rms=1, kvcache=kvcache)
     dense_4h_out0 = adr.hbm.mvm_bn(post_atten, h_to_4h_wt_0, h_to_4h_bn_0, kvcache=kvcache)
     act_output = adr.hbm.activate(dense_4h_out0, silu_weight, kvcache=kvcache)
     dense_4h_out = adr.hbm.mvm_bn_res(post_atten, h_to_4h_wt_1, h_to_4h_bn_1, act_output, res_mul=1, kvcache=kvcache)
     if arg_max:
         output = adr.hbm.mvm_bn_res(dense_4h_out, dense_4h_to_4h_wt, dense_4h_to_4h_bn, res_out, kvcache=kvcache)
         ln_k_bias = adr.hbm.const_ddr("Final_LN_k_bias", None, [4096*2])
-        ln_out = adr.hbm.layer_norm(output, ln_k_bias, rms=1, kvcache=kvcache)
+        ln_out = adr.hbm.layer_norm(output, ln_k_bias, rms=1, kvcache=1, kvcache_offset=ne.If(kvcache, 0, 1))
         output_wt = adr.hbm.const_hbm("Output_Layer_wt", None, [4096, 65024])
         output_bn = adr.hbm.const_ddr("Output_Layer_bn", None, [65024*2])
-        output_res = adr.hbm.const_ddr("Output_Layer_res", None, [1, 128, 65024])
-        mvm_out = adr.hbm.mvm_bn_res(ln_out, output_wt, output_bn, output_res, arg_max=arg_max, kvcache=kvcache)
+        mvm_out = adr.hbm.mvm_bn(ln_out, output_wt, output_bn, arg_max=arg_max, kvcache=1)
         arg_out = mvm_out[1]
         return arg_out
     else:
@@ -65,13 +70,13 @@ def chatglm_block_dynamic(data, pos_weight, silu_weight, token, index, arg_max, 
         return output
 
 
-def chatglm_main_dynamic(debug, addr, block_size=28, without_arg_max=1):
+def chatglm_main_dynamic(debug, block_size=28, without_arg_max=1, device=dlavm.device.HBM0321):
     sys.setrecursionlimit(3000)  # 将默认的递归深度修改为3000
-    token = ne.Var("token", 128)
-    name = "chatglm_dynamic_control"
+    token = ne.Var("token", device.MAX_TOKEN)
+    name = f"chatglm_dynamic_control_{device.MAX_TOKEN}"
     if debug:
         name += "_" + strftime('%m%d_%H%M', localtime())
-    data = adr.hbm.var_ddr("data", [1, token, 4096])
+    data = adr.hbm.var_ddr("data_in", [1, token, 4096])
     pos_weight = adr.hbm.const_ddr("pos_emb", None, [1, 128*2, 64])
     pos_weight.prefix = "global"
     silu_weight = adr.hbm.const_ddr("silu_act", None, [32*128], adr.DataEnum.fp16)
@@ -81,26 +86,20 @@ def chatglm_main_dynamic(debug, addr, block_size=28, without_arg_max=1):
         data = chatglm_block_dynamic(data, pos_weight, silu_weight, token, n, n==block_size-1+without_arg_max, kvcache=kvcache)
     output = data
 
-    output = infer_type(output, dlavm.device.HBM0321)
-    print(output)
-    if addr:
-        expr, storage = backend.graph_plan_memory(output, 0x200000000, 0x0)
-        print(expr)
-        print(storage)
-    else:
-        from dlavm.driver import config
-        config.tb_sim_path = "~/accel/hbm0321/HBM_sv"
-        config.tb_debug = 0
-        expr, source, storage, _ = backend.csb_test_head(output, name, {"global": 0x200000000, "weight": "global", "cache": "weight", "runtime": "cache", "hbm": 0x0})
-        save_path = os.path.join("test", name + ".h")
-        with open(save_path, "w") as f:
-            f.write(source)
-        print(expr)
-        print(storage)
-        print(save_path)
+    output = infer_type(output, device)
+    from dlavm.driver import config
+    config.tb_sim_path = "~/accel/hbm0321/HBM_sv"
+    config.tb_debug = 0
+    expr, source, storage, _ = backend.csb_test_head_ops(output, name, {"global": 0x200000000, "weight": "global", "cache": "weight", "runtime": "cache", "hbm": 0x0})
+    save_path = os.path.join("test", name + ".h")
+    with open(save_path, "w") as f:
+        f.write(source)
+    print(expr)
+    print(storage)
+    print(save_path)
 
 
-def chatglm_block(data, pos_weight, silu_weight, token, index, arg_max, kvcache):
+def chatglm_block(data, pos_weight, silu_weight, token, index, arg_max, kvcache, max_token):
     prefix = "BLOCK%02d_" % index
     ln_k_bias = adr.hbm.const_ddr(prefix + "ln_k_bias", None, [4096*2])
     qkv_weight = adr.hbm.const_hbm(prefix + "qkv_weight", None, [4096, 128*36])
@@ -116,182 +115,101 @@ def chatglm_block(data, pos_weight, silu_weight, token, index, arg_max, kvcache)
     dense_4h_to_4h_bn = adr.hbm.const_ddr(prefix + "dense_4h_to_h_bn", None, [4096*2])
 
     ln_out = adr.hbm.layer_norm(data, ln_k_bias, rms=1, kvcache=kvcache)
-    ln_out = adr.realloc(ln_out, [1, 128, 4096])
+    ln_out = adr.realloc(ln_out, [1, max_token, 4096])
 
     qkv_data = adr.hbm.mvm_bn(ln_out, qkv_weight, qkv_bn, padding=1, kvcache=kvcache)
     qkv_data.prefix = "cache"
-    qkv_data = adr.realloc(qkv_data, [1, 128, 36*128])
-    qkv_data = adr.reshape(qkv_data, [36, 128, 128], force=1)
+    qkv_data = adr.realloc(qkv_data, [1, max_token, 36*128])
+    qkv_data = adr.reshape(qkv_data, [36, max_token, 128], force=1)
     qkv_data = adr.split(qkv_data, 0, [34, 2])
     qk_data = adr.reshape(qkv_data[0], [34, token, 128], force=1)
     v_data = adr.reshape(qkv_data[1], [2, token, 128], force=1)
 
     qk_data = adr.hbm.pos_emb(qk_data, pos_weight, kvcache=kvcache)
     qk_data.prefix = "cache"
-    qk_data = adr.realloc(qk_data, [34, 128, 128])
-    qk_data = adr.reshape(qk_data, [34, 128, 128], force=1)
+    qk_data = adr.realloc(qk_data, [34, max_token, 128])
+    qk_data = adr.reshape(qk_data, [34, max_token, 128], force=1)
     qk_data = adr.split(qk_data, 0, [32, 2])
     q_data = adr.reshape(qk_data[0], [32, token, 128], force=1)
     k_data = adr.reshape(qk_data[1], [2, token, 128], force=1)
     atten_out = adr.hbm.mvm_afterTRP(q_data, k_data, kvcache=kvcache)
     atten_out.prefix = "cache"
-    atten_out = adr.realloc(atten_out, [32, 128, 128])
+    atten_out = adr.realloc(atten_out, [32, max_token, 128])
     atten_out = adr.reshape(atten_out, [32, token, 128], force=1)
     atten_out = adr.hbm.softmax(atten_out, kvcache=kvcache)
     atten_out.prefix = "cache"
-    atten_out = adr.realloc(atten_out, [32, 128, 128])
+    atten_out = adr.realloc(atten_out, [32, max_token, 128])
     atten_out = adr.reshape(atten_out, [32, token, 128], force=1)
     atten_out = adr.hbm.mvm_afterF2W(atten_out, v_data, kvcache=kvcache)
-    atten_out = adr.realloc(atten_out, [32, 128, 128])
+    atten_out = adr.realloc(atten_out, [32, max_token, 128])
     atten_out = adr.reshape(atten_out, [1, token, 4096], force=1)
 
     res_out = adr.hbm.mvm_bn_res(atten_out, atten_weight, atten_bias, data, kvcache=kvcache)
-    res_out = adr.realloc(res_out, [1, 128, 4096])
+    res_out = adr.realloc(res_out, [1, max_token, 4096])
 
-    post_atten = adr.hbm.layer_norm(res_out, post_k_bias, rms=0, kvcache=kvcache)
-    post_atten = adr.realloc(post_atten, [1, 128, 4096])
+    post_atten = adr.hbm.layer_norm(res_out, post_k_bias, rms=1, kvcache=kvcache)
+    post_atten = adr.realloc(post_atten, [1, max_token, 4096])
 
     dense_4h_out0 = adr.hbm.mvm_bn(post_atten, h_to_4h_wt_0, h_to_4h_bn_0, kvcache=kvcache)
-    dense_4h_out0 = adr.realloc(dense_4h_out0, [1, 128, 13696])
+    dense_4h_out0 = adr.realloc(dense_4h_out0, [1, max_token, 13696])
 
     act_output = adr.hbm.activate(dense_4h_out0, silu_weight, kvcache=kvcache)
-    act_output = adr.realloc(act_output, [1, 128, 13696])
+    act_output = adr.realloc(act_output, [1, max_token, 13696])
 
     dense_4h_out = adr.hbm.mvm_bn_res(post_atten, h_to_4h_wt_1, h_to_4h_bn_1, act_output, res_mul=1, kvcache=kvcache)
-    dense_4h_out = adr.realloc(dense_4h_out, [1, 128, 13696])
+    dense_4h_out = adr.realloc(dense_4h_out, [1, max_token, 13696])
     if arg_max:
         output = adr.hbm.mvm_bn_res(dense_4h_out, dense_4h_to_4h_wt, dense_4h_to_4h_bn, res_out, kvcache=kvcache)
-        output = adr.realloc(output, [1, 128, 4096])
+        output = adr.realloc(output, [1, max_token, 4096])
+        # output = adr.split(output, 1, [18, 1])
         ln_k_bias = adr.hbm.const_ddr("Final_LN_k_bias", None, [4096*2])
         ln_out = adr.hbm.layer_norm(output, ln_k_bias, rms=1, kvcache=kvcache)
-        ln_out = adr.realloc(ln_out, [1, 128, 4096])
+        ln_out = adr.realloc(ln_out, [1, max_token, 4096])
         output_wt = adr.hbm.const_hbm("Output_Layer_wt", None, [4096, 65024])
         output_bn = adr.hbm.const_ddr("Output_Layer_bn", None, [65024*2])
-        output_res = adr.hbm.const_ddr("Output_Layer_res", None, [1, 128, 65024])
-        mvm_out = adr.hbm.mvm_bn_res(ln_out, output_wt, output_bn, output_res, arg_max=arg_max, kvcache=kvcache)
-        arg_out = adr.realloc(mvm_out[1], [1, 128, 4096])
+        mvm_out = adr.hbm.mvm_bn(ln_out, output_wt, output_bn, arg_max=arg_max, kvcache=1, kvcache_offset=1)
+        arg_out = adr.realloc(mvm_out[1], [1, max_token, 4096])
         return arg_out
     else:
         output = adr.hbm.mvm_bn_res(dense_4h_out, dense_4h_to_4h_wt, dense_4h_to_4h_bn, res_out, kvcache=kvcache)
-        output = adr.realloc(output, [1, 128, 4096])
+        output = adr.realloc(output, [1, max_token, 4096])
         return output
 
 
-def chatglm_main(kvcache, debug, addr, token=19, block_size=2, without_arg_max=1):
+def chatglm_main(kvcache, debug, token=19, block_size=2, without_arg_max=1, device=dlavm.device.HBM0321):
     sys.setrecursionlimit(3000)  # 将默认的递归深度修改为3000
     if kvcache:
-        token = 1
         name = f"chatglm_with_kvcache_{block_size}"
     else:
         name = f"chatglm_without_kvcache_block_{block_size}"
     if debug:
         name += "_" + strftime('%m%d_%H%M', localtime())
-    #token = ne.Var("token", 19)
-    data = adr.hbm.var_ddr("data", [1, token, 4096])
+
+    data = adr.hbm.var_ddr("data_in", [1, token, 4096])
     pos_weight = adr.hbm.const_ddr("pos_emb", None, [1, 128*2, 64])
     pos_weight.prefix = "global"
     silu_weight = adr.hbm.const_ddr("silu_act", None, [32*128], adr.DataEnum.fp16)
     silu_weight.prefix = "global"
+    max_token = device.MAX_TOKEN
     for n in range(block_size):
-        data = adr.realloc(data, [1, 128, 4096])
-        data = chatglm_block(data, pos_weight, silu_weight, token, n, n==block_size-1+without_arg_max, kvcache=kvcache)
+        data = adr.realloc(data, [1, max_token, 4096])
+        data = chatglm_block(data, pos_weight, silu_weight, token, n, n==block_size-1+without_arg_max, kvcache=kvcache, max_token=max_token)
     output = data
 
-    output = infer_type(output, dlavm.device.HBM0321)
-    print(output)
-    if addr:
-        expr, storage = backend.graph_plan_memory(output, {"global": 0x200000000, "weight": "global", "cache": "weight", "runtime": "cache", "hbm": 0x0})
-        print(expr)
-        print(storage)
-    else:
-        from dlavm.driver import config
-        config.tb_sim_path = "~/accel/hbm0321/HBM_sv"
-        config.tb_debug = 0
-        expr, source, storage, _ = backend.csb_test_head_ops(output, name, {"global": 0x200000000, "weight": "global", "cache": "weight", "runtime": "cache", "hbm": 0x0})
-        save_path = os.path.join("test", name + ".h")
-        with open(save_path, "w") as f:
-            f.write(source)
-        print(expr)
-        print(storage)
-        print(save_path)
-
-
-def test():
-    token = 19
-    name = "PosEmb_afterTRP"
-    data = adr.hbm.var_ddr("data", [34, token, 128])
-
-    pos_weight = adr.hbm.const_ddr("pos_emb", None, [1, 128, 64])
-    output = adr.hbm.pos_emb(data, pos_weight)
-    output = adr.reshape(output, [1, token, 34*128])
-    output = adr.split(output, -1, [32*128, 2*128])
-    q_data = adr.reshape(output[0], [32, token, 128])
-    k_data = adr.reshape(output[1], [2, token, 128])
-    output = adr.hbm.mvm_afterTRP(q_data, k_data)
-
-    output = infer_type(output, dlavm.device.HBM0321)
-    print(output)
+    output = infer_type(output, device)
     from dlavm.driver import config
-    config.tb_sim_path = "/home/previous/accel/hbm0321/HBM_sv"
-    config.tb_debug = 1
-    expr, source, storage, _ = backend.testbench_test_head(output, name, 0x200000000, 0x0)
+    config.tb_sim_path = "~/accel/hbm0321/HBM_sv"
+    config.tb_debug = 0
+    expr, source, storage, _ = backend.csb_test_head_ops(output, name, {"global": 0x200000000, "weight": "global", "cache": "weight", "runtime": "cache", "hbm": 0x0})
     save_path = os.path.join("test", name + ".h")
     with open(save_path, "w") as f:
         f.write(source)
     print(expr)
     print(storage)
-    print(json.dumps(config.tb_macro_log,indent=3,ensure_ascii=False))
     print(save_path)
 
 
-def atten_main(kvcache, debug, addr):
-    sys.setrecursionlimit(3000)  # 将默认的递归深度修改为3000
-    # token = ne.Var("token", 19)
-    if kvcache:
-        name = "atten_with_kvcache"
-    else:
-        name = "atten_without_kvcache"
-    if debug:
-        name += "_" + strftime('%m%d_%H%M', localtime())
-
-    qk_data = adr.hbm.var_ddr("qk_data", [34, 128, 128])
-    v_data = adr.hbm.var_ddr("v_data", [2, 128, 128])
-    pos_weight = adr.hbm.const_ddr("pos_emb", None, [1, 128, 64])
-
-    output = adr.realloc(qk_data, [34, 128, 128])
-    output = adr.reshape(output, [34, 128, 128])
-    output = adr.hbm.pos_emb(output, pos_weight, kvcache=kvcache)
-    output = adr.split(output, 0, [32, 2])
-    output = adr.hbm.mvm_afterTRP(output[0], output[1], kvcache=kvcache)
-    output = adr.hbm.softmax(output, kvcache=kvcache)
-    output = adr.realloc(output, [32, 130, 128])
-    output = adr.reshape(output, [32, 130, 128], force=1)
-    output = adr.hbm.mvm_afterF2W(output, v_data, kvcache=kvcache)
-    output = adr.reshape(output, [32, 128, 128], force=1)
-
-    output = infer_type(output, dlavm.device.HBM0321)
-    print(output)
-    if addr:
-        expr, storage = backend.graph_plan_memory(output, 0x200000000, 0x0)
-        print(expr)
-        print(storage)
-    else:
-        from dlavm.driver import config
-        config.tb_sim_path = "/home/previous/accel/hbm0321/HBM_sv"
-        config.tb_debug = 1
-        expr, source, storage, _ = backend.testbench_test_head(output, name, 0x200000000, 0x0)
-        save_path = os.path.join("test", name + ".h")
-        with open(save_path, "w") as f:
-            f.write(source)
-        print(expr)
-        print(storage)
-        print(json.dumps(config.tb_macro_log, indent=3, ensure_ascii=False))
-        print(save_path)
-
-
 if __name__ == "__main__":
-    # chatglm_main(kvcache=ne.Var("kvcache"), debug=1, addr=0)
-    # chatglm_main(kvcache=0, debug=1, addr=0, block_size=2, without_arg_max=1)
-    chatglm_main_dynamic(debug=1, addr=0, block_size=28, without_arg_max=0)
-    # atten_main(kvcache=0, debug=1, addr=0)
-    # test()
+    device = dlavm.device.HBM0424
+    # chatglm_main(kvcache=0, debug=1, block_size=28, without_arg_max=0, token=19, device=device)
+    chatglm_main_dynamic(debug=1, block_size=28, without_arg_max=0, device=device)

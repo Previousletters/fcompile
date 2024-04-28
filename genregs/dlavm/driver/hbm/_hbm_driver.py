@@ -35,12 +35,26 @@ def MVMBNDriver(args, output, attrs):
                 "log2_WT_base_addr_Bank_Step": attrs["log2_step"], "Token": dshape[1],
                 "Head": dshape[0], 
                 "DAT_OUT_LINE_STRIDE": dtensor[0].device.Pixel_Data_Bytes*dtensor[0].device.MAX_TOKEN,
-                "DAT_OUT_SURFACE_STRIDE": dtensor[0].device.Pixel_Data_Bytes*dtensor[0].device.MAX_TOKEN*dshape[0],
+                "DAT_OUT_SURFACE_STRIDE": dtensor[0].device.Pixel_Data_Bytes*dtensor[0].device.MAX_TOKEN,
                 "Width_in": wshape[0], "Width_out": wshape[1],
                 "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
                 "HBM00_WT_BASE_ADDR":  waddrs & 0xffffffff,
                 "BN_BASE_ADDR":  baddrs & 0xffffffff,
                 "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
+                "device": args[0][0].device,
+                **attrs,
+            }
+        elif attrs.get("arg_max", 0):
+            oaddrs, aaddrs = output[0][1], output[1][1]
+            define = {
+                "log2_WT_base_addr_Bank_Step": attrs["log2_step"], "Token": dshape[1],
+                "Head": dshape[0], 
+                "Width_in": wshape[0], "Width_out": wshape[1],
+                "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
+                "HBM00_WT_BASE_ADDR":  waddrs & 0xffffffff,
+                "BN_BASE_ADDR":  baddrs & 0xffffffff,
+                "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
+                "AUGMAX_OUT_ADDR": aaddrs & 0xffffffff,
                 "device": args[0][0].device,
                 **attrs,
             }
@@ -204,7 +218,19 @@ Op.Get("accel.hbm.mvm_afterF2W").attrs["driver"] = MVMafterF2WDriver
 
 
 def AddDriver(args, output, attrs):
-    return []
+    dtensor, btensor = args[0], args[1]
+    dshape, bshape = dtensor[0].shape, btensor[0].shape
+    daddrs, baddrs, oaddrs = dtensor[1], btensor[1], output[1]
+    define = {
+        "Token": dshape[0]*dshape[1], "Width_in": dshape[2],
+        "Mode": 0,
+        "A_DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
+        "B_DAT_IN_BASE_ADDR":  baddrs & 0xffffffff,
+        "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
+        "device": args[0][0].device,
+        **attrs
+    }
+    return tasks.EleminateWise(**define)
 
 Op.Get("accel.hbm.add").attrs["cfg_id"] = 0b00000001
 Op.Get("accel.hbm.add").attrs["driver"] = AddDriver

@@ -8,6 +8,7 @@ __version__ = "HBM0321"
 
 MVM_MODE = 0b00100011111
 MVMBN_MODE = 0b01100011111
+MVMBNARG_MODE = 0b101100011111
 MVMBNRES_MODE = 0b11100011111
 MVMBNRESARG_MODE = 0b111100011111
 
@@ -16,8 +17,9 @@ def MVMBasic(**kwargs):
     device = kwargs["device"]
     Token = kwargs["Token"]
     kvcache = kwargs.get("kvcache", 0)
+    kvcache_offset = kwargs.get("kvcache_offset", 0)
     Head = kwargs.get("Head", 1)
-    Padding = kwargs.get("Padding", 0)
+    Padding = kwargs.get("padding", 0)
     Width_in = kwargs["Width_in"]
     Width_out = kwargs["Width_out"]
     EW_MODE = kwargs.get("EW_MODE", 0)
@@ -72,7 +74,12 @@ def MVMBasic(**kwargs):
     WT_SIZE_IN_BYTES = (((CHout_Padding*WT_CHin_Padding_with_Tin*WT_DW)>>3)+((WT_scale_bits)>>3))
 
     if AUGMAX_OUT_ADDR is not None:
-        mode = MVMBNRESARG_MODE
+        if Res_Add_BASE_ADDR is not None:
+            mode = MVMBNRESARG_MODE
+        elif BN_BASE_ADDR is not None:
+            mode = MVMBNARG_MODE
+        else:
+            raise RuntimeError("MVM does NOT support ArgMax")
     elif Res_Add_BASE_ADDR is not None:
         mode = MVMBNRES_MODE
     elif BN_BASE_ADDR is not None:
@@ -89,16 +96,18 @@ def MVMBasic(**kwargs):
     min_dat_depth=dat_num_per_row
     min_wt_depth=WT_CHin_div_Tin*((Tin*MAX_WT_DW)//HBM_AXI_DATA_WIDTH)*(Tout//HBM_Port)
 
-    # if min_dat_depth>device.DAT_BRAM_DEPTH:
-    #     print("=======================================================================")
-    #     print("=============== FPGA DAT BRAM DEPTH not enough!    ====================")
-    #     print("=======================================================================")
-    #     exit(-1)
-    # if min_wt_depth>(device.WT_BRAM_DEPTH*2):
-    #     print("=======================================================================")
-    #     print("================ FPGA WT BRAM DEPTH not enough!    ====================")
-    #     print("=======================================================================")
-    #     exit(-1)
+    '''
+    if min_dat_depth>device.DAT_BRAM_DEPTH:
+        print("=======================================================================")
+        print("=============== FPGA DAT BRAM DEPTH not enough!    ====================")
+        print("=======================================================================")
+        exit(-1)
+    if min_wt_depth>(device.WT_BRAM_DEPTH*2):
+        print("=======================================================================")
+        print("================ FPGA WT BRAM DEPTH not enough!    ====================")
+        print("=======================================================================")
+        exit(-1)
+    '''
 
     out_ch_slice=((WT_BRAM_DEPTH*2)//min_wt_depth)*Tout
     BN_FIFO_bits=AXI_BN_WIDTH*BN_FIFO_DEP*BN_FIFO_NUM
@@ -121,9 +130,19 @@ def MVMBasic(**kwargs):
     wt_size_in_bits = WT_SIZE_IN_BYTES // CHout_Padding * 8
     CHout = out_ch_slice
     CHout_last = out_ch_slice_last
+    '''
+    if kvcache_offset:
+        DAT_IN_BASE_ADDR += (Token-1)*Pixel_Data_Bytes
+        DAT_IN_LINE_STRIDE = Pixel_Data_Bytes * Token
+        DAT_IN_SURFACE_STRIDE = Pixel_Data_Bytes * Token * Hin
+    '''
+
     if Padding:
         feature_out_base = If(kvcache, DAT_OUT_BASE_ADDR + (Token-1)*Pixel_Data_Bytes, DAT_OUT_BASE_ADDR)
     else:
+        DAT_IN_BASE_ADDR = If(kvcache_offset, DAT_IN_BASE_ADDR + (Token-1)*Pixel_Data_Bytes, DAT_IN_BASE_ADDR)
+        DAT_IN_LINE_STRIDE = If(kvcache_offset, Pixel_Data_Bytes * Token, DAT_IN_LINE_STRIDE)
+        DAT_IN_SURFACE_STRIDE = If(kvcache_offset, Pixel_Data_Bytes * Token * Hin, DAT_IN_SURFACE_STRIDE)
         feature_out_base = DAT_OUT_BASE_ADDR
 
     regs = []
@@ -160,11 +179,11 @@ def MVMBasic(**kwargs):
     CSB_Write(regs, 30,DAT_IN_LINE_STRIDE)
     CSB_Write(regs, 31,DAT_OUT_SURFACE_STRIDE)
     CSB_Write(regs, 32,DAT_OUT_LINE_STRIDE)
-    if mode == MVMBNRESARG_MODE:
+    if AUGMAX_OUT_ADDR is not None:
         CSB_Write(regs, 60,AUGMAX_OUT_ADDR)
     CSB_Write(regs, 33,mode)
     
-    if mode == MVMBNRESARG_MODE:
+    if AUGMAX_OUT_ADDR is not None:
         CSB_Read(regs, 61, 1)
     else:
         CSB_Read(regs, 1, 1)
@@ -178,6 +197,7 @@ def LayerNorm(**kwargs):
     Head = kwargs.get("Head", 1)
     Width_in = kwargs["Width_in"]
     RMS_Norm = kwargs.get("RMS_Norm", 0)
+    kvcache_offset = kwargs.get("kvcache_offset", 0)
     DAT_OUT_LINE_STRIDE = kwargs.get("DAT_OUT_LINE_STRIDE")
     DAT_OUT_SURFACE_STRIDE = kwargs.get("DAT_OUT_SURFACE_STRIDE")
     DAT_IN_BASE_ADDR = kwargs.get("DAT_IN_BASE_ADDR")
@@ -218,6 +238,9 @@ def LayerNorm(**kwargs):
     if DAT_OUT_LINE_STRIDE is None or DAT_OUT_SURFACE_STRIDE is None:
         DAT_OUT_LINE_STRIDE = Pixel_Data_Bytes * Wout
         DAT_OUT_SURFACE_STRIDE = Pixel_Data_Bytes * Wout * Hout
+    DAT_IN_BASE_ADDR = If(kvcache_offset, DAT_IN_BASE_ADDR + (Token-1)*Pixel_Data_Bytes, DAT_IN_BASE_ADDR)
+    DAT_IN_LINE_STRIDE = If(kvcache_offset, Pixel_Data_Bytes * Token, DAT_IN_LINE_STRIDE)
+    DAT_IN_SURFACE_STRIDE = If(kvcache_offset, Pixel_Data_Bytes * Token * Hin, DAT_IN_SURFACE_STRIDE)
 
     ## Hardware Testbench
     CHin = CHin_Padding_with_Tout
@@ -246,6 +269,70 @@ def LayerNorm(**kwargs):
     CSB_Write(regs, Ln_reg_bias+16,                        0)
     CSB_Write(regs, Ln_reg_bias+17,                0b10_0000)
     CSB_Read(regs, Ln_reg_bias+1, 1)
+    return regs
+
+
+def EleminateWise(**kwargs):
+    device = kwargs["device"]
+    Token = kwargs["Token"]
+    kvcache = kwargs.get("kvcache", 0)
+    Mode = kwargs["Mode"]
+    Width_in = kwargs["Width_in"]
+    A_DAT_IN_BASE_ADDR = kwargs.get("A_DAT_IN_BASE_ADDR")
+    B_DAT_IN_BASE_ADDR = kwargs.get("B_DAT_IN_BASE_ADDR")
+    DAT_OUT_BASE_ADDR = kwargs.get("DAT_OUT_BASE_ADDR")
+
+    Tin = device.base_Tin
+    Tout = device.Tout
+    Pixel_Data_Bytes = device.Pixel_Data_Bytes
+    WT_DW = device.MAX_WT_DW
+    HBM_AXI_DATA_WIDTH = device.HBM_AXI_DATA_WIDTH
+    WT_CH_Tgroup = device.WT_CH_Tgroup
+    MAX_WT_DW = device.MAX_WT_DW
+    MAX_BN_DW = device.MAX_BN_DW
+    HBM_Port = device.HBM_Port
+    WT_BRAM_DEPTH = device.WT_BRAM_DEPTH
+    AXI_BN_WIDTH = device.AXI_BN_WIDTH
+    BN_FIFO_DEP = device.BN_FIFO_DEP
+    BN_FIFO_NUM = device.BN_FIFO_NUM
+    AXI_DAT_WIDTH = device.AXI_DAT_WIDTH
+    log2_AXI_BURST_LEN = device.log2_AXI_BURST_LEN
+
+    Win = If(kvcache, 1, Token)
+    Hin = 1
+    CHin = Width_in
+    CHout = CHin
+    Wout = kwargs.get("Wout", Win)
+    Hout = Hin
+    CHout_div_Tout = ((CHout + Tout - 1) // Tout)
+    CHin_div_Tout = ((CHin + Tout - 1) // Tout)
+    CHin_Padding_with_Tout = CHin_div_Tout * Tout
+    LN_num_per_AXI_DW = AXI_DAT_WIDTH // (2*MAX_BN_DW)
+    Tin_div_Tout = (Tin + Tout - 1) // Tout
+    CHout_Padding = CHout_div_Tout * Tout
+    DAT_IN_LINE_STRIDE = Pixel_Data_Bytes * Win
+    DAT_IN_SURFACE_STRIDE = Pixel_Data_Bytes * Win * Hin
+    DAT_OUT_LINE_STRIDE = Pixel_Data_Bytes * Wout
+    DAT_OUT_SURFACE_STRIDE = Pixel_Data_Bytes * Wout * Hout
+
+    ## Hardware Testbench
+    Elementwise_reg_bias = 128
+    
+    regs = []
+    CSB_Write(regs, Elementwise_reg_bias+2 , Mode         )
+    CSB_Write(regs, Elementwise_reg_bias+3 , A_DAT_IN_BASE_ADDR      )
+    CSB_Write(regs, Elementwise_reg_bias+4 , DAT_IN_SURFACE_STRIDE   )
+    CSB_Write(regs, Elementwise_reg_bias+5 , DAT_IN_LINE_STRIDE      )
+    CSB_Write(regs, Elementwise_reg_bias+6 , DAT_OUT_BASE_ADDR       )
+    CSB_Write(regs, Elementwise_reg_bias+7 , DAT_OUT_SURFACE_STRIDE  )
+    CSB_Write(regs, Elementwise_reg_bias+8 , DAT_OUT_LINE_STRIDE     )
+    CSB_Write(regs, Elementwise_reg_bias+9 , (CHin+Tout-1)//Tout     )
+    CSB_Write(regs, Elementwise_reg_bias+10, Hin                     )
+    CSB_Write(regs, Elementwise_reg_bias+11, Win                     )
+    CSB_Write(regs, Elementwise_reg_bias+12, B_DAT_IN_BASE_ADDR      )
+    CSB_Write(regs, Elementwise_reg_bias+13,                        0)
+    CSB_Write(regs, Elementwise_reg_bias+14,                0b00_0001)
+    CSB_Read(regs, Elementwise_reg_bias+1, 1)
     return regs
 
 
@@ -433,7 +520,7 @@ def MVM_afterF2W(**kwargs):
     Hin = Head
     CHin = MAX_CH_per_HEAD
     CHout = CHin
-    Wout = kwargs.get("Wout", Win)
+    Wout = If(kvcache, 1, Token)
     Hout = Hin
     CHout_div_Tout = ((CHout + Tout - 1) // Tout)
     CHin_div_Tout = ((CHin + Tout - 1) // Tout)
@@ -520,8 +607,8 @@ def Softmax(**kwargs):
     DAT_OUT_HEAD_STRIDE = Pixel_Data_Bytes * Wout * Hout * CHout_div_Tout
 
     # Hardware Testbench
-    feature_in_base=DAT_IN_BASE_ADDR
-    feature_out_base=DAT_OUT_BASE_ADDR
+    feature_in_base=If(kvcache, DAT_IN_BASE_ADDR+(Token-1)*Pixel_Data_Bytes, DAT_IN_BASE_ADDR)
+    feature_out_base=If(kvcache, DAT_OUT_BASE_ADDR+(Token-1)*Pixel_Data_Bytes, DAT_OUT_BASE_ADDR)
     Dynamic_Token = If(kvcache, 1, Token)
     Feature_Repeat_times_minus1=Feature_Head//MIN_WT_HEAD-1
     w_in=If(kvcache, AXI_BURST_LEN_SOFTMAX, Token)

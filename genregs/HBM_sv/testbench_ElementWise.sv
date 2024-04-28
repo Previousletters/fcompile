@@ -5,10 +5,10 @@
 `define BN_DW `MAX_BN_DW
 `define Tin (`base_Tin)
 
-`define Win 64
-`define Hin 5
-`define CHin 64
-`define ElementWise_Mode 1 //0: add, 1: minus, 2: mul
+`define Win 17
+`define Hin 1
+`define CHin 4096
+`define ElementWise_Mode 0 //0: add, 1: minus, 2: mul
 
 `define CHout `CHin
 `define Wout `Win

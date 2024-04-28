@@ -1,6 +1,6 @@
-# vsim -c -L work testbench_HBM_MVM_bn_res_Argmax -do "run -all; quit" 
-# Start time: 16:20:54 on Apr 16,2024
-# ** Note: (vsim-3812) Design is being optimized...
+# vsim -c -L work testbench_ElementWise -do "run -all; quit" 
+# Start time: 18:14:17 on Apr 24,2024
+# ** Note: (vsim-8009) Loading existing optimized design _opt
 # 
 # //  ModelSim SE-64 10.4 Dec  3 2014 
 # //
@@ -17,69 +17,27 @@
 # //  THE TRADE SECRETS ACT, 18 U.S.C. SECTION 1905.
 # //
 # Loading sv_std.std
-# Loading work.testbench_HBM_MVM_bn_res_Argmax(fast)
+# Loading work.testbench_ElementWise(fast)
 # run -all
-# Run software Finish
-# Map weight to HBM Finish
-# 
-# Total DAT_BRAM_NUM=1
-# 
-# Total  WT_BRAM_NUM=32
-# DAT_BRAM_DEPTH=2048, DAT_BRAM_WIDTH=       2048, min_dat_depth=608
-#  (WT_BRAM_DEPTH*2)=1024, WT_BRAM_WIDTH =        256, min_wt_depth=64
-#  WT_SCALE_BUF_DEPTH=256,  WT_SCALE_BUF_WIDTH=512
-# 
-# Wout=19, Hout=1, Chin=4096
-# CHout_Extend=     65024,    CHin_Padding_with_Tout=      4096
-# CHin_div_Tout=128, CHout_div_Tout=2032
-# WT_CHin_div_Tin=32, WT_CHin_Padding_with_Tin=4096
-# Pure_WT_SIZE_IN_BYTES=133169152
-# WT_Scale_SIZE_IN_BYTES=4161536
-# WT_SIZE_IN_BYTES=137330688
-# WT_NUM_DIV_TIN=2080768
-# min_wt_depth=64
-# total_bytes_if_reuse_wt=133169152,total_bytes_if_reuse_dat=155648
-# 
-# BN_FIFO_bits=65536,BN_FIFO_chout_num=2048
-# 
-# CH_out=65024,out_ch_slice=512,out_ch_slice_last=512,CHout_Split_Times_minus1=126
-# best_method=1
-# csb_rtl.append([1, 2, 4096])
-# csb_rtl.append([1, 3, 19])
-# csb_rtl.append([1, 4, 1])
-# csb_rtl.append([1, 5, 19])
-# csb_rtl.append([1, 6, 1])
-# csb_rtl.append([1, 7, 512])
-# csb_rtl.append([1, 8, 512])
-# csb_rtl.append([1, 9, 19])
-# csb_rtl.append([1, 10, 16777216])
-# csb_rtl.append([1, 11, 0])
-# csb_rtl.append([1, 12, 16896])
-# csb_rtl.append([1, 13, 134217728])
-# csb_rtl.append([1, 14, 126])
-# csb_rtl.append([1, 15, 8])
-# csb_rtl.append([1, 16, 0])
-# csb_rtl.append([1, 17, 0])
-# csb_rtl.append([1, 18, 0])
-# csb_rtl.append([1, 19, 0])
-# csb_rtl.append([1, 20, 0])
-# csb_rtl.append([1, 21, 1])
-# csb_rtl.append([1, 22, 1])
-# csb_rtl.append([1, 23, 1])
-# csb_rtl.append([1, 24, 1])
-# csb_rtl.append([1, 25, 0])
-# csb_rtl.append([1, 26, 67108864])
-# csb_rtl.append([1, 27, 100663296])
-# csb_rtl.append([1, 28, 0])
-# csb_rtl.append([1, 29, 1216])
-# csb_rtl.append([1, 30, 1216])
-# csb_rtl.append([1, 31, 1216])
-# csb_rtl.append([1, 32, 1216])
-# csb_rtl.append([1, 60, 50331648])
-# csb_rtl.append([1, 33, 3871])
-# csb_rtl.append([0, 61, 1])
-# Run hardware Finish
-# ** Note: $finish    : testbench_HBM_MVM_bn_res_Argmax.sv(181)
-#    Time: 40 ns  Iteration: 0  Instance: /testbench_HBM_MVM_bn_res_Argmax
-# End time: 16:20:57 on Apr 16,2024, Elapsed time: 0:00:03
+# RunElementwise_soft Finish
+# csb_rtl.append([1, 130, 0])
+# csb_rtl.append([1, 131, 0])
+# csb_rtl.append([1, 132, 1088])
+# csb_rtl.append([1, 133, 1088])
+# csb_rtl.append([1, 134, 134217728])
+# csb_rtl.append([1, 135, 1088])
+# csb_rtl.append([1, 136, 1088])
+# csb_rtl.append([1, 137, 128])
+# csb_rtl.append([1, 138, 1])
+# csb_rtl.append([1, 139, 17])
+# csb_rtl.append([1, 140, 16777216])
+# csb_rtl.append([1, 141, 0])
+# csb_rtl.append([1, 142, 1])
+# Elementwise_start!
+# csb_rtl.append([0, 129, 1])
+# Elementwise_wdma done!
+# RunElementwise_hardware Finish
+# ** Note: $finish    : testbench_ElementWise.sv(85)
+#    Time: 40 ns  Iteration: 0  Instance: /testbench_ElementWise
+# End time: 18:14:18 on Apr 24,2024, Elapsed time: 0:00:01
 # Errors: 0, Warnings: 0

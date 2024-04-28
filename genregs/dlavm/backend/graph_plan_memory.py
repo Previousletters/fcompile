@@ -135,7 +135,7 @@ class Storage:
 
 class GraphPlanMemory(Functor):
 
-    def main(self, expr, init_addr, debug=0):
+    def main(self, expr, init_addr, debug=1):
         self.debug = debug
         info = Functor()
         info.visit(expr)

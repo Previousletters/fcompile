@@ -32,7 +32,7 @@ class GraphCSBHead(Functor):
         if isinstance(checked_type, Tensor):
             self.nodes.append({
                 "node": "output",
-                "name": "output",
+                "name": "data_out",
                 "storage": self._wrap_storage(checked_type),
                 "shape": checked_type.shape,
             })
@@ -40,7 +40,7 @@ class GraphCSBHead(Functor):
             for num, tensor in enumerate(checked_type.tensors):
                 self.nodes.append({
                     "node": "output",
-                    "name": "output" + str(num),
+                    "name": "data_out" + str(num),
                     "storage": self._wrap_storage(tensor),
                     "shape": tensor.shape,
                 })

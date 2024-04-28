@@ -46,6 +46,7 @@ HBM_DLL int** WT_TRANS(int chin, int chout, int ch_size, int *wt, uint16_t *wt_F
                 {
                     int tmp = wt[((chin / 8)*(i*Tout+j*HBM_Port+k))+m];
                     /*
+                    int tmp = 0;
                     for(int p=0; p<8; p++)
                     {
                         if((i*Tout+j*HBM_Port+k<chout) && (m*8+p < chin))

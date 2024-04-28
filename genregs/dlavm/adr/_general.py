@@ -62,6 +62,15 @@ def SplitRel(args, attrs):
         for new_ch in new_chs:
             otensors.append(Tensor(tmp_shape + [new_ch], dtype, device))
         return True, Tuple(otensors)
+    else:
+        CHECK_ERROR(sum(attrs["new_chs"]) != dshape[attrs["axis"]], "Check attrs of split Error")
+        new_chs = attrs["new_chs"]
+        otensors = []
+        for new_ch in new_chs:
+            tmp_shape = [i for i in dshape]
+            tmp_shape[attrs["axis"]] = new_ch
+            otensors.append(Tensor(tmp_shape, dtype, device))
+        return True, Tuple(otensors)
     axis = attrs["axis"]
     return False, f"split attr axis={axis} is not support, 0 and -1 is available"
 
