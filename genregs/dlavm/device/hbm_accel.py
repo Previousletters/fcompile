@@ -19,6 +19,7 @@ class HBM(Accel):
     WT_quant_scale_DW = 16
     DAT_BRAM_NUM = 1
     HBM_Port = 32
+    log2_Bank_Step = 28
     WT_BRAM_NUM = HBM_Port
     AXI_BURST_LEN = Tout
     log2_AXI_BURST_LEN = log2_Tout
@@ -89,3 +90,10 @@ class HBM0424(HBM0321):
     name = "hbm_0424"
 
     MAX_TOKEN = 1024
+    MAX_CFG_NUM = 12
+
+
+class HBM0507(HBM0424):
+    name = "hbm_0507"
+
+    AUX_WT_BUF_DEPTH = 1024

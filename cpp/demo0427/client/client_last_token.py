@@ -27,8 +27,8 @@ def run_model(client, input_ids, token, kvcache):
     return int(state[0])
 
 
-def run_model_kvcache(client, input_ids, token, kvcache):
-    attrs = np.array([token, kvcache], dtype="uint16").tobytes()
+def run_model_kvcache(client, input_ids, token, kvcache, memory):
+    attrs = np.array([token, kvcache, memory], dtype="uint16").tobytes()
     attrs += input_ids.numpy().astype("uint16").tobytes()
     client.sendall(bytes(encode_command("rkvc", attrs), 'utf-8') + attrs)
     strClientData = client.recv(1024)
@@ -40,8 +40,8 @@ def run_model_kvcache(client, input_ids, token, kvcache):
     return int(state[0]), ids_len, ids
 
 
-def run_model_kvcache_show(client, input_ids, token, kvcache):
-    attrs = np.array([token, kvcache], dtype="uint16").tobytes()
+def run_model_kvcache_show(client, input_ids, token, kvcache, memory):
+    attrs = np.array([token, kvcache, memory], dtype="uint16").tobytes()
     attrs += input_ids.numpy().astype("uint16").tobytes()
     client.sendall(bytes(encode_command("rkvs", attrs), 'utf-8') + attrs)
 
@@ -55,49 +55,33 @@ def get_next_ids(client):
     return state, ids_len, ids
 
 
-def main_test_without_kvcache(toknizer, client):
-    query = "你好"
-    generated_text = ""
-
-    while True:
-        prompt = "[Round {}]\n\n问：{}\n\n答：".format(1, query) + generated_text
-        inputs = tokenizer([prompt], return_tensors="pt")
-        next_id = run_model(client, inputs["input_ids"], inputs["input_ids"].shape[1], 0)
-        if next_id == 2:
-            break
-        next_tokens = tokenizer.decode([next_id])
-        next_tokens = ' ' if len(next_tokens) == 0 else next_tokens
-        generated_text += next_tokens
-
-    print(prompt)
-    client.sendall(bytes("quit", 'utf-8'))
-    client.close()
-
-
-def main_kvcache(tokenizer, client):
+def main_kvcache(tokenizer, client, memory=0):
+    round = 1
     while True:
         query = input("User: ")
         if query == "exit" or query == "quit":
             break
         generated_text = ""
-        prompt = "[Round {}]\n\n问：{}\n\n答：".format(1, query)
+        prompt = "[Round {}]\n\n问：{}\n\n答：".format(round, query)
         inputs = tokenizer([prompt], return_tensors="pt")
-        state, ids_len, ids = run_model_kvcache(client, inputs["input_ids"], inputs["input_ids"].shape[1], 0)
+        state, ids_len, ids = run_model_kvcache(client, inputs["input_ids"], inputs["input_ids"].shape[1], 0, memory)
         generated_text = tokenizer.decode(ids)
         print("FPGA: ", generated_text)
+        round += memory
     client.sendall(bytes("quit", 'utf-8'))
     client.close()
 
 
-def main_kvcache_show(tokenizer, client):
+def main_kvcache_show(tokenizer, client, memory=0):
+    round = 1
     while True:
         query = input("User: ")
         if query == "exit" or query == "quit":
             break
-        prompt = "[Round {}]\n\n问：{}\n\n答：".format(1, query)
+        prompt = "[Round {}]\n\n问：{}\n\n答：".format(round, query)
         inputs = tokenizer([prompt], return_tensors="pt")
         print("FPGA: ", end="")
-        run_model_kvcache_show(client, inputs["input_ids"], inputs["input_ids"].shape[1], 0)
+        run_model_kvcache_show(client, inputs["input_ids"], inputs["input_ids"].shape[1], 0, memory)
         while True:
             state, ids_len, ids = get_next_ids(client)
             if state == 0:
@@ -105,6 +89,7 @@ def main_kvcache_show(tokenizer, client):
                 break
             generated_text = tokenizer.decode(ids)
             print(generated_text, end="")
+        round += memory
     client.sendall(bytes("quit", 'utf-8'))
     client.close()
 
@@ -114,5 +99,5 @@ if __name__ == "__main__":
     client = socket.socket()
     client.connect(("10.20.72.156", 8123))
     print('连接到 FPGA ChatGLM2')
-    # main_kvcache(tokenizer, client)
-    main_kvcache_show(tokenizer, client)
+    # main_kvcache(tokenizer, client, memory=1)
+    main_kvcache_show(tokenizer, client, memory=1)

@@ -6,6 +6,8 @@ HBM_DLL int** WT_TRANS(int chin, int chout, int ch_size, int *wt, uint16_t *wt_F
     for (int i = 0; i < 32; i++) {
         HBM_DDR[i] = (int*)malloc(ch_size);
     }
+    int CHout                         = chout;
+    int CHin                          = chin;
     int CHout_div_Tout                = ((chout+Tout-1)/Tout);
     int WT_CHin_div_Tin               = ((chin+Tin-1)/Tin);
     int WT_CHin_Padding_with_Tin      = WT_CHin_div_Tin*Tin;
@@ -36,76 +38,53 @@ HBM_DLL int** WT_TRANS(int chin, int chout, int ch_size, int *wt, uint16_t *wt_F
     int wt_addr_bias;
     int tmp_wt;
 
-     for(int i=0;i<CHout_div_Tout;i++)
-     {
-         for(int j=0;j<Tout/HBM_Port;j++)
-         {
-            for(int k=0;k<HBM_Port;k++)
-            {
-                for(int m=0;m<WT_CHin_Padding_with_Tin*WT_DW/32;m++)
-                {
-                    int tmp = wt[((chin / 8)*(i*Tout+j*HBM_Port+k))+m];
-                    /*
+    for(int i=0;i<CHout_div_Tout;i++) {
+        for(int j=0;j<Tout/HBM_Port;j++) {
+            for(int k=0;k<HBM_Port;k++) {
+                for(int m=0;m<WT_CHin_Padding_with_Tin*WT_DW/32;m++) {
                     int tmp = 0;
-                    for(int p=0; p<8; p++)
-                    {
-                        if((i*Tout+j*HBM_Port+k<chout) && (m*8+p < chin))
-                        {
-                            if(wt[(chin*(i*Tout+j*HBM_Port+k))+m*8+p]<0)
-                            {
-                                   tmp_wt=8-wt[(chin*(i*Tout+j*HBM_Port+k))+m*8+p];
-                            }else
-                            {
-                                  tmp_wt=wt[(chin*(i*Tout+j*HBM_Port+k))+m*8+p];
+                    for(int p=0; p<8; p++) {
+                        if((i*Tout+j*HBM_Port+k<CHout) && (m*8+p < CHin)) {
+                            if(wt[(CHin*(i*Tout+j*HBM_Port+k))+m*8+p]<0) {
+                                   tmp_wt=8-wt[(CHin*(i*Tout+j*HBM_Port+k))+m*8+p];
+                            } else {
+                                  tmp_wt=wt[(CHin*(i*Tout+j*HBM_Port+k))+m*8+p];
                             }
                             tmp = tmp + ( (tmp_wt&(0x0000000f)) << WT_DW*p ); 
                         }
-                        
                     }
-                    */
                     HBM_wt_mem[(i*Tout/HBM_Port*HBM_Port + j*HBM_Port + k)*(WT_DW*WT_CHin_Padding_with_Tin/32)+m] = tmp;
                 }    
             }
         }
     }
 
-     for(int i=0;i<CHout_div_Tout;i++)
-     {
-         for(int j=0;j<WT_scale_group_nums;j++)
-         {
-             for(int k=0;k<Tout/HBM_Port;k++)
-             {
-                 for(int m=0;m<HBM_Port;m++)
-                 {
-                    for(int n=0;n<WT_CH_Tgroup_div_Tblock*16/32;n++)
-                    {
-                         int tmp = 0;
-                         for(int p=0; p<2; p++)
-                         {
-                             if((i*Tout+k*HBM_Port+m<chout) && (j*WT_CH_Tgroup_div_Tblock+n*2+p<WT_CHin_div_Tblock))
-                             {
-                                tmp = tmp +  (int(wt_FP_scale[i*WT_CHin_div_Tblock*Tout + (j*WT_CH_Tgroup_div_Tblock+n*2+p)*Tout + (k*HBM_Port+m)]) << p*WT_quant_scale_DW);                            
-                             }
-                         }
-                         HBM_wt_FP_scale[(i*(WT_scale_group_nums*Tout/HBM_Port*HBM_Port) + j*(Tout/HBM_Port*HBM_Port) + k*HBM_Port + m)*WT_CH_Tgroup_div_Tblock*16/32+n]=tmp;
+
+    for(int i=0;i<CHout_div_Tout;i++) {
+        for(int j=0;j<WT_scale_group_nums;j++) {
+            for(int k=0;k<Tout/HBM_Port;k++) {
+                for(int m=0;m<HBM_Port;m++) {
+                    for(int n=0;n<WT_CH_Tgroup_div_Tblock*16/32;n++) {
+                        int tmp = 0;
+                        for(int p=0; p<2; p++) {
+                            if((i*Tout+k*HBM_Port+m<chout) && (j*WT_CH_Tgroup_div_Tblock+n*2+p<WT_CHin_div_Tblock)) {
+                               tmp = tmp +  (int(wt_FP_scale[i*WT_CHin_div_Tblock*Tout + (j*WT_CH_Tgroup_div_Tblock+n*2+p) + (k*HBM_Port+m)*WT_CHin_div_Tblock]) << p*WT_quant_scale_DW);                            
+                            }
+                        }
+                        HBM_wt_FP_scale[(i*(WT_scale_group_nums*Tout/HBM_Port*HBM_Port) + j*(Tout/HBM_Port*HBM_Port) + k*HBM_Port + m)*WT_CH_Tgroup_div_Tblock*16/32+n]=tmp;
                     }
                 }
             }
         }
-     }
+    }
 
-    for(int i=0;i<CHout_div_Tout;i++) 
-    {
-        for(int j=0;j<WT_scale_group_nums;j++)
-        {
-            for(int k=0;k<Tout/HBM_Port;k++)
-            {
-				for(int m=0;m<HBM_Port;m++)
-                {
+    for(int i=0;i<CHout_div_Tout;i++) {
+        for(int j=0;j<WT_scale_group_nums;j++) {
+            for(int k=0;k<Tout/HBM_Port;k++) {
+				for(int m=0;m<HBM_Port;m++) {
 					int scale_addr_bias=static_cast<int>((i*CHin_WT_and_Scale_Bytes*8/32+j*Group_WT_and_Scale_Bytes*8/32)*(Tout/HBM_Port)
 					                + ((j==WT_scale_group_nums-1)? (k*Last_Group_WT_and_Scale_Bytes*8/32) : (k*Group_WT_and_Scale_Bytes*8/32)));
-					for(int n=0;n<HBM_AXI_DATA_WIDTH/32;n++)
-                    {    
+					for(int n=0;n<HBM_AXI_DATA_WIDTH/32;n++) {    
 						if(m==  0){HBM_DDR[ 0][scale_addr_bias+n]=(HBM_wt_FP_scale[(i*WT_scale_group_nums*Tout/HBM_Port*HBM_Port + j*Tout/HBM_Port*HBM_Port + k*HBM_Port + m)*HBM_AXI_DATA_WIDTH/32+n]);}
                         if(m==  1){HBM_DDR[ 1][scale_addr_bias+n]=(HBM_wt_FP_scale[(i*WT_scale_group_nums*Tout/HBM_Port*HBM_Port + j*Tout/HBM_Port*HBM_Port + k*HBM_Port + m)*HBM_AXI_DATA_WIDTH/32+n]);}
                         if(m==  2){HBM_DDR[ 2][scale_addr_bias+n]=(HBM_wt_FP_scale[(i*WT_scale_group_nums*Tout/HBM_Port*HBM_Port + j*Tout/HBM_Port*HBM_Port + k*HBM_Port + m)*HBM_AXI_DATA_WIDTH/32+n]);}
@@ -138,29 +117,23 @@ HBM_DLL int** WT_TRANS(int chin, int chout, int ch_size, int *wt, uint16_t *wt_F
                         if(m== 29){HBM_DDR[29][scale_addr_bias+n]=(HBM_wt_FP_scale[(i*WT_scale_group_nums*Tout/HBM_Port*HBM_Port + j*Tout/HBM_Port*HBM_Port + k*HBM_Port + m)*HBM_AXI_DATA_WIDTH/32+n]);}
                         if(m== 30){HBM_DDR[30][scale_addr_bias+n]=(HBM_wt_FP_scale[(i*WT_scale_group_nums*Tout/HBM_Port*HBM_Port + j*Tout/HBM_Port*HBM_Port + k*HBM_Port + m)*HBM_AXI_DATA_WIDTH/32+n]);}
                         if(m== 31){HBM_DDR[31][scale_addr_bias+n]=(HBM_wt_FP_scale[(i*WT_scale_group_nums*Tout/HBM_Port*HBM_Port + j*Tout/HBM_Port*HBM_Port + k*HBM_Port + m)*HBM_AXI_DATA_WIDTH/32+n]);}
-
-                     }
+                    }
                 }
-
             }
        }
     }
 
-    for(int i=0;i<CHout_div_Tout;i++)
-    {
-        for(int j=0;j<WT_scale_group_nums;j++)
-        {
-            for(int k=0;k<Tout/HBM_Port;k++)
-            {
-                for(int m=0;m<HBM_Port;m++)
-                {
+    for(int i=0;i<CHout_div_Tout;i++) {
+    	for(int j=0;j<WT_scale_group_nums;j++) {
+    		for(int k=0;k<Tout/HBM_Port;k++) {
+    			for(int m=0;m<HBM_Port;m++) {
                     wt_start_ch_in=j*WT_CH_Tgroup;
                     wt_end_ch_in=static_cast<int>(j==WT_scale_group_nums-1)?WT_CHin_Padding_with_Tin:(j+1)*WT_CH_Tgroup;
                     wt_addr_bias=static_cast<int>((i*CHin_WT_and_Scale_Bytes+j*Group_WT_and_Scale_Bytes)*8/32*(Tout/HBM_Port)+Group_Scale_Bytes*8/32
                                 + ((j==WT_scale_group_nums-1)? (k*Last_Group_WT_and_Scale_Bytes*8/32) : (k*Group_WT_and_Scale_Bytes*8/32)));
-                    for(int n = WT_DW*wt_start_ch_in/32;n<WT_DW*wt_end_ch_in/32;n++)
-                    {
-                        if( m == 0){ HBM_DDR[ 0][wt_addr_bias+n-(WT_DW*wt_start_ch_in/32)]=HBM_wt_mem[(i*Tout/HBM_Port*HBM_Port + k*HBM_Port + m)*(WT_DW*WT_CHin_Padding_with_Tin/32)+n];}
+                                //+cfg.HBM00_WT_BASE_ADDR/4+cfg.WT_base_addr_Bank_Step/4*m);
+                    for(int n = WT_DW*wt_start_ch_in/32;n<WT_DW*wt_end_ch_in/32;n++) {
+                        if( m == 0){ HBM_DDR[ 0][wt_addr_bias+n-(WT_DW*wt_start_ch_in/32)]=HBM_wt_mem[(i*Tout/HBM_Port*HBM_Port + k*HBM_Port + m)*(WT_DW*WT_CHin_Padding_with_Tin/32)+n];} //cfg.WT_DW*cfg.WT_CHin_Padding_with_Tin/32
                         if( m == 1){ HBM_DDR[ 1][wt_addr_bias+n-(WT_DW*wt_start_ch_in/32)]=HBM_wt_mem[(i*Tout/HBM_Port*HBM_Port + k*HBM_Port + m)*(WT_DW*WT_CHin_Padding_with_Tin/32)+n];}
                         if( m == 2){ HBM_DDR[ 2][wt_addr_bias+n-(WT_DW*wt_start_ch_in/32)]=HBM_wt_mem[(i*Tout/HBM_Port*HBM_Port + k*HBM_Port + m)*(WT_DW*WT_CHin_Padding_with_Tin/32)+n];}
                         if( m == 3){ HBM_DDR[ 3][wt_addr_bias+n-(WT_DW*wt_start_ch_in/32)]=HBM_wt_mem[(i*Tout/HBM_Port*HBM_Port + k*HBM_Port + m)*(WT_DW*WT_CHin_Padding_with_Tin/32)+n];}
@@ -197,6 +170,7 @@ HBM_DLL int** WT_TRANS(int chin, int chout, int ch_size, int *wt, uint16_t *wt_F
             }
         }
     }
+
     return HBM_DDR;
 }
 
@@ -212,21 +186,17 @@ HBM_DLL int* BN_TRANS(int chout, int ch_size, uint16_t *bn_wt, uint16_t *bn_bias
     if (bn_wt_and_bias == NULL){printf("fail to malloc bn_wt_and_bias \n");}
 
     int *bn_wt_and_bias_mem[AXI_DAT_WIDTH/32];
-    for(int i=0;i<AXI_DAT_WIDTH/32;i++)
-    {
+    for(int i=0;i<AXI_DAT_WIDTH/32;i++) {
         bn_wt_and_bias_mem[i] = (int*)malloc(sizeof(int)*BN_ch_group_times);
         if (bn_wt_and_bias_mem[i] == NULL){printf("fail to malloc bn_wt_and_bias_mem \n");}
     }
 
-    for(int i=0;i<CHout_div_Tout*Tout;i++)
-    {
+    for(int i=0;i<CHout_div_Tout*Tout;i++) {
         bn_wt_and_bias[i] = (int)(bn_wt[i]<<16) + (int)bn_bias[i];
     }
 
-    for(int i=0;i<BN_ch_group_times;i++)
-    {
-		for(int j=0;j<BN_num_per_AXI_DW;j++)
-		{
+    for(int i=0;i<BN_ch_group_times;i++) {
+		for(int j=0;j<BN_num_per_AXI_DW;j++) {
 			if(AXI_DAT_WIDTH>=(2*BN_DW))
                 bn_wt_and_bias_mem[j][i] = bn_wt_and_bias[i*BN_num_per_AXI_DW+j];
 	        else
@@ -234,18 +204,15 @@ HBM_DLL int* BN_TRANS(int chout, int ch_size, uint16_t *bn_wt, uint16_t *bn_bias
         }
     }
 
-	for(int i=0;i<BN_ch_group_times;i++)
-    {
-		for(int j=0;j<AXI_DAT_WIDTH/32;j++)
-		{
+	for(int i=0;i<BN_ch_group_times;i++) {
+		for(int j=0;j<AXI_DAT_WIDTH/32;j++) {
             DDR[i*AXI_DAT_WIDTH/32+j] = bn_wt_and_bias_mem[j][i];
         }
     }
     return DDR;
 }
 
-HBM_DLL int FP32_to_FP20(float fp32_i)
-{
+HBM_DLL int FP32_to_FP20(float fp32_i) {
     int fp32_i_s, fp32_i_e, fp32_i_f;
     int fp20_o_s, fp20_o_e, fp20_o_m_tmp, fp20_o_m;
     int overflow_tmp, underflow_tmp;

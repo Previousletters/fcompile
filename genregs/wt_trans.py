@@ -14,12 +14,13 @@ def Test():
     # with open("./test/MVM_BN_Wqkv_int4.bin", "wb") as f:
     #     f.write(np_weight.tobytes())
 
-    with open("./test/MVM_BN_Wqkv_int4.bin", "rb") as f:
-        weight = b"".join(f.readlines())
-        np_weight = np.frombuffer(weight, dtype="int32").reshape(4608, 512)
-    # with open("./test/MVM_BN_Wqkv.bin", "rb") as f:
+    # with open("./test/MVM_BN_Wqkv_int4.bin", "rb") as f:
     #     weight = b"".join(f.readlines())
-    #     np_weight = np.frombuffer(weight, dtype="int32").reshape(4608, 4096)
+    #     np_weight = np.frombuffer(weight, dtype="int32").reshape(4608, 512)
+    with open("./test/MVM_BN_Wqkv.bin", "rb") as f:
+        weight = b"".join(f.readlines())
+        np_weight = np.frombuffer(weight, dtype="int32").reshape(4608, 4096)
+        print(np_weight[0, 0:4])
     with open("./test/MVM_BN_Scaleqkv.bin", "rb") as f:
         scale = b"".join(f.readlines())
         np_scale = np.frombuffer(scale, dtype="float16").reshape(4608, 32)
@@ -28,11 +29,11 @@ def Test():
     require_bytes = HBM0321.malloc_bytes([4096, 4608], hbm_dtype)
     mapped_wt = WT_TRANS(np_weight, np_scale, require_bytes)
     print("success!")
-    print(mapped_wt[0, 1])
-    with open("./test/MVM_BN_write_to_HBM_bin/MVMBN0_HBM_DDR_01.bin", "rb") as f:
+    print(mapped_wt[0, 0])
+    with open("./test/MVM_BN_write_to_HBM_bin/MVMBN0_HBM_DDR_00.bin", "rb") as f:
         target = b"".join(f.readlines())
         np_target = np.frombuffer(target, dtype="int32").reshape(require_bytes // 4)
-    print(np_target[1])
+    print(np.sum(np_target != mapped_wt[0]))
 
     with open("./test/MVM_BN_Biasqkv.bin", "rb") as f:
         bias = b"".join(f.readlines())

@@ -73,7 +73,7 @@ def MVMBNDriver(args, output, attrs):
         return tasks.MVMBasic(**define)
 
 
-Op.Get("accel.hbm.mvm_bn").attrs["cfg_id"] = 0b01001000
+Op.Get("accel.hbm.mvm_bn").attrs["cfg_id"] = [0b01001000, 2] # 2*AXI_DAT_WIDTH
 Op.Get("accel.hbm.mvm_bn").attrs["driver"] = MVMBNDriver
 
 
@@ -114,7 +114,7 @@ def MVMBNResDriver(args, output, attrs):
     return tasks.MVMBasic(**define)
 
 
-Op.Get("accel.hbm.mvm_bn_res").attrs["cfg_id"] = 0b11001000
+Op.Get("accel.hbm.mvm_bn_res").attrs["cfg_id"] = [0b11001000, 2]
 Op.Get("accel.hbm.mvm_bn_res").attrs["driver"] = MVMBNResDriver
 
 
@@ -164,6 +164,7 @@ def MVMafterTRPDriver(args, output, attrs):
     return tasks.MVM_afterTRP(**define)
 
 
+Op.Get("accel.hbm.mvm_afterTRP").attrs["cfg_id"] = [0b00000011, 1]
 Op.Get("accel.hbm.mvm_afterTRP").attrs["driver"] = MVMafterTRPDriver
 
 
@@ -191,7 +192,7 @@ def MVMafterF2WDriver(args, output, attrs):
             "Feature_Head": dshape[0],
             "Weight_Head": wshape[0],
             "Token": dshape[1],
-            "Win": max_token, "Wout": wshape[1], "CHout": max_token,
+            "Win": max_token, "Wout": wshape[1],
             "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
             "WT_BASE_ADDR":  waddrs & 0xffffffff,
             "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
@@ -214,6 +215,7 @@ def MVMafterF2WDriver(args, output, attrs):
     return tasks.MVM_afterF2W(**define)
 
 
+Op.Get("accel.hbm.mvm_afterF2W").attrs["cfg_id"] = [0b00000010, 1]
 Op.Get("accel.hbm.mvm_afterF2W").attrs["driver"] = MVMafterF2WDriver
 
 
@@ -275,7 +277,7 @@ def SoftmaxDriver(args, output, attrs):
     return tasks.Softmax(**define)
 
 
-Op.Get("accel.hbm.softmax").attrs["cfg_id"] = 0b00000101
+Op.Get("accel.hbm.softmax").attrs["cfg_id"] = [0b00000101, 1]
 Op.Get("accel.hbm.softmax").attrs["driver"] = SoftmaxDriver
 
 
@@ -295,7 +297,7 @@ def LayerNormDriver(args, output, attrs):
     return tasks.LayerNorm(**define)
 
 
-Op.Get("accel.hbm.layer_norm").attrs["cfg_id"] = 0b00000111
+Op.Get("accel.hbm.layer_norm").attrs["cfg_id"] = [0b00000111, 1]
 Op.Get("accel.hbm.layer_norm").attrs["driver"] = LayerNormDriver
 
 
@@ -336,7 +338,7 @@ def PosEmbDriver(args, output, attrs):
     return tasks.PosEmb(**define)
 
 
-Op.Get("accel.hbm.pos_emb").attrs["cfg_id"] = 0b00000100
+Op.Get("accel.hbm.pos_emb").attrs["cfg_id"] = [0b00000100, 1]
 Op.Get("accel.hbm.pos_emb").attrs["driver"] = PosEmbDriver
 
 
@@ -355,6 +357,6 @@ def ActivateDriver(args, output, attrs):
     return tasks.ACT(**define)
 
 
-Op.Get("accel.hbm.activate").attrs["cfg_id"] = 0b00000110
+Op.Get("accel.hbm.activate").attrs["cfg_id"] = [0b00000110, 1]
 Op.Get("accel.hbm.activate").attrs["driver"] = ActivateDriver
 

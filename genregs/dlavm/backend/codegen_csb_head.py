@@ -9,7 +9,7 @@ class CodeGenCSBHead:
     def ext_define(self):
         pass
 
-    def build(self, mod_name: str, module, storage):
+    def build(self, mod_name: str, module, storage, device=None):
         self.func_input = []
         self.func_output = []
         self.func_const_hbm = []
@@ -20,6 +20,7 @@ class CodeGenCSBHead:
         self.ext_define()
         self.mod_name = mod_name
         self.storage = storage
+        self.device = device
         for node in module:
             if node["node"] == "var":
                 self.gen_var(node)

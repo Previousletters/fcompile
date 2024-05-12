@@ -1,5 +1,6 @@
 from ..adr import Functor, VM, Tensor, Tuple, DataEnum
 from .. import ne
+from ..utils import LOG_WITH_PREFIX
 
 
 class StorageNode:
@@ -102,6 +103,14 @@ class Storage:
         print("could not find " + id + " storage!")
         exit(-1)
 
+    def get_byte_size(self, id):
+        for memo_ in self.memo_.values():
+            if id in memo_.keys():
+                storage = memo_[id]
+                return storage.byte_size
+        print("could not find " + id + " storage!")
+        exit(-1)
+
     def gen_source(self):
         source = ""
         for prefix in self.sort_keys:
@@ -109,7 +118,7 @@ class Storage:
             source += f"// {prefix} storage define\n"
             for id, storage in memo.items():
                 addr_hex = "0x%09x" % (storage.address)
-                source += f"static uint8_t* {id} = (uint8_t*){addr_hex}; "
+                source += f"uint64_t {id} = {addr_hex}; "
                 source += f"// storage size: {storage.byte_size} B\n"
         return source[:-1]
 
@@ -200,12 +209,17 @@ class GraphPlanMemory(Functor):
                 storage_id = self._malloc(expr.checked_type.tensors[i], expr.prefix)
                 expr.checked_type.tensors[i].storage_id = storage_id
             if self.debug:
-                print(expr.op.name, [i.checked_type.storage_id for i in new_args], "->", [i.storage_id for i in expr.checked_type.tensors])
+                tp_args = ", ".join([i.checked_type.storage_id for i in new_args])
+                tp_outs = ", ".join([i.storage_id for i in expr.checked_type.tensors])
+                log = f"{expr.op.name} [{tp_args}] -> [{tp_outs}]"
+                LOG_WITH_PREFIX("graph", log)
         elif isinstance(expr.checked_type, Tensor):
             storage_id = self._malloc(expr.checked_type, expr.prefix)
             expr.checked_type.storage_id = storage_id
             if self.debug:
-                print(expr.op.name, [i.checked_type.storage_id for i in new_args], "->", expr.checked_type.storage_id)
+                tp_args = ", ".join([i.checked_type.storage_id for i in new_args])
+                log = f"{expr.op.name} [{tp_args}] -> {expr.checked_type.storage_id}"
+                LOG_WITH_PREFIX("graph", log)
         else:
             print("infer_type first!")
             exit(-1)

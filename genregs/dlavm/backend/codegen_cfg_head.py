@@ -1,111 +1,187 @@
+from time import strftime, localtime
 import numpy as np
-from .codegen_csb_head import CodeGenCSBHead
+from .codegen_test_head import CodeGenTestHead
 from ..adr import Op
-from ..device.hbm_accel import HBM
 from .. import ne
 
 
-class CodeGenCFGHead(CodeGenCSBHead):
+class CodeGenCFGHead(CodeGenTestHead):
+
+    def build(self, mod_name: str, module, storage, cfg_group, AXI_DAT_NUM):
+        self.AXI_DAT_NUM = AXI_DAT_NUM
+        self.cfg_group = cfg_group
+        return super().build(mod_name, module, storage)
 
     def ext_define(self):
-        self.cfg_numb = 0
+        super().ext_define()
+        self.step_id = 0
+        self.cfg_numb = [0, 0]
         self.task_cfg = []
         self.func_cfg = []
         self.func_init = []
+        self.func_inits = []
+        self.func_update = []
 
     def to_string(self):
         super().to_string()
-        self.func_init_str = f"void {self.mod_name}Init(FILE* f_cfg) " + "{\n" + \
-                             f"{self.tab}rewind(f_cfg);\n" + \
-                             "\n".join([self.tab + i for i in self.func_init]) + "\n}"
-
-    def gen_source(self):
-        self.gen_cfg()
-        cfg_params = b"".join([cfg.tobytes() for cfg in self.func_cfg])
-        return super().gen_source(), cfg_params
+        self.func_init_str = "\n".join(self.func_inits)
+        self.mod_args = ", ".join(["HANDLE device"] + self.dynamic_var)
+        self.update_args = ", ".join(["HANDLE h2cx"] + self.dynamic_var)
+        self.func_update_str = "\n".join(self.func_update)
+        # self.func_init_str = f"void {self.mod_name}Init(FILE* f_cfg) " + "{\n" + \
+        #                      f"{self.tab}rewind(f_cfg);\n" + \
+        #                      "\n".join([self.tab + i for i in self.func_init]) + "\n}"
 
     def gen_cfg(self):
-        AXI_DAT_WIDTH = HBM.AXI_DAT_WIDTH
-        byte_size = AXI_DAT_WIDTH
-        task_cfg = np.zeros(AXI_DAT_WIDTH, dtype="uint32")
-        for num, task in enumerate(self.task_cfg):
-            new_task = []
-            for csb in task[1]:
-                if csb[1] in [33, 214]:
-                    break
-                new_task.append(csb[2])
-            task_size = 0
-            if len(new_task) > 16:
-                task_size += AXI_DAT_WIDTH
-            task_size += AXI_DAT_WIDTH
-            task_cfg[num // 4] += task[0] << (8*(num%4))
-            task_cfg = np.pad(task_cfg, ((0, task_size)), constant_values=0)
-            task_cfg[byte_size:byte_size+len(new_task)] = np.array(new_task)
-            byte_size += task_size
-        if len(self.task_cfg):
-            id = self.storage.malloc("ddr", byte_size, 0)
-            self.storage.set_address()
-            self.func_cfg.append(task_cfg)
-            max_tasks_num, aug_group_num = len(self.task_cfg), byte_size // AXI_DAT_WIDTH
-            self.cfg_numb = 0
-            self.task_cfg = []
-            self.func_init.append(f"fread((void*){id}, 1, {byte_size}, f_cfg);")
-            self.func_init.append(f"(uint8_t*){id} += {byte_size};")
-            self.func_body.append("""#ifdef REGS_DEBUG
+        addr = self.storage.get_address(self.cfg_group[self.cfg_numb[0]][0], 0) & 0xffffffff
+        max_tasks_num, aux_group_num = self.cfg_group[self.cfg_numb[0]][1]
+        self.func_body.append("""#ifdef REGS_DEBUG
 QueryPerformanceCounter(&start_run);
 #endif
-%(tab)sCSB_Write(64+1, (uint64_t)%(storage)s);
-%(tab)sCSB_Write(64+2, %(aug_group_num)d);
-%(tab)sCSB_Write(64+3, %(max_tasks_num)d);
-%(tab)sCSB_Write(64+4, 1);//start
+%(tab)sCSB_Write(device, 64+1, %(addr)s);
+%(tab)sCSB_Write(device, 64+2, %(aug_group_num)d);
+%(tab)sCSB_Write(device, 64+3, %(max_tasks_num)d);
+%(tab)sCSB_Write(device, 64+9, 1);//start
 %(tab)swhile(CSB_Read(device, 64) != 1) {}
 #ifdef REGS_DEBUG
 QueryPerformanceCounter(&stop_run);
 time_sec1 = (unsigned long long)(stop_run.QuadPart - start_run.QuadPart) / (double)freq.QuadPart;
 printf("cfg run time     = %%fs \\n",time_sec1);
-#endif""" % {"tab": self.tab, "storage": id, "aug_group_num": aug_group_num, "max_tasks_num": max_tasks_num})
+#endif""" % {"tab": self.tab, "addr": addr, "aug_group_num": aux_group_num, "max_tasks_num": max_tasks_num})
+
+    def init_cfg_bin(self):
+        if not hasattr(self, "cfg_bin"):
+            total_aux_num = 0
+            for cfg in self.cfg_group:
+                total_aux_num += cfg[1][1]
+            self.cfg_bin = np.zeros(shape=(total_aux_num, self.AXI_DAT_NUM), dtype="uint32")
+        if self.cfg_numb[1] == 0:
+            self.gen_cfg()
+            index_aux_num = 0
+            for i in range(self.cfg_numb[0]):
+                index_aux_num += self.cfg_group[i][1][1]
+            for i_cfg in range(len(self.cfg_group[self.cfg_numb[0]][2])):
+                tp_i_cfg = i_cfg % 4
+                self.cfg_bin[index_aux_num, i_cfg // 4] += (self.cfg_group[self.cfg_numb[0]][2][i_cfg][0]) << (8*(tp_i_cfg))
+
+    def write_cfg_bin(self, index, data):
+        index_aux_num = 0
+        for i in range(self.cfg_numb[0]):
+            index_aux_num += self.cfg_group[i][1][1]
+        index_aux_num += self.cfg_group[self.cfg_numb[0]][2][self.cfg_numb[1]][1]
+        l_offset = index % self.AXI_DAT_NUM
+        index_aux_num += index // self.AXI_DAT_NUM
+        self.cfg_bin[index_aux_num, l_offset] = data
 
     def gen_accel(self, node):
-        op_name = node["op_name"]
-        task_id = Op.Get(op_name).attrs["cfg_id"]
-
-        state_max_depth = self.cfg_numb == 63
-        state_none_task_id = task_id is None
-        state_dynamic = sum([isinstance(reg[2], str) for reg in node["csb_regs"]])
-
-        if state_max_depth or state_none_task_id or state_dynamic:
-            self.gen_cfg()
-
-        if state_none_task_id or state_dynamic:
-            self.func_body.append(f"// {op_name} accel operator node")
-            cfg_start = 1
-            for reg in node["csb_regs"]:
-                if reg[0] == 1:
-                    if cfg_start:
-                        self.func_body.append("""#ifdef REGS_DEBUG
-QueryPerformanceCounter(&start_cfg);
-#endif""")
-                        cfg_start = 0
-                    elif reg[1] in [33, 214]:
-                        self.func_body.append("""#ifdef REGS_DEBUG
-QueryPerformanceCounter(&stop_cfg);
-QueryPerformanceCounter(&start_run);
-#endif""")
-                        cfg_start = 1
-                    self.func_body.append(f"{self.tab}CSB_Write(device, {reg[1]}, {reg[2]});")
-                elif reg[0] == 0:
-                    self.func_body.append(f"{self.tab}While(CSB_Read(device, {reg[1]}) != {reg[2]}) " + "{}")
-                    self.func_body.append("""#ifdef REGS_DEBUG
-QueryPerformanceCounter(&stop_run);
-time_sec0 = (unsigned long long)(stop_cfg.QuadPart - start_cfg.QuadPart) / (double)freq.QuadPart;
-time_sec1 = (unsigned long long)(stop_run.QuadPart - start_run.QuadPart) / (double)freq.QuadPart;
-printf("%(op_name)s cfg reg time = %%fs \\n",time_sec0);
-printf("%(op_name)s run time     = %%fs \\n",time_sec1);
-#endif""" % {"op_name": op_name})
+        self.step_id += 1
+        op_name, ddr_id, offset, cfg_storage = node["op_name"], node["storage"][0]["id"], node["storage"][0]["offset"], node["cfg_storage"]
+        cfg_id = Op.Get(op_name).attrs["cfg_id"][0]
+        if cfg_storage is None:
+            func_op_name = f"step{self.step_id}"
         else:
-            self.cfg_numb += 1
-            self.task_cfg.append([task_id, node["csb_regs"]])
+            if cfg_id != self.cfg_group[self.cfg_numb[0]][2][self.cfg_numb[1]][0]:
+                raise RuntimeError("CFG Group not match real CFG Operator")
+            self.init_cfg_bin()
+            func_op_name = f"update_step{self.step_id}"
+        tp_func_inits = []
+        tp_func_inits.append(f"void {func_op_name} (HANDLE device) " + "{")
+        tp_func_inits.append(f"// {op_name} accel operator node, storage data in {ddr_id} with {offset} offset")
+        if cfg_storage is None:
+            tp_func_inits.append("""#ifdef REGS_DEBUG
+LARGE_INTEGER start_run;
+LARGE_INTEGER stop_run;
+LARGE_INTEGER freq;
+double time_sec0;
+QueryPerformanceFrequency(&freq);
+QueryPerformanceCounter(&start_run);
+for (int i = 0; i < 1000; i=i+1) {
+#endif""")
+        if cfg_storage is None:
+            tp_dynamic_var = ["device"]
+        else:
+            tp_dynamic_var = ["h2cx"]
+        for num, reg in enumerate(node["csb_regs"]):
+            if reg[0] == 1:
+                data = reg[2]
+                if isinstance(reg[2], ne.Expr):
+                    dyn_vars = reg[2].get_vars()
+                    for var in dyn_vars:
+                        source = f"int {var[0]}"
+                        if source not in self.dynamic_var:
+                            self.dynamic_var.append(source)
+                        if var[0] not in tp_dynamic_var:
+                            tp_dynamic_var.append(var[0])
+                    data = reg[2].export("cpp")
+                    if cfg_storage is not None and len(dyn_vars):
+                        tp_func_inits.append(f"{self.tab}DDR_Update(h2cx, {cfg_storage}+{num<<2}, {data});")
+                        continue
+                if cfg_storage is not None:
+                    if node["csb_regs"][num+1][0]:
+                        self.write_cfg_bin(num, data)
+                else:
+                    tp_func_inits.append(f"{self.tab}CSB_Write(device, {reg[1]}, {data});")
+            elif reg[0] == 0:
+                if cfg_storage is None:
+                    tp_func_inits.append(f"#ifdef PRINT_STEP\nprintf(\"{func_op_name}!\\n\");\n#endif")
+                    tp_func_inits.append(f"{self.tab}while(CSB_Read(device, {reg[1]}) != {reg[2]}) " + "{}")
+        if cfg_storage is None:
+            tp_func_inits.append("""#ifdef REGS_DEBUG
+}
+QueryPerformanceCounter(&stop_run);
+time_sec0 = (unsigned long long)(stop_run.QuadPart - start_run.QuadPart) / (double)freq.QuadPart;
+printf("%(op_name)s run time     = %%fs(1000 times), %%fs(1 times) \\n",time_sec0, time_sec0/1000);
+#endif""" % {"op_name": op_name})
+        tp_dynamic_str_0 = ", ".join(["HANDLE " + tp_dynamic_var[i] if i == 0 else "int " + tp_dynamic_var[i] for i in range(len(tp_dynamic_var))])
+        tp_dynamic_str_1 = ", ".join(tp_dynamic_var)
+        tp_func_inits.append("}\n")
+        tp_func_inits[0] = f"void {func_op_name} ({tp_dynamic_str_0}) " + "{"
+        self.func_inits += tp_func_inits
+        if cfg_storage is not None:
+            self.func_update.append(f"{self.tab}{func_op_name}({tp_dynamic_str_1});")
+            if self.cfg_numb[1] == len(self.cfg_group[self.cfg_numb[0]][2]) - 1:
+                self.cfg_numb = [self.cfg_numb[0]+1, 0]
+            else:
+                self.cfg_numb[1] += 1
+        else:
+            self.func_body.append(f"{self.tab}{func_op_name}({tp_dynamic_str_1});")
 
-    def gen_cpu(self, node):
-        self.gen_cfg()
-        return super().gen_cpu(node)
+    def gen_source(self):
+        cfg_params = self.cfg_bin.tobytes()
+        local_time = strftime('%Y-%m-%d %H:%M:%S', localtime())
+        self.to_string()
+        source_map = {
+            "local_time": local_time, "enum_define": self.enum_define_str, "func_input": self.func_input_str,
+            "func_const_ddr": self.func_wtddr_str, "func_const_hbm": self.func_wthbm_str, "tab": self.tab,
+            "func_output": self.func_output_str, "func_body": self.func_body_str, "mod_name": self.mod_name,
+            "storages": self.storages_str, "mod_args": self.mod_args, "func_init": self.func_init_str,
+            "update_args": self.update_args, "func_update": self.func_update_str,
+        }
+        source = """// generated by codegen c++ test ops head at %(local_time)s
+%(storages)s
+
+// get input ptr
+%(func_input)s
+
+// get output ptr
+%(func_output)s
+
+// get weight ddr ptr
+%(func_const_ddr)s
+
+// get weight hbm ptr
+%(func_const_hbm)s
+
+// mod init
+%(func_init)s
+
+// mod reg update
+void %(mod_name)s_update(%(update_args)s) {
+%(func_update)s
+}
+
+void %(mod_name)s(%(mod_args)s) {
+%(func_body)s
+}
+""" % source_map
+        return source, cfg_params, self.cfg_bin

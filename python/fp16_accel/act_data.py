@@ -8,7 +8,7 @@ import os
 
 def Real2FP16(data_real):
     hexa_all = np.zeros((0,))
-    float_all = np.zeros((0,))
+    float_all = np.zeros((0,), dtype=np.float16)
     
     for data_real in data_real:
         if(abs(data_real) <= 65504):
@@ -33,7 +33,7 @@ def get_act_data(name, func, x_min, x_max, hfile_path='approx_pwlf_act.h', pyfil
         os.makedirs(save_path)
     start = time.perf_counter()
     points_num = 200 #拟合所需要的点数
-    segCnt = 14 #分段个数
+    segCnt = 15 #分段个数
 
     # x and y
     x_array = np.linspace(x_min, x_max, points_num)
@@ -75,22 +75,30 @@ def get_act_data(name, func, x_min, x_max, hfile_path='approx_pwlf_act.h', pyfil
     plt.plot(xHat, yHat, '-')
     plt.plot(bp, func(bp), 'o', color = 'r')
     plt.savefig(os.path.join(save_path, f"approx_pwlf_{name}.png"))
+    slopes_fp16_r = np.pad(slopes_fp16_r, (1, 0), 'constant', constant_values=0)
+    b_fp16_r = np.pad(b_fp16_r, (1, 0), 'constant', constant_values=0)
+    with open(os.path.join(save_path, f'approx_pwlf_{name}.bin'),'wb') as file0:
+        source = bp_fp16_r.tobytes() + slopes_fp16_r.tobytes() + b_fp16_r.tobytes()
+        print(bp_fp16_r.shape, bp_fp16_r.dtype)
+        print(slopes_fp16_r.shape, slopes_fp16_r.dtype)
+        print(b_fp16_r.shape, b_fp16_r.dtype)
+        file0.write(source)
     with open(os.path.join(save_path, f'approx_pwlf_{name}.txt'),'w') as file0:
         print('MSE = %g' %pre_var, file=file0) #MSE
-        print('-----------------BP-----------------', file=file0)
-        print(bp.tolist()[::-1], file=file0)
-        print('{16\'h' + ', 16\'h'.join(bp_fp16.tolist()) + '}', file=file0)
-        print(bp_fp16_r.tolist()[::-1], file=file0)
+        print('-----------------Region-----------------', file=file0)
+        # print(bp.tolist()[::-1], file=file0)
+        # print('{16\'h' + ', 16\'h'.join(bp_fp16.tolist()) + '}', file=file0)
+        print(bp_fp16_r.tolist(), file=file0)
 
         print('-----------------k-----------------', file=file0)
-        print(slopes.tolist()[::-1], file=file0)
-        print('{16\'h' + ', 16\'h'.join(slopes_fp16.tolist()) + '}', file=file0)
-        print(slopes_fp16_r.tolist()[::-1], file=file0)
+        # print(slopes.tolist()[::-1], file=file0)
+        # print('{16\'h' + ', 16\'h'.join(slopes_fp16.tolist()) + '}', file=file0)
+        print(slopes_fp16_r.tolist(), file=file0)
 
         print('-----------------b-----------------', file=file0)
-        print(b.tolist()[::-1], file=file0)
-        print('{16\'h' + ', 16\'h'.join(b_fp16.tolist()) + '}', file=file0)
-        print(b_fp16_r.tolist()[::-1], file=file0)
+        # print(b.tolist()[::-1], file=file0)
+        # print('{16\'h' + ', 16\'h'.join(b_fp16.tolist()) + '}', file=file0)
+        print(b_fp16_r.tolist(), file=file0)
         print('----------------cpp----------------', file=file0)
     with open(hfile_path, 'a') as file0:
         print(f"// activation: {func.__name__}, x_min: {x_min}, x_max: {x_max}", file=file0)
@@ -119,11 +127,11 @@ if __name__ == "__main__":
     save_path = "saved"
     func_args = [
 #       [   str_act_name,   activation,     x_min,  x_max, hfile_path='approx_pwlf_act.h', pyfile_path='approx_pwlf_act.py']
-        #[          "exp",       np.exp,        -4,      4],
+        [          "exp",       np.exp,        -5,      0],
         #[         "gelu",         gelu,        -4,      4],
         #[         "tanh",      np.tanh,        -4,      4],
         #[      "sigmoid",      sigmoid,        -4,      4],
-        [         "silu",        swish,        -12,      10],
+        #[         "silu",        swish,        -12,      10],
     ]
 
     for args in func_args:

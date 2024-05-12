@@ -8,6 +8,14 @@ from .. import ne
 
 class CodeGenTestHead(CodeGenCSBHead):
 
+    def ext_define(self):
+        super().ext_define()
+        self.init_weight = []
+
+    def to_string(self):
+        super().to_string()
+        self.func_init_str += f"void {self.mod_name}_load_params(HANDLE h2cx)" + " {\n" + "\n".join(self.init_weight) + "\n}\n"
+
     def gen_var(self, node):
         enum_name = node["name"]
         id, offset = node["storage"][0]["id"], node["storage"][0]["offset"]
@@ -34,9 +42,10 @@ class CodeGenTestHead(CodeGenCSBHead):
         self.enum_nodes[1].append(enum_name)
 
     def gen_const(self, node):
-        enum_name = node["name"]
+        enum_name, data = node["name"], node.get("data", None)
         id, offset = node["storage"][0]["id"], node["storage"][0]["offset"]
         address = self.storage.get_address(id, offset)
+        byte_size = self.storage.get_byte_size(id)
         if enum_name in self.enum_nodes[0] + self.enum_nodes[2] + self.enum_nodes[3]:
             print("*WARNING* : Var或Const节点中存在同名元素，请检查")
             exit(-1)
@@ -46,9 +55,16 @@ class CodeGenTestHead(CodeGenCSBHead):
         elif id[:3] == "hbm":
             self.func_const_hbm.append("uint64_t %s = 0x%09x; // %d" % (enum_name, address, address & 0xffffffff))
             self.enum_nodes[3].append(enum_name)
+            if isinstance(data, str) and None:
+                for i in range(self.device.HBM_Port):
+                    fpath = data % i
+                    real_address = address + i*(1 << self.device.log2_Bank_Step)
+                    self.init_weight.append(f"{self.tab}DDR_Write_bin(h2cx, \"{fpath}\", {real_address}, {byte_size});")
         else:
             self.func_const_ddr.append("uint64_t %s = 0x%09x; // %d" % (enum_name, address, address & 0xffffffff))
             self.enum_nodes[2].append(enum_name)
+            if isinstance(data, str) and None:
+                self.init_weight.append(f"{self.tab}DDR_Write_bin(h2cx, \"{data}\", {address}, {byte_size});")
         for n in node["shape"]:
             if isinstance(n, ne.Expr):
                 vars = n.get_vars()

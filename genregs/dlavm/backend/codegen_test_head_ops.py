@@ -8,6 +8,7 @@ from .. import ne
 class CodeGenTestHeadOps(CodeGenTestHead):
 
     def ext_define(self):
+        super().ext_define()
         self.func_inits = []
         self.step_id = 0
 
@@ -36,7 +37,7 @@ class CodeGenTestHeadOps(CodeGenTestHead):
         self.func_output.append("uint64_t %s = 0x%09x; // %d" % (enum_name, address, address & 0xffffffff))
         self.enum_nodes[1].append(enum_name)
 
-    def gen_const(self, node):
+    def gen_const_(self, node):
         enum_name = node["name"]
         id, offset = node["storage"][0]["id"], node["storage"][0]["offset"]
         address = self.storage.get_address(id, offset)
@@ -107,7 +108,7 @@ printf("%(op_name)s run time     = %%fs(1000 times), %%fs(1 times) \\n",time_sec
 
     def to_string(self):
         super().to_string()
-        self.func_init_str = "\n".join(self.func_inits)
+        self.func_init_str += "\n" + "\n".join(self.func_inits)
 
     def gen_source(self):
         local_time = strftime('%Y-%m-%d %H:%M:%S', localtime())

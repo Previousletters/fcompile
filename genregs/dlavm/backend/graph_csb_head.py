@@ -5,6 +5,7 @@ from .codegen_csb_head import CodeGenCSBHead
 from .codegen_cfg_head import CodeGenCFGHead
 from .codegen_test_head import CodeGenTestHead
 from .codegen_test_head_ops import CodeGenTestHeadOps
+from .codegen_wt2hbm_head import CodeGenWt2HbmHead
 
 
 class GraphCSBHead(Functor):
@@ -134,23 +135,23 @@ class GraphCSBHead(Functor):
 
 def csb_head(expr, mod_name, init_addr):
     expr, mod, storage = GraphCSBHead().build(expr, init_addr)
-    source = CodeGenCSBHead().build(mod_name, mod, storage)
+    source = CodeGenCSBHead().build(mod_name, mod, storage, expr.get_device())
     return expr, source, storage, mod
-
-
-def cfg_head(expr, mod_name, init_addr):
-    expr, mod, storage = GraphCSBHead().build(expr, init_addr)
-    source, params = CodeGenCFGHead().build(mod_name, mod, storage)
-    return expr, source, storage, mod, params
 
 
 def csb_test_head(expr, mod_name, init_addr):
     expr, mod, storage = GraphCSBHead().build(expr, init_addr)
-    source = CodeGenTestHead().build(mod_name, mod, storage)
+    source = CodeGenTestHead().build(mod_name, mod, storage, expr.get_device())
     return expr, source, storage, mod
 
 
 def csb_test_head_ops(expr, mod_name, init_addr):
     expr, mod, storage = GraphCSBHead().build(expr, init_addr)
-    source = CodeGenTestHeadOps().build(mod_name, mod, storage)
+    source = CodeGenTestHeadOps().build(mod_name, mod, storage, expr.get_device())
+    return expr, source, storage, mod
+
+
+def csb_wt2hbm_head(expr, mod_name, init_addr):
+    expr, mod, storage = GraphCSBHead().build(expr, init_addr)
+    source = CodeGenWt2HbmHead().build(mod_name, mod, storage, expr.get_device())
     return expr, source, storage, mod

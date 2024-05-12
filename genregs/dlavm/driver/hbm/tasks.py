@@ -34,6 +34,7 @@ def MVMBasic(**kwargs):
     AUGMAX_OUT_ADDR = kwargs.get("AUGMAX_OUT_ADDR")
     log2_WT_base_addr_Bank_Step = kwargs.get("log2_WT_base_addr_Bank_Step", 28)
     Skip_Factor = kwargs.get("Skip_Factor", 1)
+    last_token = kwargs.get("last_token", 0)
 
     Tin = device.base_Tin
     Tout = device.Tout
@@ -50,7 +51,7 @@ def MVMBasic(**kwargs):
     BN_FIFO_NUM = device.BN_FIFO_NUM
     MAX_TOKEN = device.MAX_TOKEN
 
-    Win = If(kvcache, 1, Token)
+    Win = If(kvcache, 1, Token - last_token)
     Hin = Head
     CHin = Width_in
     CHout = Width_out
@@ -130,19 +131,13 @@ def MVMBasic(**kwargs):
     wt_size_in_bits = WT_SIZE_IN_BYTES // CHout_Padding * 8
     CHout = out_ch_slice
     CHout_last = out_ch_slice_last
-    '''
-    if kvcache_offset:
-        DAT_IN_BASE_ADDR += (Token-1)*Pixel_Data_Bytes
-        DAT_IN_LINE_STRIDE = Pixel_Data_Bytes * Token
-        DAT_IN_SURFACE_STRIDE = Pixel_Data_Bytes * Token * Hin
-    '''
 
     if Padding:
-        feature_out_base = If(kvcache, DAT_OUT_BASE_ADDR + (Token-1)*Pixel_Data_Bytes, DAT_OUT_BASE_ADDR)
+        feature_out_base = If(kvcache, DAT_OUT_BASE_ADDR + (Token-1)*Pixel_Data_Bytes, DAT_OUT_BASE_ADDR + last_token*Pixel_Data_Bytes)
     else:
         DAT_IN_BASE_ADDR = If(kvcache_offset, DAT_IN_BASE_ADDR + (Token-1)*Pixel_Data_Bytes, DAT_IN_BASE_ADDR)
-        DAT_IN_LINE_STRIDE = If(kvcache_offset, Pixel_Data_Bytes * Token, DAT_IN_LINE_STRIDE)
-        DAT_IN_SURFACE_STRIDE = If(kvcache_offset, Pixel_Data_Bytes * Token * Hin, DAT_IN_SURFACE_STRIDE)
+        DAT_IN_LINE_STRIDE = If(kvcache_offset, Pixel_Data_Bytes * Win, DAT_IN_LINE_STRIDE)
+        DAT_IN_SURFACE_STRIDE = If(kvcache_offset, Pixel_Data_Bytes * Win * Hin, DAT_IN_SURFACE_STRIDE)
         feature_out_base = DAT_OUT_BASE_ADDR
 
     regs = []
@@ -203,6 +198,7 @@ def LayerNorm(**kwargs):
     DAT_IN_BASE_ADDR = kwargs.get("DAT_IN_BASE_ADDR")
     LN_WT_BASE_ADDR = kwargs.get("LN_WT_BASE_ADDR")
     DAT_OUT_BASE_ADDR = kwargs.get("DAT_OUT_BASE_ADDR")
+    last_token = kwargs.get("last_token", 0)
 
     Tin = device.base_Tin
     Tout = device.Tout
@@ -220,11 +216,11 @@ def LayerNorm(**kwargs):
     AXI_DAT_WIDTH = device.AXI_DAT_WIDTH
     log2_AXI_BURST_LEN = device.log2_AXI_BURST_LEN
 
-    Win = If(kvcache, 1, Token)
+    Win = If(kvcache, 1, Token - last_token)
     Hin = Head
     CHin = Width_in
     CHout = CHin
-    Wout = kwargs.get("Wout", Win)
+    Wout = Win
     Hout = Hin
     Layer_Norm = 1 - RMS_Norm
     CHout_div_Tout = ((CHout + Tout - 1) // Tout)
@@ -238,9 +234,9 @@ def LayerNorm(**kwargs):
     if DAT_OUT_LINE_STRIDE is None or DAT_OUT_SURFACE_STRIDE is None:
         DAT_OUT_LINE_STRIDE = Pixel_Data_Bytes * Wout
         DAT_OUT_SURFACE_STRIDE = Pixel_Data_Bytes * Wout * Hout
-    DAT_IN_BASE_ADDR = If(kvcache_offset, DAT_IN_BASE_ADDR + (Token-1)*Pixel_Data_Bytes, DAT_IN_BASE_ADDR)
-    DAT_IN_LINE_STRIDE = If(kvcache_offset, Pixel_Data_Bytes * Token, DAT_IN_LINE_STRIDE)
-    DAT_IN_SURFACE_STRIDE = If(kvcache_offset, Pixel_Data_Bytes * Token * Hin, DAT_IN_SURFACE_STRIDE)
+    DAT_IN_BASE_ADDR = If(kvcache_offset, DAT_IN_BASE_ADDR + ((Token - last_token)-1)*Pixel_Data_Bytes, DAT_IN_BASE_ADDR)
+    DAT_IN_LINE_STRIDE = If(kvcache_offset, Pixel_Data_Bytes * (Token - last_token), DAT_IN_LINE_STRIDE)
+    DAT_IN_SURFACE_STRIDE = If(kvcache_offset, Pixel_Data_Bytes * (Token - last_token) * Hin, DAT_IN_SURFACE_STRIDE)
 
     ## Hardware Testbench
     CHin = CHin_Padding_with_Tout
@@ -281,6 +277,7 @@ def EleminateWise(**kwargs):
     A_DAT_IN_BASE_ADDR = kwargs.get("A_DAT_IN_BASE_ADDR")
     B_DAT_IN_BASE_ADDR = kwargs.get("B_DAT_IN_BASE_ADDR")
     DAT_OUT_BASE_ADDR = kwargs.get("DAT_OUT_BASE_ADDR")
+    last_token = kwargs.get("last_token", 0)
 
     Tin = device.base_Tin
     Tout = device.Tout
@@ -298,7 +295,7 @@ def EleminateWise(**kwargs):
     AXI_DAT_WIDTH = device.AXI_DAT_WIDTH
     log2_AXI_BURST_LEN = device.log2_AXI_BURST_LEN
 
-    Win = If(kvcache, 1, Token)
+    Win = If(kvcache, 1, Token - last_token)
     Hin = 1
     CHin = Width_in
     CHout = CHin
@@ -345,6 +342,7 @@ def PosEmb(**kwargs):
     DAT_IN_BASE_ADDR = kwargs.get("DAT_IN_BASE_ADDR")
     POS_IN_BASE_ADDR = kwargs.get("POS_IN_BASE_ADDR")
     DAT_OUT_BASE_ADDR = kwargs.get("DAT_OUT_BASE_ADDR")
+    last_token = kwargs.get("last_token", 0)
 
     Tin = device.base_Tin
     Tout = device.Tout
@@ -364,11 +362,11 @@ def PosEmb(**kwargs):
     MAX_TOKEN = device.MAX_TOKEN
     MAX_CH_per_HEAD = device.MAX_CH_per_HEAD
 
-    Win = kwargs.get("Win", MAX_TOKEN)
+    Win = MAX_TOKEN
     Hin = Head
     CHin = MAX_CH_per_HEAD
     CHout = CHin
-    Wout = kwargs.get("Wout", Win)
+    Wout = Win
     Hout = Hin
     CHout_div_Tout = ((CHout + Tout - 1) // Tout)
     CHin_div_Tout = ((CHin + Tout - 1) // Tout)
@@ -384,10 +382,10 @@ def PosEmb(**kwargs):
 
     ## Hardware Testbench
     PosEmb_reg_bias=192
-    feature_in_base=If(kvcache, DAT_IN_BASE_ADDR+(Token-1)*Pixel_Data_Bytes, DAT_IN_BASE_ADDR)
-    feature_out_base=If(kvcache, DAT_OUT_BASE_ADDR+(Token-1)*Pixel_Data_Bytes, DAT_OUT_BASE_ADDR)
-    PosEmb_in_base=If(kvcache, POS_IN_BASE_ADDR+(Token-1)*Pixel_Data_Bytes, POS_IN_BASE_ADDR)
-    Dynamic_Token = If(kvcache, 1, Token)
+    feature_in_base=If(kvcache, DAT_IN_BASE_ADDR+(Token-1)*Pixel_Data_Bytes, DAT_IN_BASE_ADDR+last_token*Pixel_Data_Bytes)
+    feature_out_base=If(kvcache, DAT_OUT_BASE_ADDR+(Token-1)*Pixel_Data_Bytes, DAT_OUT_BASE_ADDR+last_token*Pixel_Data_Bytes)
+    PosEmb_in_base=If(kvcache, POS_IN_BASE_ADDR+(Token-1)*Pixel_Data_Bytes, POS_IN_BASE_ADDR+last_token*Pixel_Data_Bytes)
+    Dynamic_Token = If(kvcache, 1, Token - last_token)
 
     regs = [] 
     CSB_Write(regs, PosEmb_reg_bias+2 ,PosEmb_in_base         )
@@ -420,6 +418,7 @@ def MVM_afterTRP(**kwargs):
     DAT_IN_BASE_ADDR = kwargs.get("DAT_IN_BASE_ADDR")
     WT_BASE_ADDR = kwargs.get("WT_BASE_ADDR")
     DAT_OUT_BASE_ADDR = kwargs.get("DAT_OUT_BASE_ADDR")
+    last_token = kwargs.get("last_token", 0)
 
     Tin = device.base_Tin
     Tout = device.Tout
@@ -440,11 +439,11 @@ def MVM_afterTRP(**kwargs):
     MAX_CH_per_HEAD = device.MAX_CH_per_HEAD
     MIN_WT_HEAD = device.MIN_WT_HEAD
 
-    Win = kwargs.get("Win", MAX_TOKEN)
+    Win = MAX_TOKEN
     Hin = Head
     CHin = MAX_CH_per_HEAD
-    CHout = CHin
-    Wout = kwargs.get("Wout", Win)
+    CHout = MAX_TOKEN
+    Wout = Win
     Hout = Hin
     CHout_div_Tout = ((CHout + Tout - 1) // Tout)
     CHin_div_Tout = ((CHin + Tout - 1) // Tout)
@@ -457,9 +456,9 @@ def MVM_afterTRP(**kwargs):
     DAT_OUT_HEAD_STRIDE = Pixel_Data_Bytes * Wout * Hout * CHout_div_Tout
 
     # Hardware Testbench
-    feature_in_base=If(kvcache, DAT_IN_BASE_ADDR+(Token-1)*Pixel_Data_Bytes, DAT_IN_BASE_ADDR)
-    feature_out_base=If(kvcache, DAT_OUT_BASE_ADDR+(Token-1)*Pixel_Data_Bytes, DAT_OUT_BASE_ADDR)
-    Dynamic_Token = If(kvcache, 1, Token)
+    feature_in_base=If(kvcache, DAT_IN_BASE_ADDR+(Token-1)*Pixel_Data_Bytes, DAT_IN_BASE_ADDR+last_token*Pixel_Data_Bytes)
+    feature_out_base=If(kvcache, DAT_OUT_BASE_ADDR+(Token-1)*Pixel_Data_Bytes, DAT_OUT_BASE_ADDR+last_token*Pixel_Data_Bytes)
+    Dynamic_Token = If(kvcache, 1, Token - last_token)
     recip_ch = np.array([1/math.sqrt(CHin),], dtype="float16")
     FP16_rsqrt = np.frombuffer(recip_ch.tobytes(), dtype="uint16")[0]
     Feature_Repeat_times_minus1=Feature_Head//MIN_WT_HEAD-1
@@ -496,6 +495,7 @@ def MVM_afterF2W(**kwargs):
     DAT_IN_BASE_ADDR = kwargs.get("DAT_IN_BASE_ADDR")
     WT_BASE_ADDR = kwargs.get("WT_BASE_ADDR")
     DAT_OUT_BASE_ADDR = kwargs.get("DAT_OUT_BASE_ADDR")
+    last_token = kwargs.get("last_token", 0)
 
     Tin = device.base_Tin
     Tout = device.Tout
@@ -516,11 +516,11 @@ def MVM_afterF2W(**kwargs):
     MAX_CH_per_HEAD = device.MAX_CH_per_HEAD
     MIN_WT_HEAD = device.MIN_WT_HEAD
 
-    Win = kwargs.get("Win", MAX_TOKEN)
+    Win = MAX_TOKEN
     Hin = Head
-    CHin = MAX_CH_per_HEAD
-    CHout = CHin
-    Wout = If(kvcache, 1, Token)
+    CHin = MAX_TOKEN
+    CHout = MAX_CH_per_HEAD
+    Wout = If(kvcache, 1, Token - last_token)
     Hout = Hin
     CHout_div_Tout = ((CHout + Tout - 1) // Tout)
     CHin_div_Tout = ((CHin + Tout - 1) // Tout)
@@ -533,9 +533,9 @@ def MVM_afterF2W(**kwargs):
     DAT_OUT_HEAD_STRIDE = Pixel_Data_Bytes * Wout * Hout * CHout_div_Tout
 
     # Hardware Testbench
-    feature_in_base=If(kvcache, DAT_IN_BASE_ADDR+(Token-1)*Pixel_Data_Bytes, DAT_IN_BASE_ADDR)
+    feature_in_base=If(kvcache, DAT_IN_BASE_ADDR+(Token-1)*Pixel_Data_Bytes, DAT_IN_BASE_ADDR+last_token*Pixel_Data_Bytes)
     feature_out_base=DAT_OUT_BASE_ADDR
-    Dynamic_Token = If(kvcache, 1, Token)
+    Dynamic_Token = If(kvcache, 1, Token - last_token)
     Feature_Repeat_times_minus1=Feature_Head//MIN_WT_HEAD-1
     reg_bias = 192
 
@@ -568,6 +568,7 @@ def Softmax(**kwargs):
     Feature_Head = kwargs["Feature_Head"]
     DAT_IN_BASE_ADDR = kwargs.get("DAT_IN_BASE_ADDR")
     DAT_OUT_BASE_ADDR = kwargs.get("DAT_OUT_BASE_ADDR")
+    last_token = kwargs.get("last_token", 0)
 
     Tin = device.base_Tin
     Tout = device.Tout
@@ -590,11 +591,11 @@ def Softmax(**kwargs):
     AXI_BURST_LEN_SOFTMAX = device.AXI_BURST_LEN_SOFTMAX
 
     Need_Mask = 1 - kvcache
-    Win = kwargs.get("Win", MAX_TOKEN)
+    Win = MAX_TOKEN
     Hin = Head
-    CHin = MAX_CH_per_HEAD
-    CHout = CHin
-    Wout = kwargs.get("Wout", Win)
+    CHin = MAX_TOKEN
+    CHout = MAX_TOKEN
+    Wout = Win
     Hout = Hin
     CHout_div_Tout = ((CHout + Tout - 1) // Tout)
     CHin_div_Tout = ((CHin + Tout - 1) // Tout)
@@ -607,11 +608,12 @@ def Softmax(**kwargs):
     DAT_OUT_HEAD_STRIDE = Pixel_Data_Bytes * Wout * Hout * CHout_div_Tout
 
     # Hardware Testbench
-    feature_in_base=If(kvcache, DAT_IN_BASE_ADDR+(Token-1)*Pixel_Data_Bytes, DAT_IN_BASE_ADDR)
-    feature_out_base=If(kvcache, DAT_OUT_BASE_ADDR+(Token-1)*Pixel_Data_Bytes, DAT_OUT_BASE_ADDR)
-    Dynamic_Token = If(kvcache, 1, Token)
+    feature_in_base=If(kvcache, DAT_IN_BASE_ADDR+(Token-1)*Pixel_Data_Bytes, DAT_IN_BASE_ADDR+last_token*Pixel_Data_Bytes)
+    feature_out_base=If(kvcache, DAT_OUT_BASE_ADDR+(Token-1)*Pixel_Data_Bytes, DAT_OUT_BASE_ADDR+last_token*Pixel_Data_Bytes)
+    Dynamic_Token = If(kvcache, 1, Token - last_token)
     Feature_Repeat_times_minus1=Feature_Head//MIN_WT_HEAD-1
-    w_in=If(kvcache, AXI_BURST_LEN_SOFTMAX, Token)
+    w_in_tp = (Token-last_token+AXI_BURST_LEN_SOFTMAX-1)//AXI_BURST_LEN_SOFTMAX*AXI_BURST_LEN_SOFTMAX
+    w_in=If(kvcache, AXI_BURST_LEN_SOFTMAX, w_in_tp)
     reg_bias = 192
     regs = []
     CSB_Write(regs, reg_bias+2 , Need_Mask                  )
@@ -626,7 +628,7 @@ def Softmax(**kwargs):
     CSB_Write(regs, reg_bias+11, Token                      )
     CSB_Write(regs, reg_bias+12, w_in                       )
     CSB_Write(regs, reg_bias+13, Dynamic_Token              )
-    CSB_Write(regs, reg_bias+14, 0                          )
+    CSB_Write(regs, reg_bias+14, last_token                 )
     CSB_Write(regs, reg_bias+15, 0                          )
     CSB_Write(regs, reg_bias+16, 0                          )
     CSB_Write(regs, reg_bias+17, 0b00_1000                  )
@@ -645,6 +647,7 @@ def ACT(**kwargs):
     DAT_IN_BASE_ADDR = kwargs.get("DAT_IN_BASE_ADDR")
     WT_BASE_ADDR = kwargs.get("WT_BASE_ADDR")
     DAT_OUT_BASE_ADDR = kwargs.get("DAT_OUT_BASE_ADDR")
+    last_token = kwargs.get("last_token", 0)
 
     Tin = device.base_Tin
     Tout = device.Tout
@@ -662,7 +665,7 @@ def ACT(**kwargs):
     AXI_DAT_WIDTH = device.AXI_DAT_WIDTH
     log2_AXI_BURST_LEN = device.log2_AXI_BURST_LEN
 
-    Win = If(kvcache, 1, Token)
+    Win = If(kvcache, 1, Token - last_token)
     Hin = Head
     CHin = Width_in
     CHout = CHin

@@ -61,6 +61,14 @@ class Base:
     def __getitem__(self, index):
         return TupleItem(self, index)
 
+    def get_device(self):
+        if hasattr(self, "checked_type"):
+            if isinstance(self.checked_type, Tuple):
+                return self.checked_type[0].device
+            elif isinstance(self.checked_type, Tensor):
+                return self.checked_type.device
+        raise RuntimeError("Error! Could not get device!")
+
 
 class TupleItem(Base):
 
