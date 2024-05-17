@@ -97,7 +97,7 @@ def main_kvcache_show(tokenizer, client, memory=0):
 if __name__ == "__main__":
     tokenizer = AutoTokenizer.from_pretrained("mytokens", trust_remote_code=True, local_files_only=True)
     client = socket.socket()
-    client.connect(("10.20.72.156", 8123))
+    client.connect(("10.20.115.17", 8123))
     print('连接到 FPGA ChatGLM2')
     # main_kvcache(tokenizer, client, memory=1)
-    main_kvcache_show(tokenizer, client, memory=1)
+    main_kvcache_show(tokenizer, client, memory=0)

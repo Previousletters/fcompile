@@ -134,6 +134,8 @@ def MVMBasic(**kwargs):
 
     if Padding:
         feature_out_base = If(kvcache, DAT_OUT_BASE_ADDR + (Token-1)*Pixel_Data_Bytes, DAT_OUT_BASE_ADDR + last_token*Pixel_Data_Bytes)
+        DAT_OUT_LINE_STRIDE = Pixel_Data_Bytes*MAX_TOKEN
+        DAT_OUT_SURFACE_STRIDE = Pixel_Data_Bytes*MAX_TOKEN*Hout
     else:
         DAT_IN_BASE_ADDR = If(kvcache_offset, DAT_IN_BASE_ADDR + (Token-1)*Pixel_Data_Bytes, DAT_IN_BASE_ADDR)
         DAT_IN_LINE_STRIDE = If(kvcache_offset, Pixel_Data_Bytes * Win, DAT_IN_LINE_STRIDE)

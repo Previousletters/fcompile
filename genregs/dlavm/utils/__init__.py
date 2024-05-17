@@ -1,1 +1,1 @@
-from .log import LOG_CLEAR, LOG_WITH_PREFIX, GET_LOG
+from .log import LOG_CLEAR, LOG_WITH_PREFIX, GET_LOG, LOG_EXPORT

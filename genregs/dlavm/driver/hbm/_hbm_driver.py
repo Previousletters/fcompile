@@ -122,45 +122,18 @@ def MVMafterTRPDriver(args, output, attrs):
     dtensor, wtensor = args[0], args[1]
     dshape, wshape = dtensor[0].shape, wtensor[0].shape
     daddrs, waddrs, oaddrs = dtensor[1], wtensor[1], output[1]
-    if attrs["kvcache"]:
-        define = {
-            "KV_cache_mode": attrs["kvcache"], 
-            "Feature_Head": dshape[0],
-            "Weight_Head": wshape[0],
-            "Token": dshape[1],
-            "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
-            "WT_BASE_ADDR":  waddrs & 0xffffffff,
-            "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
-            "device": args[0][0].device,
-            **attrs
-        }
-    elif attrs["padding"]:
-        max_token = dtensor[0].device.MAX_TOKEN
-        define = {
-            "KV_cache_mode": attrs["kvcache"], 
-            "Feature_Head": dshape[0],
-            "Weight_Head": wshape[0],
-            "Token": wshape[1],
-            "Win": max_token, "Wout": max_token, "CHout": max_token,
-            "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
-            "WT_BASE_ADDR":  waddrs & 0xffffffff,
-            "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
-            "device": args[0][0].device,
-            **attrs
-        }
-    else:
-        define = {
-            "KV_cache_mode": attrs["kvcache"], 
-            "Feature_Head": dshape[0],
-            "Weight_Head": wshape[0],
-            "Token": wshape[1],
-            "Win": dshape[1], "Wout": dshape[1], "CHout": dshape[1],
-            "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
-            "WT_BASE_ADDR":  waddrs & 0xffffffff,
-            "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
-            "device": args[0][0].device,
-            **attrs
-        }
+    define = {
+        "KV_cache_mode": attrs["kvcache"], 
+        "Feature_Head": dshape[0],
+        "Weight_Head": wshape[0],
+        "Token": wshape[1],
+        "Win": dshape[1], "Wout": dshape[1], "CHout": dshape[1],
+        "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
+        "WT_BASE_ADDR":  waddrs & 0xffffffff,
+        "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
+        "device": args[0][0].device,
+        **attrs
+    }
     return tasks.MVM_afterTRP(**define)
 
 
@@ -172,46 +145,18 @@ def MVMafterF2WDriver(args, output, attrs):
     dtensor, wtensor = args[0], args[1]
     dshape, wshape = dtensor[0].shape, wtensor[0].shape
     daddrs, waddrs, oaddrs = dtensor[1], wtensor[1], output[1]
-    if attrs["kvcache"]:
-        define = {
-            "KV_cache_mode": attrs["kvcache"], 
-            "Feature_Head": dshape[0],
-            "Weight_Head": wshape[0],
-            "Token": dshape[1],
-            "Wout": dshape[1],
-            "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
-            "WT_BASE_ADDR":  waddrs & 0xffffffff,
-            "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
-            "device": args[0][0].device,
-            **attrs
-        }
-    elif attrs["padding"]:
-        max_token = dtensor[0].device.MAX_TOKEN
-        define = {
-            "KV_cache_mode": attrs["kvcache"], 
-            "Feature_Head": dshape[0],
-            "Weight_Head": wshape[0],
-            "Token": dshape[1],
-            "Win": max_token, "Wout": wshape[1],
-            "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
-            "WT_BASE_ADDR":  waddrs & 0xffffffff,
-            "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
-            "device": args[0][0].device,
-            **attrs
-        }
-    else:
-        define = {
-            "KV_cache_mode": attrs["kvcache"], 
-            "Feature_Head": dshape[0],
-            "Weight_Head": wshape[0],
-            "Token": dshape[1],
-            "Win": dshape[1], "Wout": wshape[1], "CHout": wshape[1],
-            "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
-            "WT_BASE_ADDR":  waddrs & 0xffffffff,
-            "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
-            "device": args[0][0].device,
-            **attrs
-        }
+    define = {
+        "KV_cache_mode": attrs["kvcache"], 
+        "Feature_Head": dshape[0],
+        "Weight_Head": wshape[0],
+        "Token": dshape[1],
+        "Win": dshape[1], "Wout": wshape[1], "CHout": wshape[1],
+        "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
+        "WT_BASE_ADDR":  waddrs & 0xffffffff,
+        "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
+        "device": args[0][0].device,
+        **attrs
+    }
     return tasks.MVM_afterF2W(**define)
 
 
@@ -242,38 +187,15 @@ def SoftmaxDriver(args, output, attrs):
     dtensor = args[0]
     dshape = dtensor[0].shape
     daddrs, oaddrs = dtensor[1], output[1]
-    if attrs["kvcache"]:
-        define = {
-            "KV_cache_mode": attrs["kvcache"],
-            "Feature_Head": dshape[0],
-            "Token": dshape[1],
-            "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
-            "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
-            "device": args[0][0].device,
-            **attrs
-        }
-    elif attrs["padding"]:
-        max_token = dtensor[0].device.MAX_TOKEN
-        define = {
-            "KV_cache_mode": attrs["kvcache"],
-            "Feature_Head": dshape[0],
-            "Token": dshape[1],
-            "Win": max_token, "Wout": max_token, "CHout": max_token,
-            "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
-            "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
-            "device": args[0][0].device,
-            **attrs
-        }
-    else:
-        define = {
-            "KV_cache_mode": attrs["kvcache"],
-            "Feature_Head": dshape[0],
-            "Token": dshape[1],
-            "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
-            "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
-            "device": args[0][0].device,
-            **attrs
-        }
+    define = {
+        "KV_cache_mode": attrs["kvcache"],
+        "Feature_Head": dshape[0],
+        "Token": dshape[1],
+        "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
+        "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
+        "device": args[0][0].device,
+        **attrs
+    }
     return tasks.Softmax(**define)
 
 
@@ -305,36 +227,15 @@ def PosEmbDriver(args, output, attrs):
     dtensor, ptensor = args[0], args[1]
     dshape, oshape = dtensor[0].shape, output[0].shape
     daddrs, paddrs, oaddrs = dtensor[1], ptensor[1], output[1]
-    if attrs["kvcache"]:
-        define = {
-            "Feature_Head": dshape[0], "Token": dshape[1], "KV_cache_mode": attrs["kvcache"],
-            "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
-            "POS_IN_BASE_ADDR":  paddrs & 0xffffffff,
-            "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
-            "device": args[0][0].device,
-            **attrs
-        }
-    elif attrs["padding"]:
-        max_token = dtensor[0].device.MAX_TOKEN
-        define = {
-            "Feature_Head": dshape[0], "Token": dshape[1], "KV_cache_mode": attrs["kvcache"],
-            "Win": max_token, "Wout": max_token,
-            "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
-            "POS_IN_BASE_ADDR":  paddrs & 0xffffffff,
-            "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
-            "device": args[0][0].device,
-            **attrs
-        }
-    else:
-        define = {
-            "Feature_Head": dshape[0], "Token": dshape[1], "KV_cache_mode": attrs["kvcache"],
-            "Win": dshape[1], "Wout": dshape[1],
-            "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
-            "POS_IN_BASE_ADDR":  paddrs & 0xffffffff,
-            "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
-            "device": args[0][0].device,
-            **attrs
-        }
+    define = {
+        "Feature_Head": dshape[0], "Token": dshape[1], "KV_cache_mode": attrs["kvcache"],
+        "Win": dshape[1], "Wout": dshape[1],
+        "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
+        "POS_IN_BASE_ADDR":  paddrs & 0xffffffff,
+        "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
+        "device": args[0][0].device,
+        **attrs
+    }
     return tasks.PosEmb(**define)
 
 

@@ -45,6 +45,7 @@ def MVMafterTRPRel(args, attrs):
     if dshape[-1] != wshape[-1] or dshape[-2] != wshape[-2]:
         return False, []
     oshape = [i for i in dshape]
+    oshape[-1] = wshape[-2]
     return True, Tensor(oshape, dtype, device)
 
 
@@ -61,9 +62,10 @@ def MVMafterF2WRel(args, attrs):
         return False, "accel.hbm.mvm_afterF2W gets wrong data type"
     if wtype.mapped != DataEnum.ddr or wtype.dtype != DataEnum.fp16:
         return False, "accel.hbm.mvm_afterF2W gets wrong weight type"
-    if dshape[-1] != wshape[-1]:
-        return False, "accel.hbm.mvm_afterF2W needs same chout"
+    if dshape[-2] != wshape[-2]:
+        return False, "accel.hbm.mvm_afterF2W needs same token"
     oshape = [i for i in dshape]
+    oshape[-1] = wshape[-1]
     return True, Tensor(oshape, dtype, device)
 
 
@@ -92,7 +94,8 @@ def MVMBNRel(args, attrs):
     oshape = [i for i in dshape]
     oshape[-1] = wshape[1]
     if attrs.get("arg_max", 0):
-        return True, Tuple([Tensor(oshape, dtype, device), Tensor(oshape, dtype, device)])
+        return True, Tuple([Tensor(oshape, dtype, device), Tensor([1, oshape[-2]], dtype, device)])
+        # return True, Tuple([Tensor(oshape, dtype, device), Tensor(oshape, dtype, device)])
     else:
         return True, Tensor(oshape, dtype, device)
 

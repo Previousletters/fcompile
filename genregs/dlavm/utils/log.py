@@ -15,3 +15,12 @@ def LOG_CLEAR():
 
 def GET_LOG():
     return _logs
+
+
+def LOG_EXPORT(path):
+    with open(path, "w") as f:
+        for i, j in _logs.items():
+            f.write(f"------------------------------------------{i}------------------------------------------\n")
+            for n in j:
+                f.write(n)
+                f.write("\n")

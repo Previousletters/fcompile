@@ -21,20 +21,21 @@ class CodeGenCFGHead(CodeGenTestHead):
         self.func_init = []
         self.func_inits = []
         self.func_update = []
+        self.task_latency = []
+        self.var_mod = []
+        self.var_upt = []
 
     def to_string(self):
         super().to_string()
-        self.func_init_str = "\n".join(self.func_inits)
-        self.mod_args = ", ".join(["HANDLE device"] + self.dynamic_var)
-        self.update_args = ", ".join(["HANDLE h2cx"] + self.dynamic_var)
+        self.func_init_str = "\n".join(self.func_inits + [self.func_init])
+        self.mod_args = ", ".join(["HANDLE device", "HANDLE h2cx"] + self.var_mod + self.var_upt)
+        self.update_args = ", ".join(["HANDLE h2cx"] + self.var_upt)
         self.func_update_str = "\n".join(self.func_update)
-        # self.func_init_str = f"void {self.mod_name}Init(FILE* f_cfg) " + "{\n" + \
-        #                      f"{self.tab}rewind(f_cfg);\n" + \
-        #                      "\n".join([self.tab + i for i in self.func_init]) + "\n}"
 
     def gen_cfg(self):
         addr = self.storage.get_address(self.cfg_group[self.cfg_numb[0]][0], 0) & 0xffffffff
         max_tasks_num, aux_group_num = self.cfg_group[self.cfg_numb[0]][1]
+        task_latency_str = "\n".join(self.task_latency)
         self.func_body.append("""#ifdef REGS_DEBUG
 QueryPerformanceCounter(&start_run);
 #endif
@@ -42,12 +43,16 @@ QueryPerformanceCounter(&start_run);
 %(tab)sCSB_Write(device, 64+2, %(aug_group_num)d);
 %(tab)sCSB_Write(device, 64+3, %(max_tasks_num)d);
 %(tab)sCSB_Write(device, 64+9, 1);//start
+#ifdef LATENCY_HIDING
+%(upt_task)s
+#endif
 %(tab)swhile(CSB_Read(device, 64) != 1) {}
 #ifdef REGS_DEBUG
 QueryPerformanceCounter(&stop_run);
 time_sec1 = (unsigned long long)(stop_run.QuadPart - start_run.QuadPart) / (double)freq.QuadPart;
 printf("cfg run time     = %%fs \\n",time_sec1);
-#endif""" % {"tab": self.tab, "addr": addr, "aug_group_num": aux_group_num, "max_tasks_num": max_tasks_num})
+#endif""" % {"tab": self.tab, "addr": addr, "aug_group_num": aux_group_num, "max_tasks_num": max_tasks_num, "upt_task": task_latency_str})
+        self.task_latency = []
 
     def init_cfg_bin(self):
         if not hasattr(self, "cfg_bin"):
@@ -55,7 +60,13 @@ printf("cfg run time     = %%fs \\n",time_sec1);
             for cfg in self.cfg_group:
                 total_aux_num += cfg[1][1]
             self.cfg_bin = np.zeros(shape=(total_aux_num, self.AXI_DAT_NUM), dtype="uint32")
-        if self.cfg_numb[1] == 0:
+            byte_size = total_aux_num * self.AXI_DAT_NUM * 4
+            self.func_init = """void %(mod_name)s_init(HANDLE h2cx, char* fpath) {
+%(tab)sDDR_Write_bin(h2cx, fpath, %(id)s, %(byte_size)d);
+}""" % {"mod_name": self.mod_name, "tab": self.tab, "id": self.cfg_group[0][0], "byte_size": byte_size}
+
+    def update_cfg(self):
+        if self.cfg_numb[1] == len(self.cfg_group[self.cfg_numb[0]][2])-1:
             self.gen_cfg()
             index_aux_num = 0
             for i in range(self.cfg_numb[0]):
@@ -107,14 +118,23 @@ for (int i = 0; i < 1000; i=i+1) {
                 if isinstance(reg[2], ne.Expr):
                     dyn_vars = reg[2].get_vars()
                     for var in dyn_vars:
-                        source = f"int {var[0]}"
-                        if source not in self.dynamic_var:
-                            self.dynamic_var.append(source)
+                        if cfg_storage is not None:
+                            source = f"int upt_{var[0]}"
+                            if source not in self.var_upt:
+                                self.var_upt.append(source)
+                        else:
+                            source = f"int {var[0]}"
+                            if source not in self.var_mod:
+                                self.var_mod.append(source)
                         if var[0] not in tp_dynamic_var:
                             tp_dynamic_var.append(var[0])
+                    new_expr = ne.expr_var_from_dict(reg[2], {"kvcache": 1})
                     data = reg[2].export("cpp")
                     if cfg_storage is not None and len(dyn_vars):
-                        tp_func_inits.append(f"{self.tab}DDR_Update(h2cx, {cfg_storage}+{num<<2}, {data});")
+                        if isinstance(new_expr.simplify(), ne.Numb):
+                            tp_func_inits.append(f"{self.tab}if (full_update) DDR_Update(h2cx, {cfg_storage}+{num<<2}, {data});")
+                        else:
+                            tp_func_inits.append(f"{self.tab}DDR_Update(h2cx, {cfg_storage}+{num<<2}, {data});")
                         continue
                 if cfg_storage is not None:
                     if node["csb_regs"][num+1][0]:
@@ -132,18 +152,25 @@ QueryPerformanceCounter(&stop_run);
 time_sec0 = (unsigned long long)(stop_run.QuadPart - start_run.QuadPart) / (double)freq.QuadPart;
 printf("%(op_name)s run time     = %%fs(1000 times), %%fs(1 times) \\n",time_sec0, time_sec0/1000);
 #endif""" % {"op_name": op_name})
+        if cfg_storage is not None:
+            tp_dynamic_var.append("full_update")
         tp_dynamic_str_0 = ", ".join(["HANDLE " + tp_dynamic_var[i] if i == 0 else "int " + tp_dynamic_var[i] for i in range(len(tp_dynamic_var))])
-        tp_dynamic_str_1 = ", ".join(tp_dynamic_var)
         tp_func_inits.append("}\n")
         tp_func_inits[0] = f"void {func_op_name} ({tp_dynamic_str_0}) " + "{"
         self.func_inits += tp_func_inits
         if cfg_storage is not None:
+            if "int upt_full_update" not in self.var_upt:
+                self.var_upt.append("int upt_full_update")
+            tp_dynamic_str_1 = ", ".join([tp_dynamic_var[0]] + ["upt_" + i for i in tp_dynamic_var[1:]])
             self.func_update.append(f"{self.tab}{func_op_name}({tp_dynamic_str_1});")
+            self.task_latency.append(f"{self.tab}{func_op_name}({tp_dynamic_str_1});")
+            self.update_cfg()
             if self.cfg_numb[1] == len(self.cfg_group[self.cfg_numb[0]][2]) - 1:
                 self.cfg_numb = [self.cfg_numb[0]+1, 0]
             else:
                 self.cfg_numb[1] += 1
         else:
+            tp_dynamic_str_1 = ", ".join(tp_dynamic_var)
             self.func_body.append(f"{self.tab}{func_op_name}({tp_dynamic_str_1});")
 
     def gen_source(self):
@@ -158,6 +185,7 @@ printf("%(op_name)s run time     = %%fs(1000 times), %%fs(1 times) \\n",time_sec
             "update_args": self.update_args, "func_update": self.func_update_str,
         }
         source = """// generated by codegen c++ test ops head at %(local_time)s
+#define LATENCY_HIDING
 %(storages)s
 
 // get input ptr

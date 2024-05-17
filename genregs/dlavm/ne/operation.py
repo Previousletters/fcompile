@@ -1,4 +1,4 @@
-from .expr import Expr, Numb, Var
+from .expr import Expr, Numb, Var, If
 
 
 class For:
@@ -50,3 +50,21 @@ def expr_for_hook(hook_st, hook_end):
                 fn(var)
         return _call
     return _register_fn
+
+
+def expr_var_from_dict(expr, vars):
+    if isinstance(expr, Var):
+        if expr.name in vars.keys():
+            return Numb(vars[expr.name])
+        else:
+            return Var(expr.name, expr.max_data)
+    elif isinstance(expr, If):
+        judge_expr = expr_var_from_dict(expr.judge_expr, vars)
+        then_expr = expr_var_from_dict(expr.then_expr, vars)
+        else_expr = expr_var_from_dict(expr.else_expr, vars)
+        return If(judge_expr, then_expr, else_expr)
+    elif isinstance(expr, Numb):
+        return Numb(expr.data)
+    else:
+        args = [expr_var_from_dict(arg, vars) for arg in expr.args]
+        return Expr(args, expr.op)

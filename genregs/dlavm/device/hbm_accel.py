@@ -38,6 +38,9 @@ class HBM(Accel):
     @classmethod
     def malloc_bytes(cls, shape, dtype):
         shape = [i.simplify(1).data if isinstance(i, ne.Expr) else i for i in shape]
+        # if len(shape) >= 3 and shape[0] > 1:
+        #     shape[1] = max(shape[1], shape[2])
+        #     shape[2] = shape[1]
         if dtype.mapped == DataEnum.ddr:
             new_shape = [i for i in shape]
             new_shape[-1] = (new_shape[-1] + cls.Tout - 1) // cls.Tout
@@ -89,7 +92,7 @@ class ASYNHBM0402(HBM0321):
 class HBM0424(HBM0321):
     name = "hbm_0424"
 
-    MAX_TOKEN = 1024
+    MAX_TOKEN = 128
     MAX_CFG_NUM = 12
 
 
