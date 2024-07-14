@@ -52,7 +52,7 @@ void c2hx_device_read_bin (HANDLE c2hx_device, struct bin_inf* read_bin_inf );
 void h2cx_device_write(HANDLE h2cx_device, uint64_t base_address, DWORD data_size,  BYTE* write_date);
 void c2hx_device_read (HANDLE c2hx_device, uint64_t base_address, DWORD data_size,  BYTE* read_data );
 
-void CSB_Write(HANDLE user_device, int addr, int data);
+void CSB_Write(HANDLE user_device, int addr, uint32_t data);
 int CSB_Read(HANDLE user_device, int addr);
 
 #include "xdma_rw.cpp"

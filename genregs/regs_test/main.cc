@@ -2,23 +2,17 @@
 #include "lib.h"
 // #include "chatglm_dynamic_control_1024_0428_1254.h"
 // #include "chatglm_dynamic_control_1024_0430_1443.h"
-#include "chatglm_dynamic_control_128_0509_1942.h"
-#include "chatglm_dynamic_control_128_0509_2007.h"
+// #include "chatglm_dynamic_control_128_0509_1942.h"
+// #include "chatglm_dynamic_control_128_0509_2007.h"
+#include "kvmvm_token_0709_2032.h"
 
 int main(void) {
-    HANDLE device0, device1;
-    int token = 19, kvcache = 0;
-    chatglm_dynamic_control_128_0509_1942(device0, token, kvcache, 0);
-    chatglm_dynamic_control_128_0509_2007(device1, token, kvcache, 0);
-    if (device0.size() != device1.size()) {
-        return 1;
-    } else {
-        for (int i = 0; i < device0.size(); i++) {
-            if (device0[i].first != device1[i].first || device0[i].second != device1[i].second) {
-                printf("*Error* : %d, dynamic_control: %d, %d; without_kvcache: %d, %d\n", i, device0[i].first, device0[i].second, device1[i].first, device1[i].second);
-            }
-        }
-        std::cout << "Check Finish! Total " << device0.size() << " regs!" << std::endl;
+    HANDLE device0;
+    int token = 1;
+    kvmvm_token_0709_2032(device0, token);
+    for (auto i : device0) {
+        std::cout << i.first << ": " << i.second << std::endl;
     }
+    std::cout << 32 % 32 << std::endl;
     return 0;
 }

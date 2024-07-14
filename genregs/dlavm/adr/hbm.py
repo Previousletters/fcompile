@@ -79,7 +79,7 @@ def mvm_bn_res(*args, skip=1, res_mul=0, arg_max=0, relu=0, log2_step=28, **kwat
         exit(-1)
 
 
-def mvm_afterTRP(data, weight, padding=1, kvcache=1, **kwattrs):
+def mvm_afterTRP(data, weight, padding=0, kvcache=1, **kwattrs):
     attrs = {
         "kvcache": kvcache,
         "padding": padding,
@@ -88,7 +88,7 @@ def mvm_afterTRP(data, weight, padding=1, kvcache=1, **kwattrs):
     return Call(Op.Get("accel.hbm.mvm_afterTRP"), [data, weight], attrs)
 
 
-def mvm_afterF2W(data, weight, padding=1, kvcache=1, **kwattrs):
+def mvm_afterF2W(data, weight, padding=0, kvcache=1, **kwattrs):
     attrs = {
         "kvcache": kvcache,
         "padding": padding,
@@ -115,7 +115,7 @@ def layer_norm(data, weight, rms=1, **kwattrs):
     return Call(Op.Get("accel.hbm.layer_norm"), [data, weight], attrs)
 
 
-def softmax(data, padding=1, kvcache=1, **kwattrs):
+def softmax(data, padding=0, kvcache=1, **kwattrs):
     attrs = {
         "kvcache": kvcache,
         "padding": padding,
@@ -124,7 +124,7 @@ def softmax(data, padding=1, kvcache=1, **kwattrs):
     return Call(Op.Get("accel.hbm.softmax"), [data], attrs)
 
 
-def pos_emb(data, weight, padding=1, kvcache=1, out_and_in_mode=0, **kwattrs):
+def pos_emb(data, weight, padding=0, kvcache=1, out_and_in_mode=0, **kwattrs):
     attrs = {
         "kvcache": kvcache,
         "padding": padding,
@@ -162,3 +162,9 @@ def silu(data, out_and_in_mode=0):
     import numpy as np
     silu_weight = const_ddr("global::silu_weight", np.zeros([32*3], dtype="uint8"), [32*3], DataEnum.int8)
     return activate(data, silu_weight, out_and_in_mode=out_and_in_mode)
+
+
+def cache(expr):
+    expr.prefix = "cache"
+    expr.attrs["padding"] = 1
+    return expr

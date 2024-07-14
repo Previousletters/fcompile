@@ -1,3 +1,4 @@
+import copy
 import numpy as np
 
 class Op:
@@ -8,6 +9,10 @@ class Op:
     div = {"py": " / ", "cpp": " / "}
     mod = {"py": " % ", "cpp": " % "}
     equ = {"py": " == ", "cpp": " == "}
+    gt = {"py": " > ", "cpp": " > "}
+    ge = {"py": " >= ", "cpp": " >= "}
+    lt = {"py": " < ", "cpp": " < "}
+    le = {"py": " <= ", "cpp": " <= "}
     fdiv = {"py": " // ", "cpp": " / "}
     lshift = {"py": " << ", "cpp": " << "}
     rshift = {"py": " >> ", "cpp": " >> "}
@@ -26,7 +31,7 @@ class Expr:
         return vars
 
     def simplify(self, max_numb=0):
-        new_args = [arg.simplify(max_numb) for arg in self.args]
+        new_args = [copy.deepcopy(arg).simplify(max_numb) for arg in self.args]
         new_expr = Expr(new_args, self.op)
         if isinstance(new_args[0], Numb) and isinstance(new_args[1], Numb):
             return Numb(eval(str(new_expr)))
@@ -165,7 +170,7 @@ class Expr:
             new_expr = Var(data)
         elif isinstance(data, (int, float)):
             new_expr = Numb(data)
-        return self.simplify(max_numb=1) > new_expr
+        return Expr([self, new_expr], Op.gt)
 
     def __ge__(self, data):
         new_expr = data
@@ -173,7 +178,7 @@ class Expr:
             new_expr = Var(data)
         elif isinstance(data, (int, float)):
             new_expr = Numb(data)
-        return self.simplify(max_numb=1) >= new_expr
+        return Expr([self, new_expr], Op.ge)
 
     def __lt__(self, data):
         new_expr = data
@@ -181,7 +186,8 @@ class Expr:
             new_expr = Var(data)
         elif isinstance(data, (int, float)):
             new_expr = Numb(data)
-        return self.simplify(max_numb=1) < new_expr
+        #return self.simplify(max_numb=0) < new_expr
+        return Expr([self, new_expr], Op.lt)
 
     def __le__(self, data):
         new_expr = data
@@ -189,7 +195,8 @@ class Expr:
             new_expr = Var(data)
         elif isinstance(data, (int, float)):
             new_expr = Numb(data)
-        return self.simplify(max_numb=1) <= new_expr
+        #return self.simplify(max_numb=0) <= new_expr
+        return Expr([self, new_expr], Op.le)
 
     def __eq__(self, new_expr):
         vars0 = self.get_vars()
@@ -363,12 +370,16 @@ class If(Expr):
             return self.else_expr
 
     def export(self, tag):
-        return f"({self.judge_expr.export(tag)} ? {self.then_expr.export(tag)} : {self.else_expr.export(tag)})"
+        if tag == "cpp":
+            return f"({self.judge_expr.export(tag)} ? {self.then_expr.export(tag)} : {self.else_expr.export(tag)})"
+        elif tag == "py":
+            return f"({self.then_expr.export(tag)} if {self.judge_expr.export(tag)} else {self.else_expr.export(tag)})"
+        else:
+            raise RuntimeError("No support target code")
 
 
 if __name__ == "__main__":
     a = 12 * (Var("test") + 2)
-    print(a)
     b = a.simplify()
     print(b.export("cpp"))
     print(a)

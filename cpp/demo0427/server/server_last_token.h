@@ -323,7 +323,7 @@ typedef uint16_t (*exe_t)(RPCClient*, std::string);
         ids[index] = get_output(client->c2hx, client->data_out);
         DWORD bin_data_size = 4096*2;
         BYTE* kvcache_data = allocate_buffer(bin_data_size, 0);
-        while (ids[index] != 2 && token < 1024) {
+        while (ids[index] != 2 && token < 128) {
             set_inputs((uint16_t*)kvcache_data, ids[index], 0);
             send_inputs(client->h2cx, kvcache_data, client->data_in, bin_data_size);
             index ++;

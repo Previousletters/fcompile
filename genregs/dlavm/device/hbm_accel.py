@@ -74,7 +74,7 @@ class HBM0321(HBM):
     name = "hbm_0321"
 
     DAT_BRAM_DEPTH = (1<<22)//HBM.base_Tin//HBM.MAX_DAT_DW//HBM.DAT_BRAM_NUM
-    WT_BRAM_DEPTH = (1<<22)//HBM.HBM_AXI_DATA_WIDTH//HBM.WT_BRAM_NUM
+    WT_BRAM_DEPTH = (1<<23)//HBM.HBM_AXI_DATA_WIDTH//HBM.WT_BRAM_NUM
     AXI_BURST_LEN_SOFTMAX = 1
     BN_FIFO_DEP = HBM.SINGLE_BN_FIFO_DEP * 4
     MAX_TOKEN = 128
@@ -84,7 +84,7 @@ class HBM0321(HBM):
 
 class ASYNHBM0402(HBM0321):
     name = "asyn_hbm_0402"
-    
+
     ASYN_FACTOR = 2
     WT_BRAM_DEPTH = HBM0321.WT_BRAM_DEPTH // ASYN_FACTOR
 
@@ -92,7 +92,7 @@ class ASYNHBM0402(HBM0321):
 class HBM0424(HBM0321):
     name = "hbm_0424"
 
-    MAX_TOKEN = 128
+    MAX_TOKEN = 512
     MAX_CFG_NUM = 12
 
 
@@ -100,3 +100,9 @@ class HBM0507(HBM0424):
     name = "hbm_0507"
 
     AUX_WT_BUF_DEPTH = 1024
+
+
+class HBM0603(HBM0507):
+    name = "hbm_0603"
+
+    MAX_TOKEN = 2048

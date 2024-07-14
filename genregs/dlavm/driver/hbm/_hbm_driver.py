@@ -1,5 +1,5 @@
 from ...adr import Op, Tensor, Constant
-from . import tasks
+from . import tasks_0602 as tasks
 from ...clib import WT_TRANS, BN_TRANS
 
 
@@ -10,7 +10,7 @@ def MVMDriver(args, output, attrs):
         daddrs, waddrs, oaddrs = dtensor[1], wtensor[1], output[1]
         define = {
             "log2_WT_base_addr_Bank_Step": attrs["log2_step"], 
-            "Hin": dshape[0], "Win": dshape[1], "Height": dshape[0]*dshape[1],
+            "Hin": dshape[0], "Token": dshape[1], "Height": dshape[0]*dshape[1],
             "Width_in": wshape[0], "Width_out": wshape[1],
             "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
             "HBM00_WT_BASE_ADDR":  waddrs & 0xffffffff,
@@ -208,7 +208,7 @@ def LayerNormDriver(args, output, attrs):
     dshape, bshape = dtensor[0].shape, btensor[0].shape
     daddrs, baddrs, oaddrs = dtensor[1], btensor[1], output[1]
     define = {
-        "Token": dshape[0]*dshape[1], "Width_in": dshape[2],
+        "Token": dshape[1], "Width_in": dshape[2],
         "RMS_Norm": attrs["rms"],
         "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
         "LN_WT_BASE_ADDR":  baddrs & 0xffffffff,

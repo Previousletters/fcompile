@@ -29,3 +29,9 @@ def ReallocDriver(args, output, attrs):
 
 Op.Get("accel.realloc").attrs["driver"] = ReallocDriver
 
+
+def TupleDriver(args, output, attrs):
+    return output
+
+
+Op.Get("accel.tuple").attrs["driver"] = TupleDriver

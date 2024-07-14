@@ -3,9 +3,10 @@ from ..adr import Functor, Call, VM, Tensor
 
 class InferType(Functor):
 
-    def __init__(self, device=None):
+    def __init__(self, device=None, attrs={}):
         super(InferType, self).__init__()
         self.device = device
+        self.attrs = attrs
         self.glb_const = {}
 
     def visit_var(self, expr):
@@ -36,6 +37,9 @@ class InferType(Functor):
         return expr
 
     def visit_call(self, expr):
+        for key, value in self.attrs.items():
+            if expr.attrs[key] is None:
+                expr.attrs[key] = value
         new_args = [self.visit(arg) for arg in expr.args]
         new_type = [arg.checked_type for arg in new_args]
         func = expr.op.attrs["rel"]
@@ -50,6 +54,9 @@ class InferType(Functor):
             raise RuntimeError("Check Error! " + expr.op.name + ", " + checked_type)
 
     def visit_vm(self, expr):
+        for key, value in self.attrs.items():
+            if expr.attrs[key] is None:
+                expr.attrs[key] = value
         new_args = [self.visit(arg) for arg in expr.args]
         new_type = [arg.checked_type for arg in new_args]
         func = expr.op.attrs["rel"]
@@ -65,5 +72,5 @@ class InferType(Functor):
 
 
 
-def infer_type(expr, device=None):
-    return InferType(device).visit(expr)
+def infer_type(expr, device=None, attrs={}):
+    return InferType(device, attrs).visit(expr)

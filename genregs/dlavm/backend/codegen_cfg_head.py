@@ -7,10 +7,10 @@ from .. import ne
 
 class CodeGenCFGHead(CodeGenTestHead):
 
-    def build(self, mod_name: str, module, storage, cfg_group, AXI_DAT_NUM):
+    def build(self, mod_name: str, module, storage, cfg_group, AXI_DAT_NUM, device=None):
         self.AXI_DAT_NUM = AXI_DAT_NUM
         self.cfg_group = cfg_group
-        return super().build(mod_name, module, storage)
+        return super().build(mod_name, module, storage, device)
 
     def ext_define(self):
         super().ext_define()
@@ -18,7 +18,7 @@ class CodeGenCFGHead(CodeGenTestHead):
         self.cfg_numb = [0, 0]
         self.task_cfg = []
         self.func_cfg = []
-        self.func_init = []
+        self.func_init = ""
         self.func_inits = []
         self.func_update = []
         self.task_latency = []
@@ -28,6 +28,7 @@ class CodeGenCFGHead(CodeGenTestHead):
     def to_string(self):
         super().to_string()
         self.func_init_str = "\n".join(self.func_inits + [self.func_init])
+        self.func_init_str += f"\n\nvoid {self.mod_name}_load_params(HANDLE device, HANDLE h2cx)" + " {\n" + "\n".join(self.init_weight) + "\n}"
         self.mod_args = ", ".join(["HANDLE device", "HANDLE h2cx"] + self.var_mod + self.var_upt)
         self.update_args = ", ".join(["HANDLE h2cx"] + self.var_upt)
         self.func_update_str = "\n".join(self.func_update)

@@ -186,7 +186,13 @@ def load_onnx_block():
 
 
 if __name__ == "__main__":
-    load_onnx_block()
+    a = 12 * (ne.Var("test") + 2)
+    b = 12 * (ne.Numb(10) + 2)
+    a = a.simplify()
+    b = b.simplify()
+    print("a:", a.export("cpp"))
+    print("b:", b.export("cpp"))
+    # load_onnx_block()
     # mp_booth()
     # chatglm_without_kvcache()
     # check_testbench()

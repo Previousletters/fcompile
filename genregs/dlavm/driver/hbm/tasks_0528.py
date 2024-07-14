@@ -4,7 +4,7 @@ from ..basic import CSB_Read, CSB_Write
 from ...ne import Var, If, For, Numb, expr_for_hook
 from ...clib import FP32_to_FP20
 
-__version__ = "HBM0321"
+__version__ = "HBM0528"
 
 MVM_MODE = 0b00100011111
 MVMBN_MODE = 0b01100011111
@@ -97,19 +97,6 @@ def MVMBasic(**kwargs):
     min_dat_depth=dat_num_per_row
     min_wt_depth=WT_CHin_div_Tin*((Tin*MAX_WT_DW)//HBM_AXI_DATA_WIDTH)*(Tout//HBM_Port)
 
-    '''
-    if min_dat_depth>device.DAT_BRAM_DEPTH:
-        print("=======================================================================")
-        print("=============== FPGA DAT BRAM DEPTH not enough!    ====================")
-        print("=======================================================================")
-        exit(-1)
-    if min_wt_depth>(device.WT_BRAM_DEPTH*2):
-        print("=======================================================================")
-        print("================ FPGA WT BRAM DEPTH not enough!    ====================")
-        print("=======================================================================")
-        exit(-1)
-    '''
-
     out_ch_slice=((WT_BRAM_DEPTH*2)//min_wt_depth)*Tout
     BN_FIFO_bits=AXI_BN_WIDTH*BN_FIFO_DEP*BN_FIFO_NUM
     BN_FIFO_chout_num=BN_FIFO_bits//(MAX_BN_DW*2)
@@ -150,7 +137,7 @@ def MVMBasic(**kwargs):
     CSB_Write(regs, 6,Hout)
     CSB_Write(regs, 7,CHout)
     CSB_Write(regs, 8,CHout_last)
-    CSB_Write(regs, 9,If(kvcache, 1, Token))
+    CSB_Write(regs, 9,If(kvcache, 1, (Token - last_token)))
     
     CSB_Write(regs, 10,DAT_IN_BASE_ADDR)
     CSB_Write(regs, 11,HBM00_WT_BASE_ADDR)
@@ -159,7 +146,10 @@ def MVMBasic(**kwargs):
     CSB_Write(regs, 14,CHout_Split_Times_minus1)
     CSB_Write(regs, 15,log2_WT_base_addr_Bank_Step)
     CSB_Write(regs, 16,(EW_MODE << 1) + RELU_EN)
-    CSB_Write(regs, 17,Skip_Factor-1)
+    if AUGMAX_OUT_ADDR is not None:
+        CSB_Write(regs, 17,AUGMAX_OUT_ADDR)
+    else:
+        CSB_Write(regs, 17,Skip_Factor-1)
     CSB_Write(regs, 18,0)
     
     CSB_Write(regs, 19,0)
@@ -176,12 +166,10 @@ def MVMBasic(**kwargs):
     CSB_Write(regs, 30,DAT_IN_LINE_STRIDE)
     CSB_Write(regs, 31,DAT_OUT_SURFACE_STRIDE)
     CSB_Write(regs, 32,DAT_OUT_LINE_STRIDE)
-    if AUGMAX_OUT_ADDR is not None:
-        CSB_Write(regs, 60,AUGMAX_OUT_ADDR)
     CSB_Write(regs, 33,mode)
     
     if AUGMAX_OUT_ADDR is not None:
-        CSB_Read(regs, 61, 1)
+        CSB_Read(regs, 40, 1)
     else:
         CSB_Read(regs, 1, 1)
     return regs

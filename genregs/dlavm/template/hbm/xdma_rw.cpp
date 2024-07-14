@@ -408,7 +408,7 @@ void c2hx_device_read (HANDLE c2hx_device, uint64_t base_address, DWORD data_siz
 }
 
 
-void CSB_Write(HANDLE user_device, int addr, int data)
+void CSB_Write(HANDLE user_device, int addr, uint32_t data)
 {
 	DWORD data_size=4;
 	// BYTE  write_data[4];

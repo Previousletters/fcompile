@@ -5,7 +5,9 @@ from .codegen_csb_head import CodeGenCSBHead
 from .codegen_cfg_head import CodeGenCFGHead
 from .codegen_test_head import CodeGenTestHead
 from .codegen_test_head_ops import CodeGenTestHeadOps
+from .codegen_test_clock_ops import CodeGenTestClockOps
 from .codegen_wt2hbm_head import CodeGenWt2HbmHead
+from .codegen_python import CodeGenPython
 
 
 class GraphCSBHead(Functor):
@@ -151,7 +153,19 @@ def csb_test_head_ops(expr, mod_name, init_addr):
     return expr, source, storage, mod
 
 
+def csb_test_clock_ops(expr, mod_name, init_addr):
+    expr, mod, storage = GraphCSBHead().build(expr, init_addr)
+    source = CodeGenTestClockOps().build(mod_name, mod, storage, expr.get_device())
+    return expr, source, storage, mod
+
+
 def csb_wt2hbm_head(expr, mod_name, init_addr):
     expr, mod, storage = GraphCSBHead().build(expr, init_addr)
     source = CodeGenWt2HbmHead().build(mod_name, mod, storage, expr.get_device())
+    return expr, source, storage, mod
+
+
+def csb_python(expr, mod_name, init_addr):
+    expr, mod, storage = GraphCSBHead().build(expr, init_addr)
+    source = CodeGenPython().build(mod_name, mod, storage, expr.get_device())
     return expr, source, storage, mod

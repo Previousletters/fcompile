@@ -5,7 +5,6 @@ from ..adr import Op
 from .. import ne
 
 
-
 class CodeGenTestHead(CodeGenCSBHead):
 
     def ext_define(self):
@@ -14,7 +13,7 @@ class CodeGenTestHead(CodeGenCSBHead):
 
     def to_string(self):
         super().to_string()
-        self.func_init_str += f"void {self.mod_name}_load_params(HANDLE h2cx)" + " {\n" + "\n".join(self.init_weight) + "\n}\n"
+        self.func_init_str += f"void {self.mod_name}_load_params(HANDLE device, HANDLE h2cx)" + " {\n" + "\n".join(self.init_weight) + "\n}\n"
 
     def gen_var(self, node):
         enum_name = node["name"]
@@ -55,7 +54,7 @@ class CodeGenTestHead(CodeGenCSBHead):
         elif id[:3] == "hbm":
             self.func_const_hbm.append("uint64_t %s = 0x%09x; // %d" % (enum_name, address, address & 0xffffffff))
             self.enum_nodes[3].append(enum_name)
-            if isinstance(data, str) and None:
+            if isinstance(data, str):
                 for i in range(self.device.HBM_Port):
                     fpath = data % i
                     real_address = address + i*(1 << self.device.log2_Bank_Step)
@@ -63,7 +62,7 @@ class CodeGenTestHead(CodeGenCSBHead):
         else:
             self.func_const_ddr.append("uint64_t %s = 0x%09x; // %d" % (enum_name, address, address & 0xffffffff))
             self.enum_nodes[2].append(enum_name)
-            if isinstance(data, str) and None:
+            if isinstance(data, str):
                 self.init_weight.append(f"{self.tab}DDR_Write_bin(h2cx, \"{data}\", {address}, {byte_size});")
         for n in node["shape"]:
             if isinstance(n, ne.Expr):

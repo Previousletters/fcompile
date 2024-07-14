@@ -80,11 +80,11 @@ def MVMBNRel(args, attrs):
     wshape, wtype = args[1].shape, args[1].dtype  # Cin, Cout
     bshape, btype = args[-1].shape, args[-1].dtype  # H, W, C
     if dtype.mapped != DataEnum.ddr or dtype.dtype != DataEnum.fp16:
-        return False, []
+        return False, "data type error, it should be fp16"
     if wtype.mapped != DataEnum.hbm or wtype.dtype != DataEnum.int4:
-        return False, []
+        return False, "weight type error, it should be int4"
     if btype.mapped != DataEnum.ddr or btype.dtype != DataEnum.fp16:
-        return False, []
+        return False, "bias type error, it should be fp16"
     if dshape[-1] != wshape[0]:
         return False, []
     if bshape[-1] != wshape[1]*2:

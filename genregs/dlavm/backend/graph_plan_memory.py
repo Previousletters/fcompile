@@ -111,15 +111,22 @@ class Storage:
         print("could not find " + id + " storage!")
         exit(-1)
 
-    def gen_source(self):
+    def gen_source(self, code="cpp"):
         source = ""
         for prefix in self.sort_keys:
             memo = self.memo_[prefix]
-            source += f"// {prefix} storage define\n"
-            for id, storage in memo.items():
-                addr_hex = "0x%09x" % (storage.address)
-                source += f"uint64_t {id} = {addr_hex}; "
-                source += f"// storage size: {storage.byte_size} B\n"
+            if code == "cpp":
+                source += f"// {prefix} storage define\n"
+                for id, storage in memo.items():
+                    addr_hex = "0x%09x" % (storage.address)
+                    source += f"uint64_t {id} = {addr_hex}; "
+                    source += f"// storage size: {storage.byte_size} B\n"
+            elif code == "py":
+                source += f"# {prefix} storage define\n"
+                for id, storage in memo.items():
+                    addr_hex = "0x%09x" % (storage.address)
+                    source += f"{id} = {addr_hex} "
+                    source += f"# storage size: {storage.byte_size} B\n"
         return source[:-1]
 
     def __str__(self):

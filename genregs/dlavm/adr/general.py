@@ -23,3 +23,7 @@ def realloc(data, new_shape):
     }
     return VM(Op.Get("accel.realloc"), [data], attrs)
 
+
+def tuple(exprs):
+    attrs = {}
+    return VM(Op.Get("accel.tuple"), exprs, attrs)

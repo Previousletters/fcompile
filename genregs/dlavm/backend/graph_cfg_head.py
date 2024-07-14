@@ -1,6 +1,7 @@
 from .graph_csb_head import GraphCSBHead
 from .graph_cfg_memory import GraphCFGMemory
 from .codegen_cfg_head import CodeGenCFGHead
+from .codegen_cfg_wt2hbm import CodeGenCFGWt2HBM
 
 
 class GraphCFGHead(GraphCSBHead):
@@ -42,6 +43,11 @@ class GraphCFGHead(GraphCSBHead):
 
 def cfg_head(expr, mod_name, init_addr):
     expr, mod, storage, cfg_group = GraphCFGHead().build(expr, init_addr)
-    source, params, debug_params = CodeGenCFGHead().build(mod_name, mod, storage, cfg_group, 16)
+    source, params, debug_params = CodeGenCFGHead().build(mod_name, mod, storage, cfg_group, 16, expr.get_device())
     return expr, source, storage, mod, params, debug_params
 
+
+def cfg_wt2hbm(expr, mod_name, init_addr):
+    expr, mod, storage, cfg_group = GraphCFGHead().build(expr, init_addr)
+    source, params, debug_params = CodeGenCFGWt2HBM().build(mod_name, mod, storage, cfg_group, 16, expr.get_device())
+    return expr, source, storage, mod, params, debug_params

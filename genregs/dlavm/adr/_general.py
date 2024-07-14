@@ -91,3 +91,15 @@ def ReallocRel(args, attrs):
 
 
 Op.Register("accel.realloc", ReallocRel)
+
+
+def TupleRel(args, attrs):
+    tensors = []
+    for i in range(len(args)):
+        device = args[i].device
+        dshape, dtype = args[i].shape, args[i].dtype  # H, W, C
+        tensors.append(Tensor(dshape, dtype, device))
+    return True, Tuple(tensors)
+
+
+Op.Register("accel.tuple", TupleRel)

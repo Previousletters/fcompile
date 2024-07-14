@@ -91,7 +91,7 @@ for (int i = 0; i < 1000; i=i+1) {
                     data = reg[2].export("cpp")
                 tp_func_inits.append(f"{self.tab}CSB_Write(device, {reg[1]}, {data});")
             elif reg[0] == 0:
-                tp_func_inits.append(f"#ifdef PRINT_STEP\nprintf(\"{func_op_name}!\\n\");\n#endif")
+                tp_func_inits.append(f"#ifdef PRINT_STEP\nprintf(\"start: {func_op_name}!\\n\");\n#endif")
                 tp_func_inits.append(f"{self.tab}while(CSB_Read(device, {reg[1]}) != {reg[2]}) " + "{}")
         tp_func_inits.append("""#ifdef REGS_DEBUG
 }
