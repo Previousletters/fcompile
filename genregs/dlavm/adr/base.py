@@ -49,6 +49,27 @@ class Attrs:
         return len(self._attrs)
 
 
+class Op:
+
+    memo = {}
+
+    def __init__(self, name):
+        self.name = name
+        self.attrs = {}
+
+    @classmethod
+    def Register(cls, op_name, rel_func):
+        cls.memo[op_name] = Op(op_name)
+        cls.memo[op_name].attrs["rel"] = rel_func
+
+    @classmethod
+    def Get(cls, op_name):
+        if op_name not in cls.memo.keys():
+            msg = f"no found op \"{op_name}\", please register first"
+            raise RuntimeError(msg)
+        return cls.memo[op_name]
+
+
 class Base:
 
     def __init__(self, args, prefix="runtime"):
@@ -68,14 +89,17 @@ class Base:
             elif isinstance(self.checked_type, Tensor):
                 return self.checked_type.device
         raise RuntimeError("Error! Could not get device!")
+    
+    def get_checked_type(self):
+        return self.checked_type
 
 
 class TupleItem(Base):
 
-    def __init__(self, expr, index):
+    def __init__(self, expr, index, checked_type=None):
         self.expr = expr
         self.index = index
-        self.checked_type = None
+        self.checked_type = checked_type
 
 
 class Tuple(Base):
@@ -119,66 +143,55 @@ class Tensor(Base):
 
 class Var(Base):
 
-    def __init__(self, name, shape, dtype, device, prefix="runtime"):
+    def __init__(self, name, shape, dtype, device, prefix="runtime", checked_type=None):
         self.name = name
         self.shape = shape
         self.dtype = dtype
         self.device = device
-        self.checked_type = None
+        self.checked_type = checked_type
         self.prefix = prefix
 
 
 class Constant(Base):
 
-    def __init__(self, name, data, shape=None, dtype=None, device=None, prefix="weight"):
+    def __init__(self, name, data, shape=None, dtype=None, device=None, prefix="weight", checked_type=None):
         self.name = name
         self.data = data
         self.shape = shape
         self.dtype = dtype
         self.device = device
-        self.checked_type = None
+        self.checked_type = checked_type
         self.prefix = prefix
 
 
 class Call(Base):
 
-    def __init__(self, op, args, attrs, prefix="runtime"):
+    def __init__(self, op, args, attrs, prefix="runtime", checked_type=None):
         self.op = op
         self.args = args
         self.attrs = attrs
-        self.checked_type = None
+        self.checked_type = checked_type
         self.prefix = prefix
 
 
 class VM(Base):
 
-    def __init__(self, op, args, attrs):
+    def __init__(self, op, args, attrs, checked_type=None):
         self.op = op
         self.args = args
         self.attrs = attrs
-        self.checked_type = None
+        self.checked_type = checked_type
 
 
-class Op:
+class Function(Base):
 
-    memo = {}
-
-    def __init__(self, name):
+    def __init__(self, name, args, expr):
         self.name = name
-        self.attrs = {}
+        self.args = args
+        self.expr = expr
 
-    @classmethod
-    def Register(cls, op_name, rel_func):
-        cls.memo[op_name] = Op(op_name)
-        cls.memo[op_name].attrs["rel"] = rel_func
-
-    @classmethod
-    def Get(cls, op_name):
-        if op_name not in cls.memo.keys():
-            msg = f"no found op \"{op_name}\", please register first"
-            raise RuntimeError(msg)
-        return cls.memo[op_name]
-
+    def get_checked_type(self):
+        return self.expr.checked_type
 
 # Deep First Search with memory
 class Functor:
@@ -200,6 +213,8 @@ class Functor:
             ret = self.visit_call(expr)
         elif isinstance(expr, VM):
             ret = self.visit_vm(expr)
+        elif isinstance(expr, Function):
+            ret = self.visit_function(expr)
         self.memo[expr] = [ret, 1]
         return ret
 
@@ -211,18 +226,20 @@ class Functor:
 
     def visit_tupleitem(self, expr):
         new_expr = self.visit(expr.expr)
-        expr.expr = new_expr
-        return expr
+        return TupleItem(new_expr, expr.index, expr.checked_type)
 
     def visit_call(self, expr):
         new_args = [self.visit(arg) for arg in expr.args]
-        expr.args = new_args
-        return expr
+        return Call(expr.op, new_args, expr.attrs, expr.prefix, expr.checked_type)
 
     def visit_vm(self, expr):
         new_args = [self.visit(arg) for arg in expr.args]
-        expr.args = new_args
-        return expr
+        return VM(expr.op, new_args, expr.attrs, expr.checked_type)
+
+    def visit_function(self, expr):
+        new_expr = self.visit(expr.expr)
+        args = [self.visit(arg) for arg in expr.args]
+        return Function(expr.name, args, new_expr)
 
 
 # Print Expr Pass
@@ -232,16 +249,31 @@ class PrintExpr(Functor):
     def print(cls, expr):
         return cls().show_main(expr)
 
-    def show_main(self, expr):
+    def show_main(self, expr, func_name="main"):
         self.id = 0
         self.args = []
         self.body = []
+        self.funcs = []
         ret_name = self.visit(expr)
         arg_str = ", ".join(self.args)
-        result = f"def main({arg_str}) " + "{\n"
+        if len(self.funcs):
+            result = "\n\n".join(self.funcs) + "\n\n" + f"def {func_name}({arg_str}) " + "{\n"
+        else:
+            result = f"def {func_name}({arg_str}) " + "{\n"
         result += "\n".join(self.body)
         result += f"\n  return {ret_name}\n" + "}"
         return result
+    
+    def visit_function(self, expr):
+        arg_str = ", ".join([self.visit(arg) for arg in expr.args])
+        self.funcs.append(PrintExpr().show_main(expr.expr, expr.name))
+        ret_name = "%" + str(self.id)
+        self.id += 1
+        func = f"  {ret_name} = \"{expr.name}\"({arg_str})"
+        if expr.expr.checked_type:
+            func += " " + str(expr.expr.checked_type)
+        self.body.append(func)
+        return ret_name
 
     def visit_var(self, expr):
         self.args.append(expr.name)

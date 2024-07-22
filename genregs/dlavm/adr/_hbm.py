@@ -279,3 +279,27 @@ def ActivateRel(args, attrs):
 
 
 Op.Register("accel.hbm.activate", ActivateRel)
+
+
+def Conv2dRel(args, attrs):
+    pad_y, pad_x = attrs["padding"]
+    stride_y, stride_x = attrs["strides"]
+    if len(args) != 2:
+        return False, []
+    device = args[0].device
+    dshape, dtype = args[0].shape, args[0].dtype  # H, W, C
+    wshape, wtype = args[1].shape, args[1].dtype  # HWIO
+    if dtype.mapped != DataEnum.ddr or dtype.dtype != DataEnum.fp16:
+        return False, "feature data type should be DDR FP16"
+    if wtype.mapped != DataEnum.hbm or wtype.dtype != DataEnum.int4:
+        return False, "weight data type should be HBM INT4"
+    if dshape[-1] != wshape[-2]:
+        return False, "input channel not match for data and weight, weight layout should be HWIO"
+    oshape = [i for i in dshape]
+    oshape[-1] = wshape[-1]
+    oshape[-2] = (dshape[-2] + 2*pad_x - wshape[1]) // stride_x + 1
+    oshape[-3] = (dshape[-3] + 2*pad_y - wshape[0]) // stride_y + 1
+    return True, Tensor(oshape, dtype, device)
+
+
+Op.Register("accel.hbm.conv2d", Conv2dRel)

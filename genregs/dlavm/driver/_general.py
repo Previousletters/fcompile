@@ -10,14 +10,12 @@ def SplitDriver(args, output, attrs):
         offset += t.get_bytesize()
     return Tuple(new_tensors)
 
-
 Op.Get("accel.split").attrs["driver"] = SplitDriver
 
 
 def ReshapeDriver(args, output, attrs):
     output.offset = args[0].offset
     return output
-
 
 Op.Get("accel.reshape").attrs["driver"] = ReshapeDriver
 
@@ -26,12 +24,10 @@ def ReallocDriver(args, output, attrs):
     output.offset = args[0].offset
     return output
 
-
 Op.Get("accel.realloc").attrs["driver"] = ReallocDriver
 
 
 def TupleDriver(args, output, attrs):
     return output
-
 
 Op.Get("accel.tuple").attrs["driver"] = TupleDriver

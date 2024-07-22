@@ -1,6 +1,5 @@
 from . import _hbm
 from . import _cpu
-from . import _booth
 from . import _general
 from . import _onnx
 from . import _sparse

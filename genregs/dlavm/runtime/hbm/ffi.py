@@ -3,7 +3,7 @@ import ctypes
 import numpy as np
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
-lib = ctypes.CDLL(os.path.join(current_dir, ".", "driver.dll"), ctypes.RTLD_GLOBAL)
+lib = ctypes.CDLL(os.path.join(current_dir, "..", "xdma", "Project1.dll"), ctypes.RTLD_GLOBAL)
 # lib = ctypes.CDLL("D:/chatGLM_demo/FPGA_Demo/clib/xdma/Project1.dll", ctypes.RTLD_GLOBAL)
 
 _open_device, _CSB_Write, _CSB_Read = lib.open_device, lib.CSB_Write, lib.CSB_Read

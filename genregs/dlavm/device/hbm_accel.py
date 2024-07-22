@@ -6,6 +6,8 @@ from .base_accel import Accel
 
 class HBM(Accel):
     name = "hbm"
+    version = 20240101
+
     Tb = 1
     HBM_Port = 32
     base_Tin = 128
@@ -71,7 +73,7 @@ class HBM(Accel):
 
 
 class HBM0321(HBM):
-    name = "hbm_0321"
+    version = 20240321
 
     DAT_BRAM_DEPTH = (1<<22)//HBM.base_Tin//HBM.MAX_DAT_DW//HBM.DAT_BRAM_NUM
     WT_BRAM_DEPTH = (1<<23)//HBM.HBM_AXI_DATA_WIDTH//HBM.WT_BRAM_NUM
@@ -83,26 +85,37 @@ class HBM0321(HBM):
 
 
 class ASYNHBM0402(HBM0321):
-    name = "asyn_hbm_0402"
+    name = "asyn_hbm"
+    version = 20240402
 
     ASYN_FACTOR = 2
     WT_BRAM_DEPTH = HBM0321.WT_BRAM_DEPTH // ASYN_FACTOR
 
 
 class HBM0424(HBM0321):
-    name = "hbm_0424"
+    version = 20240424
 
     MAX_TOKEN = 512
     MAX_CFG_NUM = 12
 
 
 class HBM0507(HBM0424):
-    name = "hbm_0507"
+    version = 20240507
 
     AUX_WT_BUF_DEPTH = 1024
 
 
 class HBM0603(HBM0507):
-    name = "hbm_0603"
+    version = 20240603
 
     MAX_TOKEN = 2048
+
+
+class HBM0720(HBM0603):
+    version = 20240720
+
+
+class HBM0721(HBM0720):
+    version = 20240721
+
+    DAT_BRAM_DEPTH = (1<<23)//HBM.base_Tin//HBM.MAX_DAT_DW//HBM.DAT_BRAM_NUM

@@ -37,30 +37,6 @@ class CodeGenTestHeadOps(CodeGenTestHead):
         self.func_output.append("uint64_t %s = 0x%09x; // %d" % (enum_name, address, address & 0xffffffff))
         self.enum_nodes[1].append(enum_name)
 
-    def gen_const_(self, node):
-        enum_name = node["name"]
-        id, offset = node["storage"][0]["id"], node["storage"][0]["offset"]
-        address = self.storage.get_address(id, offset)
-        if enum_name in self.enum_nodes[0] + self.enum_nodes[2] + self.enum_nodes[3]:
-            print("*WARNING* : Var或Const节点中存在同名元素，请检查")
-            exit(-1)
-        if id[:3] == "ddr":
-            self.func_const_ddr.append("uint64_t %s = 0x%09x; // %d" % (enum_name, address, address & 0xffffffff))
-            self.enum_nodes[2].append(enum_name)
-        elif id[:3] == "hbm":
-            self.func_const_hbm.append("uint64_t %s = 0x%09x; // %d" % (enum_name, address, address & 0xffffffff))
-            self.enum_nodes[3].append(enum_name)
-        else:
-            self.func_const_ddr.append("uint64_t %s = 0x%09x; // %d" % (enum_name, address, address & 0xffffffff))
-            self.enum_nodes[2].append(enum_name)
-        for n in node["shape"]:
-            if isinstance(n, ne.Expr):
-                vars = n.get_vars()
-                for var in vars:
-                    source = f"int {var[0]}"
-                    if source not in self.dynamic_var:
-                        self.dynamic_var.append(source)
-
     def gen_accel(self, node):
         self.step_id += 1
         op_name, ddr_id, offset = node["op_name"], node["storage"][0]["id"], node["storage"][0]["offset"]
@@ -77,22 +53,34 @@ QueryPerformanceFrequency(&freq);
 QueryPerformanceCounter(&start_run);
 for (int i = 0; i < 1000; i=i+1) {
 #endif""")
-        tp_dynamic_var = ["device"]
+        tp_dynamic_var, local_dynamic_var = ["device"], []
+        tab_num = 1
         for reg in node["csb_regs"]:
             if reg[0] == 1:
                 data = reg[2]
                 if isinstance(reg[2], ne.Expr):
                     for var in reg[2].get_vars():
                         source = f"int {var[0]}"
-                        if source not in self.dynamic_var:
-                            self.dynamic_var.append(source)
-                        if var[0] not in tp_dynamic_var:
-                            tp_dynamic_var.append(var[0])
+                        if var[0] not in local_dynamic_var:
+                            if source not in self.dynamic_var:
+                                self.dynamic_var.append(source)
+                            if var[0] not in tp_dynamic_var:
+                                tp_dynamic_var.append(var[0])
                     data = reg[2].export("cpp")
-                tp_func_inits.append(f"{self.tab}CSB_Write(device, {reg[1]}, {data});")
+                tp_func_inits.append(f"{self.tab}"*tab_num + f"CSB_Write(device, {reg[1]}, {data});")
             elif reg[0] == 0:
                 tp_func_inits.append(f"#ifdef PRINT_STEP\nprintf(\"start: {func_op_name}!\\n\");\n#endif")
-                tp_func_inits.append(f"{self.tab}while(CSB_Read(device, {reg[1]}) != {reg[2]}) " + "{}")
+                tp_func_inits.append(f"{self.tab}"*tab_num + f"while(CSB_Read(device, {reg[1]}) != {reg[2]}) " + "{}")
+            elif reg[0] == -2:
+                args = [_reg.export("cpp") if isinstance(_reg, ne.Expr) else str(_reg) for _reg in reg[1]]
+                tp_func_inits.append(f"{self.tab}"*tab_num + f"for (int {args[0]} = {args[1]}; {args[0]} < {args[2]}; {args[0]}++)" + " {")
+                local_dynamic_var += [f"{i[0]}" for i in reg[1][0].get_vars()]
+                tab_num += 1
+            elif reg[0] == -1:
+                tab_num -= 1
+                tp_func_inits.append(f"{self.tab}"*tab_num + "}")
+            else:
+                raise RuntimeWarning("No realized this codegen")
         tp_func_inits.append("""#ifdef REGS_DEBUG
 }
 QueryPerformanceCounter(&stop_run);

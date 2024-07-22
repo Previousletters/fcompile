@@ -27,3 +27,11 @@ def realloc(data, new_shape):
 def tuple(exprs):
     attrs = {}
     return VM(Op.Get("accel.tuple"), exprs, attrs)
+
+
+def concat(exprs, dim=0, **kwattrs):
+    attrs = {
+        "dim": dim,
+        **kwattrs
+    }
+    return VM(Op.Get("accel.concat"), exprs, attrs)

@@ -1,4 +1,4 @@
-from ..adr import Functor, Call, VM, Tensor
+from ..adr import Functor, Call, VM, Tensor, Function
 
 
 class InferType(Functor):
@@ -8,6 +8,23 @@ class InferType(Functor):
         self.device = device
         self.attrs = attrs
         self.glb_const = {}
+
+    def set_attrs(self, attrs):
+        for key, value in self.attrs.items():
+            if attrs.get(key) is None:
+                attrs[key] = value
+        return attrs
+
+    def set_prefix(self, name):
+        if "::" in name:
+            return name.split("::")
+        else:
+            return None
+    
+    def visit_function(self, expr):
+        new_args = [self.visit(arg) for arg in expr.args]
+        new_expr = self.visit(expr.expr)
+        return Function(expr.name, new_args, new_expr)
 
     def visit_var(self, expr):
         device = expr.device
@@ -23,11 +40,10 @@ class InferType(Functor):
         if self.device is not None:
             device = self.device
         expr.checked_type = Tensor(expr.shape, expr.dtype, device)
-        if "global::" in expr.name:
-            if expr.name in self.glb_const.keys():
-                return self.glb_const[expr.name]
-            else:
-                self.glb_const[expr.name] = expr
+        prefix = self.set_prefix(expr.name)
+        if prefix is not None:
+            expr.prefix = prefix[0]
+            expr.name = prefix[1]
         return expr
 
     def visit_tupleitem(self, expr):
@@ -37,39 +53,28 @@ class InferType(Functor):
         return expr
 
     def visit_call(self, expr):
-        for key, value in self.attrs.items():
-            if expr.attrs[key] is None:
-                expr.attrs[key] = value
+        new_attrs = self.set_attrs(expr.attrs)
         new_args = [self.visit(arg) for arg in expr.args]
-        new_type = [arg.checked_type for arg in new_args]
+        new_type = [arg.get_checked_type() for arg in new_args]
         func = expr.op.attrs["rel"]
-        state, checked_type = func(new_type, expr.attrs)
+        state, checked_type = func(new_type, new_attrs)
         if state:
-            # new_expr = Call(expr.op, new_args, expr.attrs)
-            new_expr = expr
-            new_expr.args = new_args
-            new_expr.checked_type = checked_type
+            new_expr = Call(expr.op, new_args, new_attrs, expr.prefix, checked_type)
             return new_expr
         else:
             raise RuntimeError("Check Error! " + expr.op.name + ", " + checked_type)
 
     def visit_vm(self, expr):
-        for key, value in self.attrs.items():
-            if expr.attrs[key] is None:
-                expr.attrs[key] = value
+        new_attrs = self.set_attrs(expr.attrs)
         new_args = [self.visit(arg) for arg in expr.args]
-        new_type = [arg.checked_type for arg in new_args]
+        new_type = [arg.get_checked_type() for arg in new_args]
         func = expr.op.attrs["rel"]
-        state, checked_type = func(new_type, expr.attrs)
+        state, checked_type = func(new_type, new_attrs)
         if state:
-            # new_expr = VM(expr.op, new_expr, expr.attrs)
-            new_expr = expr
-            new_expr.args = new_args
-            new_expr.checked_type = checked_type
+            new_expr = VM(expr.op, new_args, new_attrs, checked_type)
             return new_expr
         else:
             raise RuntimeError("Check Error! " + expr.op.name + ", " + checked_type)
-
 
 
 def infer_type(expr, device=None, attrs={}):

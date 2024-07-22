@@ -1,4 +1,5 @@
 #include "lib.h"
+#include <iostream>
 
 void CSB_Write(HANDLE &device, int addr, int data) {
     device.push_back(std::make_pair(addr, data));

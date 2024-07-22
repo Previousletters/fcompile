@@ -103,3 +103,19 @@ def TupleRel(args, attrs):
 
 
 Op.Register("accel.tuple", TupleRel)
+
+
+def ConcatRel(args, attrs):
+    device = args[0].device
+    ranks = [len(arg.shape) for arg in args]
+    dshape, dtype = args[0].shape, args[0].dtype
+    if ranks != [ranks[0]]*len(ranks):
+        return False, "concat should be same rank tensors"
+    if attrs["dim"] >= len(dshape):
+        return False, "dim set error: " + str(attrs["dim"])
+    oshape = [i for i in dshape]
+    oshape[attrs["dim"]] = sum([arg.shape[attrs["dim"]] for arg in args])
+    return True, Tensor(oshape, dtype, device)
+
+
+Op.Register("accel.concat", ConcatRel)

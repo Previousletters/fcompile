@@ -1,5 +1,5 @@
-from ...adr import Op, Tensor, Constant
-from . import tasks_0602 as tasks
+from . import tasks_0714 as tasks
+from ..basic import Tasks
 from ...clib import WT_TRANS, BN_TRANS
 
 
@@ -19,10 +19,6 @@ def MVMDriver(args, output, attrs):
             **attrs
         }
         return tasks.MVMBasic(**define)
-
-
-Op.Get("accel.hbm.mvm").attrs["cfg_id"] = 0b00001000
-Op.Get("accel.hbm.mvm").attrs["driver"] = MVMDriver
 
 
 def MVMBNDriver(args, output, attrs):
@@ -73,10 +69,6 @@ def MVMBNDriver(args, output, attrs):
         return tasks.MVMBasic(**define)
 
 
-Op.Get("accel.hbm.mvm_bn").attrs["cfg_id"] = [0b01001000, 2] # 2*AXI_DAT_WIDTH
-Op.Get("accel.hbm.mvm_bn").attrs["driver"] = MVMBNDriver
-
-
 def MVMBNResDriver(args, output, attrs):
     if attrs["skip"] == 1 and attrs["arg_max"] == 0:
         dtensor, wtensor, btensor, rtensor = args[0], args[1], args[2], args[3]
@@ -114,10 +106,6 @@ def MVMBNResDriver(args, output, attrs):
     return tasks.MVMBasic(**define)
 
 
-Op.Get("accel.hbm.mvm_bn_res").attrs["cfg_id"] = [0b11001000, 2]
-Op.Get("accel.hbm.mvm_bn_res").attrs["driver"] = MVMBNResDriver
-
-
 def MVMafterTRPDriver(args, output, attrs):
     dtensor, wtensor = args[0], args[1]
     dshape, wshape = dtensor[0].shape, wtensor[0].shape
@@ -134,11 +122,7 @@ def MVMafterTRPDriver(args, output, attrs):
         "device": args[0][0].device,
         **attrs
     }
-    return tasks.MVM_afterTRP(**define)
-
-
-Op.Get("accel.hbm.mvm_afterTRP").attrs["cfg_id"] = [0b00000011, 1]
-Op.Get("accel.hbm.mvm_afterTRP").attrs["driver"] = MVMafterTRPDriver
+    return Tasks.Get("accel.hbm.mvm_afterTRP", args[0][0].device)(**define)
 
 
 def MVMafterF2WDriver(args, output, attrs):
@@ -160,10 +144,6 @@ def MVMafterF2WDriver(args, output, attrs):
     return tasks.MVM_afterF2W(**define)
 
 
-Op.Get("accel.hbm.mvm_afterF2W").attrs["cfg_id"] = [0b00000010, 1]
-Op.Get("accel.hbm.mvm_afterF2W").attrs["driver"] = MVMafterF2WDriver
-
-
 def AddDriver(args, output, attrs):
     dtensor, btensor = args[0], args[1]
     dshape, bshape = dtensor[0].shape, btensor[0].shape
@@ -178,9 +158,6 @@ def AddDriver(args, output, attrs):
         **attrs
     }
     return tasks.EleminateWise(**define)
-
-Op.Get("accel.hbm.add").attrs["cfg_id"] = 0b00000001
-Op.Get("accel.hbm.add").attrs["driver"] = AddDriver
 
 
 def SoftmaxDriver(args, output, attrs):
@@ -199,10 +176,6 @@ def SoftmaxDriver(args, output, attrs):
     return tasks.Softmax(**define)
 
 
-Op.Get("accel.hbm.softmax").attrs["cfg_id"] = [0b00000101, 1]
-Op.Get("accel.hbm.softmax").attrs["driver"] = SoftmaxDriver
-
-
 def LayerNormDriver(args, output, attrs):
     dtensor, btensor = args[0], args[1]
     dshape, bshape = dtensor[0].shape, btensor[0].shape
@@ -217,10 +190,6 @@ def LayerNormDriver(args, output, attrs):
         **attrs
     }
     return tasks.LayerNorm(**define)
-
-
-Op.Get("accel.hbm.layer_norm").attrs["cfg_id"] = [0b00000111, 1]
-Op.Get("accel.hbm.layer_norm").attrs["driver"] = LayerNormDriver
 
 
 def PosEmbDriver(args, output, attrs):
@@ -239,10 +208,6 @@ def PosEmbDriver(args, output, attrs):
     return tasks.PosEmb(**define)
 
 
-Op.Get("accel.hbm.pos_emb").attrs["cfg_id"] = [0b00000100, 1]
-Op.Get("accel.hbm.pos_emb").attrs["driver"] = PosEmbDriver
-
-
 def ActivateDriver(args, output, attrs):
     dtensor, btensor = args[0], args[1]
     dshape, bshape = dtensor[0].shape, btensor[0].shape
@@ -256,8 +221,3 @@ def ActivateDriver(args, output, attrs):
         **attrs
     }
     return tasks.ACT(**define)
-
-
-Op.Get("accel.hbm.activate").attrs["cfg_id"] = [0b00000110, 1]
-Op.Get("accel.hbm.activate").attrs["driver"] = ActivateDriver
-
