@@ -17,7 +17,8 @@ def llama_block_dynamic(data, pos_weight, silu_weight, token, index, kvcache, la
     prefix = "BLOCK%02d_" % index
     data_path = path_prefix + "/BLOCK%02d/" % index
     ln_k_bias = adr.hbm.const_ddr(prefix + "ln_k_bias", data_path + "LN_DDR_bin/LN0_wt_in_DDR.bin", [4096*2])
-    qk_weight = adr.hbm.const_hbm(prefix + "qk_weight", data_path + "MVM_BN_write_to_HBM_bin/MVMBN0_q_HBM_DDR_%02d.bin", [4096, 128*32*2])
+    q_weight = adr.hbm.const_hbm(prefix + "q_weight", data_path + "MVM_BN_write_to_HBM_bin/MVMBN0_q_HBM_DDR_%02d.bin", [4096, 128*32])
+    k_weight = adr.hbm.const_hbm(prefix + "k_weight", data_path + "MVM_BN_write_to_HBM_bin/MVMBN0_k_HBM_DDR_%02d.bin", [4096, 128*32])
     v_weight = adr.hbm.const_hbm(prefix + "v_weight", data_path + "MVM_BN_write_to_HBM_bin/MVMBN0_v_HBM_DDR_%02d.bin", [4096, 128*32])
     atten_weight = adr.hbm.const_hbm(prefix + "atten_weight", data_path + "MVM_BN_RES_write_to_HBM_bin/MVMBNRES0_HBM_DDR_%02d.bin", [4096, 4096])
     post_k_bias = adr.hbm.const_ddr(prefix + "post_k_bias", data_path + "LN_DDR_bin/LN1_wt_in_DDR.bin", [4096*2])
@@ -29,12 +30,12 @@ def llama_block_dynamic(data, pos_weight, silu_weight, token, index, kvcache, la
 
     ln_out = adr.hbm.layer_norm(data, ln_k_bias, rms=1, kvcache=kvcache, last_token=last_token)
 
-    qk_data = adr.hbm.mvm(ln_out, qk_weight, kvcache=kvcache, last_token=last_token)
+    q_data = adr.hbm.mvm(ln_out, q_weight, kvcache=kvcache, last_token=last_token)
+    k_data = adr.hbm.mvm(ln_out, k_weight, kvcache=kvcache, last_token=last_token)
     v_data = adr.hbm.mvm(ln_out, v_weight, kvcache=kvcache, last_token=last_token)
     v_data = adr.hbm.cache(v_data)
-    qk_data = adr.reshape(qk_data, [32*2, token, 128])
-    qk_data = adr.split(qk_data, 0, [32, 32])
-    q_data, k_data = qk_data[0], qk_data[1]
+    q_data = adr.reshape(q_data, [32, token, 128])
+    k_data = adr.reshape(k_data, [32, token, 128])
     v_data = adr.reshape(v_data, [32, token, 128])
 
     q_data = adr.hbm.pos_emb(q_data, pos_weight, kvcache=kvcache, last_token=last_token)

@@ -157,11 +157,7 @@ QueryPerformanceFrequency(&freq);
         if enum_name in self.enum_nodes[0] + self.enum_nodes[2] + self.enum_nodes[3]:
             print("*WARNING* : Var或Const节点中存在同名元素，请检查")
             exit(-1)
-        if id[:3] == "ddr":
-            self.func_const_ddr.append(f"{self.tab}case {self.mod_name}Node::{enum_name}:")
-            self.func_const_ddr.append(f"{self.tab}{self.tab}return (void*)(&{id}[{offset}]);")
-            self.enum_nodes[2].append(enum_name)
-        elif id[:3] == "hbm":
+        if id[:3] == "hbm":
             self.func_const_hbm.append(f"{self.tab}case {self.mod_name}Node::{enum_name}:")
             self.func_const_hbm.append(f"{self.tab}{self.tab}return (void*)(&{id}[{offset}]);")
             self.enum_nodes[3].append(enum_name)

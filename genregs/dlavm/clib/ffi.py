@@ -43,7 +43,9 @@ class HBMTensor(ctypes.Structure):
 current_dir = os.path.dirname(os.path.abspath(__file__))
 lib = ctypes.CDLL(os.path.join(current_dir, "mod.so"), ctypes.RTLD_GLOBAL)
 _wt_trans, _bn_trans = lib.WT_TRANS, lib.BN_TRANS
+_wt_trans_int4 = lib.WT_TRANS_INT4
 _wt_trans.restype = ctypes.POINTER(HBMTensor)
+_wt_trans_int4.restype = ctypes.POINTER(HBMTensor)
 _bn_trans.restype = ctypes.POINTER(ctypes.c_int32)
 
 def FP32_to_FP20(fp32):
@@ -144,6 +146,24 @@ def WT_TRANS(weight: np.ndarray, scale: np.ndarray, require_bytes) -> np.ndarray
     srptr = (ctypes.c_byte * len(bascale)).from_buffer(bascale)
     scale = ctypes.cast(srptr, ctypes.POINTER(ctypes.c_uint16))
     tensor = _wt_trans(shape[1], shape[0], require_bytes, weight, scale)[0]
+    require_numb = require_bytes // 4
+    result = np.zeros((32, require_numb), dtype="int32")
+    for i in range(32):
+        result[i] = eval("tensor.CH%02d[0:require_numb]"% i)
+    return result
+
+
+def WT_TRANS_INT4(weight: np.ndarray, scale: np.ndarray, require_bytes) -> np.ndarray:
+    shape = weight.shape
+    weight = weight.tobytes()
+    scale = scale.tobytes()
+    baweight = bytearray(weight)
+    wrptr = (ctypes.c_byte * len(baweight)).from_buffer(baweight)
+    weight = ctypes.cast(wrptr, ctypes.POINTER(ctypes.c_int))
+    bascale = bytearray(scale)
+    srptr = (ctypes.c_byte * len(bascale)).from_buffer(bascale)
+    scale = ctypes.cast(srptr, ctypes.POINTER(ctypes.c_uint16))
+    tensor = _wt_trans_int4(shape[1]*8, shape[0], require_bytes, weight, scale)[0]
     require_numb = require_bytes // 4
     result = np.zeros((32, require_numb), dtype="int32")
     for i in range(32):

@@ -55,7 +55,7 @@ def MVMBasic(**kwargs):
         MAX_TOKEN = device.MAX_TOKEN
 
         real_Token = Token - last_token
-        split_token = 16
+        split_token = 64
         for_k = Var("for_k")
         Win = If(kvcache, 1, If((real_Token) > split_token, If(for_k < Ceil(real_Token, split_token)-1, split_token, real_Token%split_token), real_Token))
         Hin = Head
@@ -736,6 +736,7 @@ def MVM_afterTRP_task_0720(**kwargs):
     return regs
 
 
+@Tasks.Register("accel.hbm.mvm_afterF2W", device.HBM0603)
 def MVM_afterF2W(**kwargs):
     device = kwargs["device"]
     Token = kwargs["Token"]
@@ -807,6 +808,164 @@ def MVM_afterF2W(**kwargs):
     CSB_Write(regs, reg_bias+12, Token                      )
     CSB_Write(regs, reg_bias+13, Dynamic_Token              )
     CSB_Write(regs, reg_bias+14, (CHout+Tout-1)//Tout       ) # CHout_div_Tout
+    CSB_Write(regs, reg_bias+15, Head_Cfg                   )
+    CSB_Write(regs, reg_bias+16, 0                          )
+    CSB_Write(regs, reg_bias+17, 0b00_0001                  )
+    CSB_Read(regs, reg_bias+1,1)
+    return regs
+
+
+@Tasks.Register("accel.hbm.mvm_afterF2W", device.HBM0720)
+def MVM_afterF2W_Task_0724(**kwargs):
+    device = kwargs["device"]
+    Token = kwargs["Token"]
+    kvcache = kwargs.get("kvcache", 0)
+    Head = kwargs.get("Head", 1)
+    Feature_Head = kwargs["Feature_Head"]
+    Weight_Head = kwargs["Weight_Head"]
+    DAT_IN_BASE_ADDR = kwargs.get("DAT_IN_BASE_ADDR")
+    WT_BASE_ADDR = kwargs.get("WT_BASE_ADDR")
+    DAT_OUT_BASE_ADDR = kwargs.get("DAT_OUT_BASE_ADDR")
+    last_token = kwargs.get("last_token", 0)
+
+    Tin = device.base_Tin
+    Tout = device.Tout
+    Pixel_Data_Bytes = device.Pixel_Data_Bytes
+    WT_DW = device.MAX_WT_DW
+    HBM_AXI_DATA_WIDTH = device.HBM_AXI_DATA_WIDTH
+    WT_CH_Tgroup = device.WT_CH_Tgroup
+    MAX_WT_DW = device.MAX_WT_DW
+    MAX_BN_DW = device.MAX_BN_DW
+    HBM_Port = device.HBM_Port
+    WT_BRAM_DEPTH = device.WT_BRAM_DEPTH
+    AXI_BN_WIDTH = device.AXI_BN_WIDTH
+    BN_FIFO_DEP = device.BN_FIFO_DEP
+    BN_FIFO_NUM = device.BN_FIFO_NUM
+    AXI_DAT_WIDTH = device.AXI_DAT_WIDTH
+    log2_AXI_BURST_LEN = device.log2_AXI_BURST_LEN
+    MAX_TOKEN = device.MAX_TOKEN
+    MAX_CH_per_HEAD = device.MAX_CH_per_HEAD
+    MIN_WT_HEAD = device.MIN_WT_HEAD
+
+    Win = If(kvcache, 1, Token - last_token)
+    Hin = Head
+    CHin = Token
+    CHout = MAX_CH_per_HEAD
+    Wout = If(kvcache, 1, Token - last_token)
+    Hout = Hin
+    CHout_div_Tout = ((CHout + Tout - 1) // Tout)
+    CHin_div_Tout = ((CHin + Tout - 1) // Tout)
+    CHin_Padding_with_Tout = CHin_div_Tout * Tout
+    Tin_div_Tout = (Tin + Tout - 1) // Tout
+    CHout_Padding = CHout_div_Tout * Tout
+    DAT_IN_LINE_STRIDE = Pixel_Data_Bytes * Win
+    DAT_IN_HEAD_STRIDE = Pixel_Data_Bytes * Win * Hin * CHin_div_Tout
+    WET_IN_LINE_STRIDE = Pixel_Data_Bytes * MAX_TOKEN
+    WET_IN_HEAD_STRIDE = Pixel_Data_Bytes * MAX_TOKEN * CHout_div_Tout
+    DAT_OUT_LINE_STRIDE = Pixel_Data_Bytes * Wout
+    DAT_OUT_HEAD_STRIDE = Pixel_Data_Bytes * Wout * Hout * CHout_div_Tout
+
+    # Hardware Testbench
+    feature_in_base=DAT_IN_BASE_ADDR
+    feature_out_base=DAT_OUT_BASE_ADDR
+    Dynamic_Token = If(kvcache, 1, Token - last_token)
+    Feature_Repeat_times_minus1=Feature_Head//MIN_WT_HEAD-1
+    Head_Cfg = (Feature_Head // Weight_Head - 1) * 256 * 256 + Feature_Head * 256 + Weight_Head
+    reg_bias = 192
+
+    regs = []
+    CSB_Write(regs, reg_bias+2 , WT_BASE_ADDR               )
+    CSB_Write(regs, reg_bias+3 , feature_in_base            )
+    CSB_Write(regs, reg_bias+4 , DAT_IN_HEAD_STRIDE         )
+    CSB_Write(regs, reg_bias+5 , DAT_IN_LINE_STRIDE         )
+    CSB_Write(regs, reg_bias+6 , feature_out_base           )
+    CSB_Write(regs, reg_bias+7 , DAT_OUT_HEAD_STRIDE        )
+    CSB_Write(regs, reg_bias+8 , DAT_OUT_LINE_STRIDE        )
+    CSB_Write(regs, reg_bias+9 , WET_IN_HEAD_STRIDE         )
+    CSB_Write(regs, reg_bias+10, WET_IN_LINE_STRIDE         )
+    CSB_Write(regs, reg_bias+11, Token                      )
+    CSB_Write(regs, reg_bias+12, Token                      )
+    CSB_Write(regs, reg_bias+13, Dynamic_Token              )
+    CSB_Write(regs, reg_bias+14, (CHout+Tout-1)//Tout       ) # CHout_div_Tout
+    CSB_Write(regs, reg_bias+15, Head_Cfg                   )
+    CSB_Write(regs, reg_bias+16, 0                          )
+    CSB_Write(regs, reg_bias+17, 0b00_0001                  )
+    CSB_Read(regs, reg_bias+1,1)
+    return regs
+
+
+@Tasks.Register("accel.hbm.mvm_afterF2W", device.EdgeLLMv1)
+def MVM_afterF2W_Task_0725(**kwargs):
+    device = kwargs["device"]
+    Token = kwargs["Token"]
+    kvcache = kwargs.get("kvcache", 0)
+    Head = kwargs.get("Head", 1)
+    Feature_Head = kwargs["Feature_Head"]
+    Weight_Head = kwargs["Weight_Head"]
+    DAT_IN_BASE_ADDR = kwargs.get("DAT_IN_BASE_ADDR")
+    WT_BASE_ADDR = kwargs.get("WT_BASE_ADDR")
+    DAT_OUT_BASE_ADDR = kwargs.get("DAT_OUT_BASE_ADDR")
+    last_token = kwargs.get("last_token", 0)
+
+    Tin = device.base_Tin
+    Tout = device.Tout
+    Pixel_Data_Bytes = device.Pixel_Data_Bytes
+    WT_DW = device.MAX_WT_DW
+    HBM_AXI_DATA_WIDTH = device.HBM_AXI_DATA_WIDTH
+    WT_CH_Tgroup = device.WT_CH_Tgroup
+    MAX_WT_DW = device.MAX_WT_DW
+    MAX_BN_DW = device.MAX_BN_DW
+    HBM_Port = device.HBM_Port
+    WT_BRAM_DEPTH = device.WT_BRAM_DEPTH
+    AXI_BN_WIDTH = device.AXI_BN_WIDTH
+    BN_FIFO_DEP = device.BN_FIFO_DEP
+    BN_FIFO_NUM = device.BN_FIFO_NUM
+    AXI_DAT_WIDTH = device.AXI_DAT_WIDTH
+    log2_AXI_BURST_LEN = device.log2_AXI_BURST_LEN
+    MAX_TOKEN = device.MAX_TOKEN
+    MAX_CH_per_HEAD = device.MAX_CH_per_HEAD
+    MIN_WT_HEAD = device.MIN_WT_HEAD
+
+    Win = If(kvcache, 1, Token - last_token)
+    Hin = Head
+    CHin = Token
+    CHout = MAX_CH_per_HEAD
+    Wout = If(kvcache, 1, Token - last_token)
+    Hout = Hin
+    CHout_div_Tout = ((CHout + Tout - 1) // Tout)
+    CHin_div_Tout = ((CHin + Tout - 1) // Tout)
+    CHin_Padding_with_Tout = CHin_div_Tout * Tout
+    Tin_div_Tout = (Tin + Tout - 1) // Tout
+    CHout_Padding = CHout_div_Tout * Tout
+    DAT_IN_LINE_STRIDE = Pixel_Data_Bytes * Win
+    DAT_IN_HEAD_STRIDE = Pixel_Data_Bytes * Win * Hin * CHin_div_Tout
+    WET_IN_LINE_STRIDE = Pixel_Data_Bytes * MAX_TOKEN
+    WET_IN_HEAD_STRIDE = Pixel_Data_Bytes * MAX_TOKEN * CHout_div_Tout
+    DAT_OUT_LINE_STRIDE = Pixel_Data_Bytes * Wout
+    DAT_OUT_HEAD_STRIDE = Pixel_Data_Bytes * Wout * Hout * CHout_div_Tout
+
+    # Hardware Testbench
+    feature_in_base=DAT_IN_BASE_ADDR
+    feature_out_base=DAT_OUT_BASE_ADDR
+    Dynamic_Token = If(kvcache, 1, Token - last_token)
+    Feature_Repeat_times_minus1=Feature_Head//MIN_WT_HEAD-1
+    Head_Cfg = (Feature_Head // Weight_Head - 1) * 256 * 256 + Feature_Head * 256 + Weight_Head
+    reg_bias = 192
+
+    regs = []
+    CSB_Write(regs, reg_bias+2 , WT_BASE_ADDR               )
+    CSB_Write(regs, reg_bias+3 , feature_in_base            )
+    CSB_Write(regs, reg_bias+4 , DAT_IN_HEAD_STRIDE         )
+    CSB_Write(regs, reg_bias+5 , DAT_IN_LINE_STRIDE         )
+    CSB_Write(regs, reg_bias+6 , feature_out_base           )
+    CSB_Write(regs, reg_bias+7 , DAT_OUT_HEAD_STRIDE        )
+    CSB_Write(regs, reg_bias+8 , DAT_OUT_LINE_STRIDE        )
+    CSB_Write(regs, reg_bias+9 , WET_IN_HEAD_STRIDE         )
+    CSB_Write(regs, reg_bias+10, WET_IN_LINE_STRIDE         )
+    CSB_Write(regs, reg_bias+11, CHout                      )
+    CSB_Write(regs, reg_bias+12, Token                      )
+    CSB_Write(regs, reg_bias+13, Dynamic_Token              )
+    CSB_Write(regs, reg_bias+14, 0x3c00                     )
     CSB_Write(regs, reg_bias+15, Head_Cfg                   )
     CSB_Write(regs, reg_bias+16, 0                          )
     CSB_Write(regs, reg_bias+17, 0b00_0001                  )

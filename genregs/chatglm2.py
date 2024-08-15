@@ -60,12 +60,13 @@ def chatglm_block_dynamic(data, pos_weight, silu_weight, token, index, kvcache, 
     return output
 
 
-def chatglm_main_dynamic(block_size=28, device=dlavm.device.HBM0321, aux_cfg=0, wt2hbm=0, py=0, clock=0, path_prefix = "BLOCK_write_data"):
+def chatglm_main_dynamic(block_size=28, device=dlavm.device.HBM0321, aux_cfg=0, wt2hbm=0, py=0, clock=0, full=0, path_prefix = "BLOCK_write_data"):
     block_size = 1 if clock else block_size
     sys.setrecursionlimit(3000)  # 将默认的递归深度修改为3000
     token = ne.Var("token", device.MAX_TOKEN)
     name = f"chatglm2_{device.MAX_TOKEN}"
     name += "_aux" if aux_cfg else ""
+    name += "_full" if full else "_lite"
     name += "_wt2hbm" if wt2hbm else ""
     name += "_clock" if clock else ""
     name += "_" + strftime('%m%d_%H%M', localtime())
@@ -85,7 +86,7 @@ def chatglm_main_dynamic(block_size=28, device=dlavm.device.HBM0321, aux_cfg=0, 
     mvm_out = adr.hbm.mvm_bn(ln_out, output_wt, output_bn, arg_max=1, kvcache=1)
     output = mvm_out[1]
 
-    output = transform.infer_type(output, device, attrs={"full":1})
+    output = transform.infer_type(output, device, attrs={"full":full})
 
     addr_assign_aux = {"global": 0x200000000, "weight": "global", "cache": "weight", "runtime": "cache", "cfg": "runtime", "hbm": 0x0}
     addr_assign = {"global": 0x200000000, "weight": "global", "cache": "weight", "runtime": "cache", "hbm": 0x0}
@@ -122,11 +123,12 @@ def chatglm_main_dynamic(block_size=28, device=dlavm.device.HBM0321, aux_cfg=0, 
 
 
 if __name__ == "__main__":
-    device = dlavm.device.HBM0603
+    device = dlavm.device.EdgeLLMv1
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--py", action="store_true", default=False, help="python backend mode")
     parser.add_argument("--aux", action="store_true", default=False, help="aux cfg backend mode")
+    parser.add_argument("--full", action="store_true", default=False, help="full cfg backend mode")
     parser.add_argument("--clock", action="store_true", default=False, help="clock backend mode")
     parser.add_argument("--wt2hbm", action="store_true", default=False, help="wt2hbm backend mode")
     parser.add_argument("--prefix", type=str, default="BLOCK_write_data", help="set datapath prefix")
@@ -135,5 +137,5 @@ if __name__ == "__main__":
 
     device.MAX_TOKEN = args.maxtoken
 
-    chatglm_main_dynamic(device=device, aux_cfg=args.aux, wt2hbm=args.wt2hbm, py=args.py, clock=args.clock, path_prefix=args.prefix)
+    chatglm_main_dynamic(device=device, aux_cfg=args.aux, wt2hbm=args.wt2hbm, py=args.py, clock=args.clock, full=args.full, path_prefix=args.prefix)
     log = dlavm.utils.GET_LOG()

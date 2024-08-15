@@ -9,11 +9,13 @@
 
 int main(void) {
     HANDLE device0, device1;
-    int token = 17, kvcache = 0, last_token = 0;
+    int token = 18, kvcache = 1, last_token = 0;
     step2(device0, kvcache, token, last_token);
     target2(device1, kvcache, 17, last_token);
     for (int i = 0; i < device1.size(); i++) {
-        std::cout << device1[i].first << ": " << device1[i].second << " : " << device0[i].second << std::endl;
+        int same = int(device1[i].second == device0[i].second);
+        std::cout << device1[i].first << ": " << device1[i].second << " : " << device0[i].second << " < " << same << " > " << std::endl;
     }
+    std::cout << int(device0.size() == device1.size()) << std::endl;
     return 0;
 }

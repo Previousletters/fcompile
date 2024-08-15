@@ -38,6 +38,8 @@
 
 HBM_DLL int** WT_TRANS(int chin, int chout, int ch_size, int *wt, uint16_t *wt_FP_scale);
 
+HBM_DLL int** WT_TRANS_INT4(int chin, int chout, int ch_size, int *wt, uint16_t *wt_FP_scale);
+
 HBM_DLL int* BN_TRANS(int chout, int ch_size, uint16_t *bn_wt, uint16_t *bn_bias);
 
 HBM_DLL int FP32_to_FP20(float fp32_i);

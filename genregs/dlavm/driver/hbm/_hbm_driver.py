@@ -141,7 +141,7 @@ def MVMafterF2WDriver(args, output, attrs):
         "device": args[0][0].device,
         **attrs
     }
-    return tasks.MVM_afterF2W(**define)
+    return Tasks.Get("accel.hbm.mvm_afterF2W", args[0][0].device)(**define)
 
 
 def AddDriver(args, output, attrs):

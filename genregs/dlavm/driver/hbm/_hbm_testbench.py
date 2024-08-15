@@ -1,5 +1,6 @@
+from ... import device
 from ...adr import Tensor, Constant
-from ..basic import TestbenchSIM
+from ..basic import TestbenchSIM, Tasks
 from ...clib import WT_TRANS, BN_TRANS
 
 
@@ -83,8 +84,8 @@ def MVMBNResTestbench(args, output, attrs):
         return TestbenchSIM("testbench_HBM_MVM_bn_res_Argmax", define)
 
 
-
-def MVMafterTRPTestbench(args, output, attrs):
+@Tasks.Register("tb.hbm.mvm_afterTRP", device.HBM0507)
+def MVMafterTRPTestbench_0(args, output, attrs):
     dtensor, wtensor = args[0], args[1]
     dshape, wshape = dtensor[0].shape, wtensor[0].shape
     daddrs, waddrs, oaddrs = dtensor[1], wtensor[1], output[1]
@@ -124,7 +125,30 @@ def MVMafterTRPTestbench(args, output, attrs):
     return TestbenchSIM("testbench_HBM_MVM_afterTRP", define)
 
 
-def MVMafterF2WTestbench(args, output, attrs):
+@Tasks.Register("tb.hbm.mvm_afterTRP", device.EdgeLLMv1)
+def MVMafterTRPTestbench_1(args, output, attrs):
+    dtensor, wtensor = args[0], args[1]
+    dshape, wshape = dtensor[0].shape, wtensor[0].shape
+    daddrs, waddrs, oaddrs = dtensor[1], wtensor[1], output[1]
+    last_token = attrs.get("last_token", 0)
+    define = {
+        "Feature_Head": dshape[0],
+        "Weight_Head": wshape[0],
+        "Token": dshape[1],
+        "last_token": dshape[1]-1 if attrs.get("kvcache", 0) else last_token,
+        "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
+        "WT_BASE_ADDR":  waddrs & 0xffffffff,
+        "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
+    }
+    return TestbenchSIM("testbench_HBM_MVM_afterTRP", define)
+
+    
+def MVMafterTRPTestbench(args, output, attrs):
+    return Tasks.Get("tb.hbm.mvm_afterTRP", args[0][0].device)(args, output, attrs)
+
+
+@Tasks.Register("tb.hbm.mvm_afterF2W", device.HBM0507)
+def MVMafterF2WTestbench_0(args, output, attrs):
     dtensor, wtensor = args[0], args[1]
     dshape, wshape = dtensor[0].shape, wtensor[0].shape
     daddrs, waddrs, oaddrs = dtensor[1], wtensor[1], output[1]
@@ -163,6 +187,28 @@ def MVMafterF2WTestbench(args, output, attrs):
             "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
         }
     return TestbenchSIM("testbench_HBM_MVM_afterF2W", define)
+
+
+@Tasks.Register("tb.hbm.mvm_afterF2W", device.EdgeLLMv1)
+def MVMafterF2WTestbench_1(args, output, attrs):
+    dtensor, wtensor = args[0], args[1]
+    dshape, wshape = dtensor[0].shape, wtensor[0].shape
+    daddrs, waddrs, oaddrs = dtensor[1], wtensor[1], output[1]
+    last_token = attrs.get("last_token", 0)
+    define = {
+        "Feature_Head": dshape[0],
+        "Weight_Head": wshape[0],
+        "Token": dshape[1],
+        "last_token": dshape[1]-1 if attrs.get("kvcache", 0) else last_token,
+        "DAT_IN_BASE_ADDR":  daddrs & 0xffffffff,
+        "WT_BASE_ADDR":  waddrs & 0xffffffff,
+        "DAT_OUT_BASE_ADDR": oaddrs & 0xffffffff,
+    }
+    return TestbenchSIM("testbench_HBM_MVM_afterF2W", define)
+
+    
+def MVMafterF2WTestbench(args, output, attrs):
+    return Tasks.Get("tb.hbm.mvm_afterF2W", args[0][0].device)(args, output, attrs)
 
 
 def SoftmaxTestbench(args, output, attrs):

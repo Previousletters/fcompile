@@ -49,8 +49,7 @@ class CodeGenTestHead(CodeGenCSBHead):
             print("*WARNING* : Var或Const节点中存在同名元素，请检查")
             exit(-1)
         if id[:3] == "ddr":
-            self.func_const_ddr.append("uint64_t %s = 0x%09x; // %d" % (enum_name, address, address & 0xffffffff))
-            self.enum_nodes[2].append(enum_name)
+            pass
         elif id[:3] == "hbm":
             self.func_const_hbm.append("uint64_t %s = 0x%09x; // %d" % (enum_name, address, address & 0xffffffff))
             self.enum_nodes[3].append(enum_name)

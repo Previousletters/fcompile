@@ -38,16 +38,28 @@ def Ceil_Padding(data0, data1):
     return ((data0 + data1 - 1) // data1) * data1
 
 
+def make_define(define: dict, simulator: str) -> str:
+    define_list = []
+    for key, value in define.items():
+        if simulator == "modelsim":
+            tp_str = f"+define+{key}={value}"
+        elif simulator == "vivado":
+            tp_str = f"--define {key}={value} "
+        else:
+            raise RuntimeError("Unsupport " + simulator + " for simulation!")
+        define_list.append(tp_str)
+    define_str = "".join(define_list)
+    return "\"" + define_str + "\""
+
+
 def TestbenchSIM(tb_name: str, define: dict) -> list:
-    from .config import template_rtl, tb_sim_path, tb_debug, tb_macro_log
+    from .config import template_rtl, tb_sim_path, tb_debug, tb_macro_log, sim_tool
     if tb_debug:
         tb_macro_log.append({"name": tb_name, "testbench": define})
     csb_rtl = []
-    cmd_rtl = list(template_rtl) + [tb_sim_path]
-    define_cfg = [f"+define+{k}={v}" for k, v in define.items()]
-    cmd_rtl.append("TOP_MODULE=" + tb_name)
-    cmd_rtl.append("SIM_DEFINE=\"" + "".join(define_cfg) + "\"")
-    p_rtl = subprocess.Popen(cmd_rtl, stdout=subprocess.PIPE)
+    define_str = make_define(define, sim_tool)
+    cmd = f"make -C {tb_sim_path} TOP_MODULE={tb_name} SIM_DEFINE={define_str}"
+    p_rtl = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
     out_rtl, rtl_err = p_rtl.communicate()
     saved_out_rtl = out_rtl.decode("utf-8")
     out_rtl = out_rtl.decode("utf-8").replace("# ", "").split("\n")
